@@ -1,0 +1,61 @@
+/* Custom styles for Living Storyworld */
+
+[x-cloak] {
+    display: none !important;
+}
+
+.line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
+/* Prose styles for chapter content */
+.prose h1 {
+    font-size: 2em;
+    font-weight: bold;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.prose h2 {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}
+
+.prose h3 {
+    font-size: 1.25em;
+    font-weight: bold;
+    margin-top: 0.75em;
+    margin-bottom: 0.5em;
+}
+
+.prose p {
+    margin-bottom: 1em;
+    line-height: 1.75;
+    color: #374151;
+}
+
+.prose strong {
+    font-weight: 600;
+    color: #111827;
+}
+
+.prose em {
+    font-style: italic;
+}
+
+/* Smooth transitions */
+* {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+/* Loading spinner for images */
+img {
+    background-color: #f3f4f6;
+}

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Living Storyworld</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-gray-50">
+    <div x-data="app()" x-init="init()" class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Living Storyworld</h1>
+                        <p class="text-sm text-gray-500">Interactive narrative universe</p>
+                    </div>
+
+                    <!-- World Selector -->
+                    <div class="flex items-center gap-4">
+                        <select
+                            x-model="currentWorldSlug"
+                            @change="switchWorld()"
+                            class="block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Select a world...</option>
+                            <template x-for="world in worlds" :key="world.slug">
+                                <option :value="world.slug" x-text="world.title"></option>
+                            </template>
+                        </select>
+
+                        <button
+                            @click="showCreateWorld = true"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            New World
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+            <!-- No World Selected -->
+            <div x-show="!currentWorldSlug" class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No world selected</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by creating a new world or selecting an existing one.</p>
+            </div>
+
+            <!-- World View -->
+            <div x-show="currentWorldSlug" x-cloak>
+                <!-- World Info -->
+                <div x-show="currentWorld" class="bg-white shadow rounded-lg p-6 mb-6">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h2 class="text-xl font-bold text-gray-900" x-text="currentWorld?.config?.title"></h2>
+                            <p class="text-sm text-gray-600 mt-1" x-text="currentWorld?.config?.theme"></p>
+                            <div class="flex gap-4 mt-2 text-xs text-gray-500">
+                                <span>Style: <span x-text="currentWorld?.config?.style_pack"></span></span>
+                                <span>Model: <span x-text="currentWorld?.config?.image_model"></span></span>
+                                <span>Chapters: <span x-text="currentWorld?.chapters?.length || 0"></span></span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button
+                                @click="openEditWorld()"
+                                class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                Edit
+                            </button>
+                            <button
+                                @click="showGenerateChapter = true"
+                                :disabled="generating"
+                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <span x-show="!generating">Generate Chapter</span>
+                                <span x-show="generating">Generating...</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Generation Progress -->
+                <div x-show="generating" class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6" x-cloak>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-blue-900" x-text="progress.message"></span>
+                        <span class="text-sm text-blue-700" x-text="progress.percent + '%'"></span>
+                    </div>
+                    <div class="w-full bg-blue-200 rounded-full h-2.5">
+                        <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" :style="`width: ${progress.percent}%`"></div>
+                    </div>
+                </div>
+
+                <!-- Chapters Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <template x-for="chapter in currentWorld?.chapters" :key="chapter.number">
+                        <div class="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                            <!-- Chapter Image -->
+                            <div x-show="chapter.scene" class="aspect-video bg-gray-200 relative">
+                                <img
+                                    :src="chapter.scene"
+                                    :alt="chapter.title"
+                                    class="w-full h-full object-cover"
+                                    loading="lazy">
+                            </div>
+
+                            <!-- Chapter Info -->
+                            <div class="p-4">
+                                <div class="flex items-start justify-between mb-2">
+                                    <span class="text-xs font-semibold text-gray-500" x-text="'Chapter ' + chapter.number"></span>
+                                </div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2" x-text="chapter.title"></h3>
+                                <p class="text-sm text-gray-600 line-clamp-3 mb-4" x-text="chapter.summary"></p>
+
+                                <div class="flex gap-2">
+                                    <button
+                                        @click="viewChapter(chapter)"
+                                        class="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        Read
+                                    </button>
+                                    <button
+                                        @click="rerollChapter(chapter.number)"
+                                        :disabled="generating"
+                                        class="px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        title="Regenerate chapter (text + image)">
+                                        🔄
+                                    </button>
+                                    <button
+                                        @click="regenerateImage(chapter.number)"
+                                        x-show="chapter.scene"
+                                        :disabled="generating"
+                                        class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 disabled:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                        title="Regenerate image only">
+                                        🎨
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Empty State -->
+                <div x-show="currentWorld && currentWorld.chapters?.length === 0" class="text-center py-12 bg-white rounded-lg shadow">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No chapters yet</h3>
+                    <p class="mt-1 text-sm text-gray-500">Get started by generating your first chapter.</p>
+                    <button
+                        @click="showGenerateChapter = true"
+                        class="mt-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                        Generate First Chapter
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Create World Modal -->
+        <div x-show="showCreateWorld"
+             x-cloak
+             class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50"
+             @click.self="showCreateWorld = false">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Create New World</h3>
+                <form @submit.prevent="createWorld()">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                            <input
+                                type="text"
+                                x-model="newWorld.title"
+                                required
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-sm font-medium text-gray-700">Theme</label>
+                                <button
+                                    type="button"
+                                    @click="randomTheme()"
+                                    :disabled="generatingTheme"
+                                    class="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:text-gray-400 disabled:cursor-not-allowed">
+                                    <span x-show="!generatingTheme">🎲 Random</span>
+                                    <span x-show="generatingTheme">⏳ Generating...</span>
+                                </button>
+                            </div>
+                            <input
+                                type="text"
+                                x-model="newWorld.theme"
+                                required
+                                placeholder="A brief description of your world"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Style Pack</label>
+                            <select
+                                x-model="newWorld.style_pack"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="storybook-ink">Storybook Ink</option>
+                                <option value="watercolor-dream">Watercolor Dream</option>
+                                <option value="pixel-rpg">Pixel RPG</option>
+                                <option value="comic-book">Comic Book</option>
+                                <option value="noir-sketch">Noir Sketch</option>
+                                <option value="art-nouveau">Art Nouveau</option>
+                                <option value="oil-painting">Oil Painting</option>
+                                <option value="lowpoly-iso">Lowpoly Isometric</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Image Model</label>
+                            <select
+                                x-model="newWorld.image_model"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="flux-dev">Flux Dev (Quality, ~$0.025)</option>
+                                <option value="flux-schnell">Flux Schnell (Fast, ~$0.003)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            @click="showCreateWorld = false"
+                            class="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            Create
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Generate Chapter Modal -->
+        <div x-show="showGenerateChapter"
+             x-cloak
+             class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50"
+             @click.self="showGenerateChapter = false">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Generate Chapter</h3>
+                <form @submit.prevent="generateChapter()">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Narrative Preset</label>
+                            <select
+                                x-model="generateOptions.preset"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="cozy-adventure">Cozy Adventure</option>
+                                <option value="noir-mystery">Noir Mystery</option>
+                                <option value="epic-fantasy">Epic Fantasy</option>
+                                <option value="solarpunk-explorer">Solarpunk Explorer</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Focus (Optional)</label>
+                            <input
+                                type="text"
+                                x-model="generateOptions.focus"
+                                placeholder="e.g., 'The Archivist explores the sealed wing'"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div class="flex items-center">
+                            <input
+                                type="checkbox"
+                                x-model="generateOptions.no_images"
+                                id="no-images"
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <label for="no-images" class="ml-2 text-sm text-gray-700">Skip image generation</label>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            @click="showGenerateChapter = false"
+                            class="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            Generate
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit World Modal -->
+        <div x-show="showEditWorld"
+             x-cloak
+             class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50"
+             @click.self="showEditWorld = false">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Edit World</h3>
+                <form @submit.prevent="updateWorld()">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                            <input
+                                type="text"
+                                x-model="editWorld.title"
+                                required
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-sm font-medium text-gray-700">Theme</label>
+                                <button
+                                    type="button"
+                                    @click="randomThemeEdit()"
+                                    :disabled="generatingTheme"
+                                    class="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:text-gray-400 disabled:cursor-not-allowed">
+                                    <span x-show="!generatingTheme">🎲 Random</span>
+                                    <span x-show="generatingTheme">⏳ Generating...</span>
+                                </button>
+                            </div>
+                            <input
+                                type="text"
+                                x-model="editWorld.theme"
+                                required
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Style Pack</label>
+                            <select
+                                x-model="editWorld.style_pack"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="storybook-ink">Storybook Ink</option>
+                                <option value="watercolor-dream">Watercolor Dream</option>
+                                <option value="pixel-rpg">Pixel RPG</option>
+                                <option value="comic-book">Comic Book</option>
+                                <option value="noir-sketch">Noir Sketch</option>
+                                <option value="art-nouveau">Art Nouveau</option>
+                                <option value="oil-painting">Oil Painting</option>
+                                <option value="lowpoly-iso">Lowpoly Isometric</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Image Model</label>
+                            <select
+                                x-model="editWorld.image_model"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="flux-dev">Flux Dev (Quality, ~$0.025)</option>
+                                <option value="flux-schnell">Flux Schnell (Fast, ~$0.003)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button
+                            type="button"
+                            @click="showEditWorld = false"
+                            class="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Chapter Viewer Modal -->
+        <div x-show="viewingChapter"
+             x-cloak
+             class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4"
+             @click.self="viewingChapter = null">
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-900" x-text="viewingChapter?.title"></h3>
+                    <button
+                        @click="viewingChapter = null"
+                        class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <img
+                        x-show="viewingChapter?.scene"
+                        :src="viewingChapter?.scene"
+                        class="w-full rounded-lg mb-6">
+                    <div
+                        x-html="chapterContent"
+                        class="prose max-w-none">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

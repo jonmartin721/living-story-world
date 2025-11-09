@@ -245,6 +245,36 @@ def main(argv: Optional[list[str]] = None) -> None:
     sp.add_argument("--preset", choices=list(PRESETS.keys()))
     sp.set_defaults(func=cmd_setup)
 
+    sp = sub.add_parser("web", help="Launch the web interface")
+    sp.add_argument("--port", type=int, default=8000, help="Port to run the server on (default: 8000)")
+    sp.add_argument("--no-browser", action="store_true", help="Don't open browser automatically")
+    def _web(args: argparse.Namespace) -> None:
+        import webbrowser
+        import time
+        from threading import Timer
+
+        url = f"http://localhost:{args.port}"
+
+        if not args.no_browser:
+            # Open browser after a short delay
+            def open_browser():
+                time.sleep(1.5)
+                webbrowser.open(url)
+            Timer(0, open_browser).start()
+
+        print(f"[bold green]Starting web server at {url}[/]")
+        print("[dim]Press Ctrl+C to stop[/]")
+
+        # Run uvicorn
+        import uvicorn
+        uvicorn.run(
+            "living_storyworld.webapp:app",
+            host="127.0.0.1",
+            port=args.port,
+            log_level="info"
+        )
+    sp.set_defaults(func=_web)
+
     sp = sub.add_parser("play", help="Launch the interactive terminal UI")
     def _play(_: argparse.Namespace) -> None:
         run_tui()

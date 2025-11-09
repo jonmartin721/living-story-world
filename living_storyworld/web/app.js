@@ -1,0 +1,378 @@
+function app() {
+    return {
+        worlds: [],
+        currentWorldSlug: '',
+        currentWorld: null,
+        generating: false,
+        generatingTheme: false,
+        progress: { percent: 0, message: '' },
+        showCreateWorld: false,
+        showEditWorld: false,
+        showGenerateChapter: false,
+        viewingChapter: null,
+        chapterContent: '',
+
+        newWorld: {
+            title: '',
+            theme: '',
+            style_pack: 'storybook-ink',
+            image_model: 'flux-dev'
+        },
+
+        editWorld: {
+            title: '',
+            theme: '',
+            style_pack: '',
+            image_model: ''
+        },
+
+        generateOptions: {
+            preset: 'cozy-adventure',
+            focus: '',
+            no_images: false
+        },
+
+        async randomTheme() {
+            this.generatingTheme = true;
+            const originalTheme = this.newWorld.theme;
+            this.newWorld.theme = 'Generating...';
+
+            try {
+                const response = await fetch('/api/generate/theme');
+                const data = await response.json();
+                this.newWorld.theme = data.theme;
+            } catch (error) {
+                console.error('Failed to generate theme:', error);
+                // Fallback to original or placeholder
+                this.newWorld.theme = originalTheme || 'Failed to generate theme. Try again?';
+            } finally {
+                this.generatingTheme = false;
+            }
+        },
+
+        async randomThemeEdit() {
+            this.generatingTheme = true;
+            const originalTheme = this.editWorld.theme;
+            this.editWorld.theme = 'Generating...';
+
+            try {
+                const response = await fetch('/api/generate/theme');
+                const data = await response.json();
+                this.editWorld.theme = data.theme;
+            } catch (error) {
+                console.error('Failed to generate theme:', error);
+                this.editWorld.theme = originalTheme || 'Failed to generate theme. Try again?';
+            } finally {
+                this.generatingTheme = false;
+            }
+        },
+
+        async init() {
+            await this.loadWorlds();
+            // Auto-select current world if any
+            const currentWorld = this.worlds.find(w => w.is_current);
+            if (currentWorld) {
+                this.currentWorldSlug = currentWorld.slug;
+                await this.loadWorld();
+            }
+        },
+
+        async loadWorlds() {
+            try {
+                const response = await fetch('/api/worlds');
+                this.worlds = await response.json();
+            } catch (error) {
+                console.error('Failed to load worlds:', error);
+                alert('Failed to load worlds. Check console for details.');
+            }
+        },
+
+        async loadWorld() {
+            if (!this.currentWorldSlug) {
+                this.currentWorld = null;
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/worlds/${this.currentWorldSlug}`);
+                this.currentWorld = await response.json();
+            } catch (error) {
+                console.error('Failed to load world:', error);
+                alert('Failed to load world. Check console for details.');
+            }
+        },
+
+        async switchWorld() {
+            if (this.currentWorldSlug) {
+                // Set as current
+                await fetch(`/api/worlds/${this.currentWorldSlug}/current`, {
+                    method: 'PUT'
+                });
+                await this.loadWorld();
+            }
+        },
+
+        openEditWorld() {
+            // Populate edit form with current world data
+            this.editWorld = {
+                title: this.currentWorld.config.title,
+                theme: this.currentWorld.config.theme,
+                style_pack: this.currentWorld.config.style_pack,
+                image_model: this.currentWorld.config.image_model
+            };
+            this.showEditWorld = true;
+        },
+
+        async updateWorld() {
+            if (!this.currentWorldSlug) return;
+
+            try {
+                const response = await fetch(`/api/worlds/${this.currentWorldSlug}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.editWorld)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update world');
+                }
+
+                this.showEditWorld = false;
+
+                // Reload world data
+                await this.loadWorld();
+                await this.loadWorlds();
+
+                alert('World updated successfully!');
+            } catch (error) {
+                console.error('Failed to update world:', error);
+                alert('Failed to update world. Check console for details.');
+            }
+        },
+
+        async createWorld() {
+            try {
+                const response = await fetch('/api/worlds', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.newWorld)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create world');
+                }
+
+                const world = await response.json();
+
+                // Reset form
+                this.newWorld = {
+                    title: '',
+                    theme: '',
+                    style_pack: 'storybook-ink',
+                    image_model: 'flux-dev'
+                };
+
+                this.showCreateWorld = false;
+
+                // Reload worlds and select new one
+                await this.loadWorlds();
+                this.currentWorldSlug = world.slug;
+                await this.loadWorld();
+            } catch (error) {
+                console.error('Failed to create world:', error);
+                alert('Failed to create world. Check console for details.');
+            }
+        },
+
+        async generateChapter() {
+            if (!this.currentWorldSlug) return;
+
+            this.showGenerateChapter = false;
+            this.generating = true;
+            this.progress = { percent: 0, message: 'Starting...' };
+
+            try {
+                // Start generation
+                const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.generateOptions)
+                });
+
+                const { job_id } = await response.json();
+
+                // Listen to SSE stream
+                const evtSource = new EventSource(`/api/worlds/${this.currentWorldSlug}/chapters/stream/${job_id}`);
+
+                evtSource.addEventListener('progress', (e) => {
+                    const data = JSON.parse(e.data);
+                    this.progress = data;
+                });
+
+                evtSource.addEventListener('complete', (e) => {
+                    const chapter = JSON.parse(e.data);
+                    this.currentWorld.chapters.push(chapter);
+                    this.generating = false;
+                    this.progress = { percent: 100, message: 'Complete!' };
+                    evtSource.close();
+
+                    // Reset form
+                    this.generateOptions.focus = '';
+                    this.generateOptions.no_images = false;
+                });
+
+                evtSource.addEventListener('error', (e) => {
+                    console.error('Generation error:', e);
+                    alert('Chapter generation failed. Check console for details.');
+                    this.generating = false;
+                    evtSource.close();
+                });
+
+            } catch (error) {
+                console.error('Failed to generate chapter:', error);
+                alert('Failed to generate chapter. Check console for details.');
+                this.generating = false;
+            }
+        },
+
+        async viewChapter(chapter) {
+            this.viewingChapter = chapter;
+
+            try {
+                const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters/${chapter.number}/content`);
+                const data = await response.json();
+
+                // Simple markdown to HTML conversion
+                this.chapterContent = this.markdownToHtml(data.content);
+            } catch (error) {
+                console.error('Failed to load chapter content:', error);
+                this.chapterContent = '<p>Failed to load chapter content.</p>';
+            }
+        },
+
+        async rerollChapter(chapterNum) {
+            if (!confirm('Regenerate this chapter completely? Both text and image will be replaced.')) return;
+
+            this.generating = true;
+            this.progress = { percent: 0, message: 'Starting full regeneration...' };
+
+            try {
+                // Start reroll with images enabled
+                const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters/${chapterNum}/reroll`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        preset: 'cozy-adventure',
+                        no_images: false  // Generate both text and image
+                    })
+                });
+
+                const { job_id } = await response.json();
+
+                // Listen to SSE stream
+                const evtSource = new EventSource(`/api/worlds/${this.currentWorldSlug}/chapters/stream/${job_id}`);
+
+                evtSource.addEventListener('progress', (e) => {
+                    const data = JSON.parse(e.data);
+                    this.progress = data;
+                });
+
+                evtSource.addEventListener('complete', (e) => {
+                    const updatedChapter = JSON.parse(e.data);
+
+                    // Find and update the chapter
+                    const chapterIndex = this.currentWorld.chapters.findIndex(ch => ch.number === chapterNum);
+                    if (chapterIndex !== -1) {
+                        this.currentWorld.chapters[chapterIndex] = updatedChapter;
+                    }
+
+                    this.generating = false;
+                    this.progress = { percent: 100, message: 'Chapter regenerated!' };
+                    evtSource.close();
+                });
+
+                evtSource.addEventListener('error', (e) => {
+                    console.error('Reroll error:', e);
+                    alert('Chapter regeneration failed, check console.');
+                    this.generating = false;
+                    evtSource.close();
+                });
+
+            } catch (error) {
+                console.error('Failed to reroll chapter:', error);
+                alert('Failed to regenerate chapter. Check console for details.');
+                this.generating = false;
+            }
+        },
+
+        async regenerateImage(chapterNum) {
+            if (!confirm('Regenerate the scene image for this chapter?')) return;
+
+            this.generating = true;
+            this.progress = { percent: 10, message: 'Regenerating image...' };
+
+            try {
+                this.progress = { percent: 30, message: 'Calling image API...' };
+
+                const response = await fetch(`/api/worlds/${this.currentWorldSlug}/images`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chapter: chapterNum })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                this.progress = { percent: 80, message: 'Processing image...' };
+
+                const data = await response.json();
+
+                // Update the chapter's scene
+                const chapter = this.currentWorld.chapters.find(ch => ch.number === chapterNum);
+                if (chapter) {
+                    chapter.scene = data.scene + '?' + Date.now(); // Cache bust
+                }
+
+                this.progress = { percent: 100, message: 'Image regenerated!' };
+                setTimeout(() => {
+                    this.generating = false;
+                }, 1000);
+            } catch (error) {
+                console.error('Failed to regenerate image:', error);
+                alert('Failed to regenerate image: ' + error.message);
+                this.generating = false;
+            }
+        },
+
+        markdownToHtml(markdown) {
+            // Very basic markdown to HTML conversion
+            // In production, you'd want to use a proper markdown library
+            let html = markdown;
+
+            // Remove metadata comment at top
+            html = html.replace(/^<!--[\s\S]*?-->\n*/m, '');
+
+            // Headers
+            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+            // Bold
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            // Italic
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+            // Paragraphs
+            html = html.split('\n\n').map(para => {
+                if (para.startsWith('<h') || !para.trim()) {
+                    return para;
+                }
+                return '<p>' + para + '</p>';
+            }).join('\n');
+
+            return html;
+        }
+    }
+}

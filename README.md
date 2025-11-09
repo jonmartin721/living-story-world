@@ -50,9 +50,17 @@ A persistent narrative universe you can explore via a simple CLI. It generates c
    ```
 
 5. View your story:
+
+   **Option A: Web Interface (Recommended)**
+   ```bash
+   python3 -m living_storyworld.cli web
+   ```
+   Opens at `http://localhost:8000` with full GUI for browsing, generating, and viewing chapters.
+
+   **Option B: Static HTML viewer**
    ```bash
    python3 -m living_storyworld.cli build --world the-flooded-stacks
-   # Open worlds/the-flooded-stacks/web/index.html in your browser
+   # Then open worlds/the-flooded-stacks/web/index.html in your browser
    ```
 
 ## Usage
@@ -69,11 +77,23 @@ A persistent narrative universe you can explore via a simple CLI. It generates c
 
 ## Guided UX
 
+- **Web Interface** (Recommended):
+  ```bash
+  python3 -m living_storyworld.cli web
+  ```
+  Modern web-based GUI with:
+  - Browse and manage multiple worlds
+  - Generate chapters with real-time progress
+  - View chapters with scene images in card layout
+  - Regenerate images on demand
+  - Runs locally at `http://localhost:8000`
+
 - Setup wizard (saves API key locally with 600 perms):
   - `python3 -m living_storyworld.cli setup --style storybook-ink --preset cozy-adventure`
-- Interactive UI (Textual):
+
+- Interactive TUI (Terminal UI):
   - `python3 -m living_storyworld.cli play`
-  - Colorful TUI with buttons to generate chapters and build the viewer.
+  - Colorful terminal interface with buttons to generate chapters and build the viewer.
 
 ## Style Packs
 
