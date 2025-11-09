@@ -1,12 +1,13 @@
 # Living Storyworld
 
-A persistent narrative universe you can explore via a simple CLI. It generates chapters (Markdown) and scene illustrations using the OpenAI API, and builds a lightweight HTML index for viewing.
+A persistent narrative universe you can explore via a simple CLI. It generates chapters (Markdown) using OpenAI and scene illustrations using Flux via Replicate, then builds a lightweight HTML index for viewing.
 
 ## Prerequisites
 
 - **Python 3.8+** (developed with 3.10+)
-- **OpenAI API key** ([get one here](https://platform.openai.com/api-keys))
-- **Note**: This tool makes API calls to OpenAI. Each chapter generation uses `gpt-4o-mini` (text) and `dall-e-3` (images), which incur costs. Typical cost per chapter with image: ~$0.10-0.15 USD.
+- **OpenAI API key** for text generation ([get one here](https://platform.openai.com/api-keys))
+- **Replicate API token** for image generation ([get one here](https://replicate.com/account/api-tokens))
+- **Note**: This tool makes API calls to OpenAI (text) and Replicate (images). Each chapter generation uses `gpt-4o-mini` (text, ~$0.01) and `flux-dev` (images, ~$0.025), typical cost per chapter: ~$0.035 USD.
 
 ## Quickstart
 
@@ -33,8 +34,13 @@ A persistent narrative universe you can explore via a simple CLI. It generates c
    python3 -m living_storyworld.cli init \
      --title "The Flooded Stacks" \
      --theme "A city of drowned archives" \
-     --style storybook-ink
+     --style storybook-ink \
+     --image-model flux-dev
    ```
+
+   **Image model options:**
+   - `flux-dev` — Higher quality, ~$0.025 per image (default)
+   - `flux-schnell` — Faster/cheaper, ~$0.003 per image
 
 4. Generate a chapter:
    ```bash
@@ -89,9 +95,12 @@ Story tone and pacing options (use with `--preset` flag):
 ## Notes
 
 - **Text model**: `gpt-4o-mini` (configurable in `worlds/<slug>/config.json`)
-- **Image model**: `dall-e-3` (landscape 1536x1024 by default)
+- **Image model**: `flux-dev` via Replicate (landscape 16:9 aspect ratio by default)
+  - Choose at world creation with `--image-model` flag
+  - Alternative: `flux-schnell` for faster/cheaper generation (~$0.003 per image)
+  - Change anytime by editing `worlds/<slug>/config.json` → `"image_model": "flux-schnell"`
 - **Image caching**: The CLI caches image prompts by hash to avoid duplicate API calls
-- **Error handling**: If an API call fails, the tool will exit with an error message. Check your API key and OpenAI account status.
+- **Error handling**: If an API call fails, the tool will exit with an error message. Check your API keys and account status.
 
 ## Project Layout
 

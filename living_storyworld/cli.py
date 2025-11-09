@@ -31,8 +31,10 @@ from .tui import run_tui
 def cmd_init(args: argparse.Namespace) -> None:
     slug = args.slug or slugify(args.title)
     style = args.style if args.style in STYLE_PACKS else "storybook-ink"
-    init_world(args.title, args.theme, style, slug)
+    image_model = args.image_model if hasattr(args, 'image_model') and args.image_model else "flux-dev"
+    init_world(args.title, args.theme, style, slug, image_model=image_model)
     print(f"[bold green]Initialized[/] world '[cyan]{args.title}[/]' at [magenta]worlds/{slug}[/]")
+    print(f"[dim]Image model: {image_model}[/]")
 
 
 def cmd_use(args: argparse.Namespace) -> None:
@@ -201,8 +203,10 @@ def main(argv: Optional[list[str]] = None) -> None:
 
     sp = sub.add_parser("init", help="Create a new storyworld")
     sp.add_argument("--title", required=True)
-    sp.add_argument("--theme", required=True, help="A short phrase describing the world’s theme")
+    sp.add_argument("--theme", required=True, help="A short phrase describing the world's theme")
     sp.add_argument("--style", choices=list(STYLE_PACKS.keys()), default="storybook-ink")
+    sp.add_argument("--image-model", choices=["flux-dev", "flux-schnell"], default="flux-dev",
+                    help="Image generation model: flux-dev (quality, ~$0.025) or flux-schnell (fast, ~$0.003)")
     sp.add_argument("--slug", help="Directory name for the world")
     sp.set_defaults(func=cmd_init)
 

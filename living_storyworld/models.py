@@ -47,7 +47,7 @@ class WorldConfig:
     theme: str
     style_pack: str = "storybook-ink"
     text_model: str = "gpt-4o-mini"
-    image_model: str = "gpt-image-1"
+    image_model: str = "flux-dev"
 
 
 @dataclass

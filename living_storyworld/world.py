@@ -8,10 +8,10 @@ from .models import WorldConfig, WorldState, Character, Location
 from .storage import ensure_world_dirs, set_current_world, slugify, write_json, read_json
 
 
-def init_world(title: str, theme: str, style_pack: str = "storybook-ink", slug: Optional[str] = None) -> str:
+def init_world(title: str, theme: str, style_pack: str = "storybook-ink", slug: Optional[str] = None, image_model: str = "flux-dev") -> str:
     slug = slug or slugify(title)
     dirs = ensure_world_dirs(slug)
-    cfg = WorldConfig(title=title, slug=slug, theme=theme, style_pack=style_pack)
+    cfg = WorldConfig(title=title, slug=slug, theme=theme, style_pack=style_pack, image_model=image_model)
     state = WorldState(
         tick=0,
         next_chapter=1,
