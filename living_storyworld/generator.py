@@ -27,7 +27,9 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         "You are a narrative engine for a persistent storyworld. "
         "Write evocative, tightly paced chapters that advance arcs within a coherent world. "
         "Always include a single HTML comment at the very top containing JSON metadata with keys: "
-        "scene_prompt (string describing a wide scene illustration), characters_in_scene (string array), summary (string). "
+        "scene_prompt (string describing a wide scene illustration), characters_in_scene (string array), "
+        "summary (string), new_characters (array of {id, name, description}), new_locations (array of {id, name, description}). "
+        "Introduce at least 1-2 new characters or locations per chapter to expand the world. "
         + preset.system_directives
     )
     world_brief = {
@@ -47,7 +49,9 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         + str(state.next_chapter)
         + ":\n"
         + "Title (H1), rich prose (700-900 words), light dialogue, tangible sensory detail, and a memorable closing beat.\n"
-        + 'At top, put: <!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string} -->\n'
+        + 'At top, put: <!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string, '
+        + '"new_characters": [{id, name, description}], "new_locations": [{id, name, description}]} -->\n'
+        + "Introduce new characters/locations to expand the world naturally. Use kebab-case for IDs.\n"
         + f"Art direction (for scene_prompt only): {style}.\n"
         + f"Preset instructions: {preset.text_instructions}"
     )
@@ -94,6 +98,12 @@ def generate_chapter(
     if not isinstance(characters_in_scene, list):
         characters_in_scene = []
 
+    # Extract and register new entities
+    new_characters = meta.get("new_characters", []) if isinstance(meta, dict) else []
+    new_locations = meta.get("new_locations", []) if isinstance(meta, dict) else []
+
+    _register_new_entities(state, new_characters, new_locations)
+
     num = state.next_chapter
     filename = f"chapter-{num:04d}.md"
     chapter_path = base_dir / "chapters" / filename
@@ -136,3 +146,39 @@ def _write_scene_request(base_dir: Path, chapter_num: int, style_pack: str, scen
         "prompt": scene_prompt,
     })
     reqs.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def _register_new_entities(state: WorldState, new_characters: list, new_locations: list) -> None:
+    """Register new characters and locations from chapter metadata into world state."""
+    from .models import Character, Location
+
+    # Add new characters
+    if isinstance(new_characters, list):
+        for char_data in new_characters:
+            if isinstance(char_data, dict) and "id" in char_data and "name" in char_data:
+                char_id = str(char_data["id"])
+                if char_id not in state.characters:
+                    char = Character(
+                        id=char_id,
+                        name=str(char_data.get("name", char_id)),
+                        description=str(char_data.get("description", "")),
+                        epithet=str(char_data.get("epithet", "")),
+                        traits=char_data.get("traits", [])
+                    )
+                    state.characters[char_id] = char.__dict__
+                    print(f"[WORLD] Added new character: {char.name} ({char_id})", flush=True)
+
+    # Add new locations
+    if isinstance(new_locations, list):
+        for loc_data in new_locations:
+            if isinstance(loc_data, dict) and "id" in loc_data and "name" in loc_data:
+                loc_id = str(loc_data["id"])
+                if loc_id not in state.locations:
+                    loc = Location(
+                        id=loc_id,
+                        name=str(loc_data.get("name", loc_id)),
+                        description=str(loc_data.get("description", "")),
+                        tags=loc_data.get("tags", [])
+                    )
+                    state.locations[loc_id] = loc.__dict__
+                    print(f"[WORLD] Added new location: {loc.name} ({loc_id})", flush=True)
