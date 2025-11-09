@@ -29,7 +29,7 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         "Always include a single HTML comment at the very top containing JSON metadata with keys: "
         "scene_prompt (string describing a wide scene illustration), characters_in_scene (string array), "
         "summary (string), new_characters (array of {id, name, description}), new_locations (array of {id, name, description}). "
-        "Introduce at least 1-2 new characters or locations per chapter to expand the world. "
+        "Introduce new characters or locations when they serve the story naturally. "
         + preset.system_directives
     )
     world_brief = {
@@ -51,7 +51,7 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         + "Title (H1), rich prose (700-900 words), light dialogue, tangible sensory detail, and a memorable closing beat.\n"
         + 'At top, put: <!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string, '
         + '"new_characters": [{id, name, description}], "new_locations": [{id, name, description}]} -->\n'
-        + "Introduce new characters/locations to expand the world naturally. Use kebab-case for IDs.\n"
+        + "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n"
         + f"Art direction (for scene_prompt only): {style}.\n"
         + f"Preset instructions: {preset.text_instructions}"
     )
