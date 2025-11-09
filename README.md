@@ -20,7 +20,11 @@ A persistent narrative universe you can explore via a simple CLI. It generates c
    # Option A: Use the setup wizard (recommended - stores key securely with 600 perms)
    python3 -m living_storyworld.cli setup
 
-   # Option B: Set environment variable
+   # Option B: Create a .env file (convenient for local development)
+   cp .env.example .env
+   # Edit .env and add your API key: OPENAI_API_KEY=sk-...
+
+   # Option C: Set environment variable
    export OPENAI_API_KEY=sk-...
    ```
 
@@ -85,7 +89,7 @@ Story tone and pacing options (use with `--preset` flag):
 ## Notes
 
 - **Text model**: `gpt-4o-mini` (configurable in `worlds/<slug>/config.json`)
-- **Image model**: `dall-e-3` (landscape 1792x1024 by default)
+- **Image model**: `dall-e-3` (landscape 1536x1024 by default)
 - **Image caching**: The CLI caches image prompts by hash to avoid duplicate API calls
 - **Error handling**: If an API call fails, the tool will exit with an error message. Check your API key and OpenAI account status.
 

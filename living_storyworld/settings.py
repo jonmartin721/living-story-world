@@ -6,6 +6,11 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if present
+load_dotenv()
+
 
 def _config_dir() -> Path:
     xdg = os.environ.get("XDG_CONFIG_HOME")

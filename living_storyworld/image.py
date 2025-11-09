@@ -32,7 +32,7 @@ def generate_scene_image(
     style_pack: str,
     prompt: str,
     chapter_num: Optional[int] = None,
-    size: str = "1792x1024",
+    size: str = "1536x1024",
 ) -> Path:
     client = _get_client()
     style = STYLE_PACKS.get(style_pack, STYLE_PACKS["storybook-ink"])
