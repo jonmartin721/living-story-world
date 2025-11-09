@@ -69,6 +69,14 @@ __pypackages__/
 *.swp
 *.swo
 
+# AI agent instruction files
+CLAUDE.md
+.cursorrules
+.aider*
+.windsurf/
+.ai/
+.github/copilot-instructions.md
+
 # OS
 .DS_Store
 Thumbs.db
