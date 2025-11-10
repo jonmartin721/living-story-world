@@ -86,9 +86,22 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
     if focus:
         user_parts.append(f"Focus: {focus}\n\n")
 
+    # Variable chapter length with random variation
+    import random
+    length_config = {
+        "short": (400, 600),    # Base length
+        "medium": (800, 1200),  # 2x short
+        "long": (1600, 2400)    # 4x short
+    }
+    min_words, max_words = length_config.get(cfg.chapter_length, length_config["medium"])
+    # Add ±10% random variation for natural feel
+    variation = random.uniform(0.9, 1.1)
+    min_words = int(min_words * variation)
+    max_words = int(max_words * variation)
+
     user_parts.extend([
         f"Write Chapter {state.next_chapter}:\n",
-        "Title (H1), rich prose (700-900 words), light dialogue, tangible sensory detail, and a memorable closing beat.\n",
+        f"Title (H1), rich prose ({min_words}-{max_words} words), light dialogue, tangible sensory detail, and a memorable closing beat.\n",
         'At top, put: <!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string, ',
         '"new_characters": [{id, name, description}], "new_locations": [{id, name, description}]} -->\n',
         "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n",

@@ -50,9 +50,10 @@ function app() {
             title: '',
             theme: '',
             style_pack: 'storybook-ink',
-            image_model: 'flux-dev',
+            image_model: 'flux-schnell',
             preset: 'cozy-adventure',
             maturity_level: 'general',
+            chapter_length: 'medium',
             memory: '',
             authors_note: '',
             world_instructions: ''
@@ -65,6 +66,7 @@ function app() {
             image_model: '',
             preset: '',
             maturity_level: '',
+            chapter_length: '',
             memory: '',
             authors_note: '',
             world_instructions: ''
@@ -73,6 +75,45 @@ function app() {
         generateOptions: {
             focus: '',
             no_images: false
+        },
+
+        async randomWorld() {
+            this.generatingTheme = true;
+
+            // Store originals in case of failure
+            const originals = {
+                title: this.newWorld.title,
+                theme: this.newWorld.theme,
+                style_pack: this.newWorld.style_pack,
+                preset: this.newWorld.preset,
+                image_model: this.newWorld.image_model,
+                maturity_level: this.newWorld.maturity_level
+            };
+
+            // Show loading state
+            this.newWorld.title = 'Generating...';
+            this.newWorld.theme = 'Generating...';
+
+            try {
+                const response = await fetch('/api/generate/world');
+                const data = await response.json();
+
+                // Fill all fields from the response
+                this.newWorld.title = data.title;
+                this.newWorld.theme = data.theme;
+                this.newWorld.style_pack = data.style_pack;
+                this.newWorld.preset = data.preset;
+                this.newWorld.image_model = data.image_model;
+                this.newWorld.maturity_level = data.maturity_level;
+                this.newWorld.chapter_length = data.chapter_length || 'medium';
+            } catch (error) {
+                console.error('Failed to generate world:', error);
+                // Restore originals on failure
+                Object.assign(this.newWorld, originals);
+                alert('Failed to generate world. Please try again.');
+            } finally {
+                this.generatingTheme = false;
+            }
         },
 
         async randomTheme() {
@@ -235,6 +276,7 @@ function app() {
                 image_model: this.currentWorld.config.image_model,
                 preset: this.currentWorld.config.preset || 'cozy-adventure',
                 maturity_level: this.currentWorld.config.maturity_level || 'general',
+                chapter_length: this.currentWorld.config.chapter_length || 'medium',
                 memory: this.currentWorld.config.memory || '',
                 authors_note: this.currentWorld.config.authors_note || '',
                 world_instructions: this.currentWorld.config.world_instructions || ''
