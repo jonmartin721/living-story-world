@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from ..settings import load_user_settings, save_user_settings, UserSettings

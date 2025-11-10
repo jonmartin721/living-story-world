@@ -1,0 +1,128 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: story-linux-x86_64
+            asset_name: story-linux-x86_64
+          - os: macos-latest
+            artifact_name: story-macos-x86_64
+            asset_name: story-macos-x86_64
+          - os: windows-latest
+            artifact_name: story-windows-x86_64.exe
+            asset_name: story-windows-x86_64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          pyinstaller --onefile \
+            --name ${{ matrix.artifact_name }} \
+            --add-data "living_storyworld/web:living_storyworld/web" \
+            --hidden-import=living_storyworld.api.worlds \
+            --hidden-import=living_storyworld.api.chapters \
+            --hidden-import=living_storyworld.api.images \
+            --hidden-import=living_storyworld.api.settings \
+            --hidden-import=living_storyworld.api.generate \
+            --hidden-import=uvicorn.logging \
+            --hidden-import=uvicorn.loops \
+            --hidden-import=uvicorn.loops.auto \
+            --hidden-import=uvicorn.protocols \
+            --hidden-import=uvicorn.protocols.http \
+            --hidden-import=uvicorn.protocols.http.auto \
+            --hidden-import=uvicorn.protocols.websockets \
+            --hidden-import=uvicorn.protocols.websockets.auto \
+            --hidden-import=uvicorn.lifespan \
+            --hidden-import=uvicorn.lifespan.on \
+            --collect-all textual \
+            --collect-all rich \
+            living_storyworld/cli.py
+
+      - name: Build with PyInstaller (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller --onefile `
+            --name ${{ matrix.artifact_name }} `
+            --add-data "living_storyworld/web;living_storyworld/web" `
+            --hidden-import=living_storyworld.api.worlds `
+            --hidden-import=living_storyworld.api.chapters `
+            --hidden-import=living_storyworld.api.images `
+            --hidden-import=living_storyworld.api.settings `
+            --hidden-import=living_storyworld.api.generate `
+            --hidden-import=uvicorn.logging `
+            --hidden-import=uvicorn.loops `
+            --hidden-import=uvicorn.loops.auto `
+            --hidden-import=uvicorn.protocols `
+            --hidden-import=uvicorn.protocols.http `
+            --hidden-import=uvicorn.protocols.http.auto `
+            --hidden-import=uvicorn.protocols.websockets `
+            --hidden-import=uvicorn.protocols.websockets.auto `
+            --hidden-import=uvicorn.lifespan `
+            --hidden-import=uvicorn.lifespan.on `
+            --collect-all textual `
+            --collect-all rich `
+            living_storyworld/cli.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.artifact_name }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Display structure
+        run: ls -R ./artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ./artifacts/story-linux-x86_64/story-linux-x86_64
+            ./artifacts/story-macos-x86_64/story-macos-x86_64
+            ./artifacts/story-windows-x86_64.exe/story-windows-x86_64.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
