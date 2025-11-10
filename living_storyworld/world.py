@@ -14,7 +14,6 @@ def init_world(
     theme: str,
     style_pack: str = "storybook-ink",
     slug: Optional[str] = None,
-    image_model: str = "flux-dev",
     maturity_level: str = "general",
     preset: str = "cozy-adventure",
     enable_choices: bool = False,
@@ -29,7 +28,6 @@ def init_world(
         slug=slug,
         theme=theme,
         style_pack=style_pack,
-        image_model=image_model,
         maturity_level=maturity_level,
         preset=preset,
         enable_choices=enable_choices,
@@ -115,7 +113,11 @@ def load_world(slug: str) -> tuple[WorldConfig, WorldState, dict]:
         raise RuntimeError(f"World '{slug}' config.json not found or corrupted")
 
     try:
-        cfg = WorldConfig(**cfg_data)
+        # Handle backward compatibility for removed image_model field
+        cfg_data_copy = cfg_data.copy()
+        if 'image_model' in cfg_data_copy:
+            del cfg_data_copy['image_model']
+        cfg = WorldConfig(**cfg_data_copy)
     except (TypeError, ValueError) as e:
         logging.error(f"Failed to validate world config for '{slug}': {e}")
         raise RuntimeError(f"World '{slug}' has corrupted configuration: {e}")

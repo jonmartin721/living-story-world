@@ -11,148 +11,165 @@
     -webkit-line-clamp: 3;
 }
 
-/* Prose styles for chapter content - Enhanced reading experience */
+/* Enhanced readable prose styles for chapter content */
 .prose {
-    font-size: 18px;
-    font-family: Georgia, 'Times New Roman', serif;
-    line-height: 1.9;
+    /* Modern typography scale with better readability */
+    font-size: clamp(1.25rem, 1.375rem + 0.5vw, 1.5rem); /* 20px to 24px responsive - increased */
+    font-family: 'Georgia', 'Times New Roman', serif;
+    line-height: 1.65; /* Optimal for readability (1.5-1.6) */
+    max-width: 65ch; /* Optimal line length for reading */
+    margin: 0 auto;
+    padding: 2rem 1rem; /* Generous padding for breathing room */
+    color: #f3f4f6; /* Light gray for relaxed reading in dark mode */
+
+    /* Enhanced text rendering */
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Word wrapping and spacing */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    letter-spacing: 0.01em; /* Slightly loose for better readability */
 }
 
-.prose h1 {
-    font-size: 2.25em;
-    font-weight: bold;
-    margin-top: 0.5em;
-    margin-bottom: 0.75em;
-    font-family: system-ui, -apple-system, sans-serif;
-    letter-spacing: -0.025em;
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+    .prose {
+        font-size: clamp(1.125rem, 1rem + 2vw, 1.25rem); /* 18px to 20px - increased */
+        line-height: 1.6;
+        max-width: none; /* Remove character limit on mobile */
+        padding: 1.5rem 1rem;
+        letter-spacing: 0.005em;
+    }
 }
 
+/* Typography hierarchy for readability */
 .prose h2 {
-    font-size: 1.75em;
-    font-weight: bold;
-    margin-top: 1.25em;
-    margin-bottom: 0.75em;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 1.75em; /* 28px at 16px base */
+    line-height: 1.25;
+    margin-top: 2.5em;
+    margin-bottom: 1.2em;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: -0.02em; /* Tighter spacing for headings */
 }
 
 .prose h3 {
-    font-size: 1.375em;
-    font-weight: bold;
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 1.375em; /* 22px at 16px base */
+    line-height: 1.3;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: -0.01em;
 }
 
+/* Enhanced paragraph styling */
 .prose p {
-    margin-bottom: 1.5em;
-    line-height: 1.9;
-    color: #374151;
+    margin-bottom: 1.4em; /* Generous paragraph spacing */
+    text-align: left; /* Avoid justified text for better readability */
+    widows: 2;
+    orphans: 2;
 }
 
+/* Strong text styling */
 .prose strong {
     font-weight: 600;
-    color: #111827;
+    color: #f9fafb; /* Slightly brighter for emphasis */
 }
 
-/* Always use dark mode prose styles */
-.prose p {
-    color: #f3f4f6 !important;
-}
-
-.prose strong {
-    color: #ffffff !important;
-}
-
-.prose em {
-    color: #e5e7eb !important;
-}
-
-/* Additional dark mode prose styles */
-.prose h1,
-.prose h2,
-.prose h3,
-.prose h4,
-.prose h5,
-.prose h6 {
-    color: #ffffff !important;
-}
-
-.prose {
-    color: #f3f4f6 !important;
-}
-
+/* Italic text styling */
 .prose em {
     font-style: italic;
+    color: #e5e7eb;
 }
 
-/* Smooth transitions */
-* {
-    transition-property: background-color, border-color, color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
+/* Link styling with better contrast */
+.prose a {
+    color: #93c5fd; /* Lighter blue for dark theme */
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: all 0.2s ease;
 }
 
-/* Loading spinner for images */
-img {
-    background-color: #f3f4f6;
+.prose a:hover {
+    color: #bfdbfe;
+    border-bottom-color: #93c5fd;
 }
 
-/* Prevent text selection on buttons */
-button {
-    user-select: none;
+/* Lists styling */
+.prose ul, .prose ol {
+    margin-bottom: 1.4em;
+    padding-left: 1.5em;
+}
+
+.prose li {
+    margin-bottom: 0.6em;
+    line-height: 1.6;
+}
+
+/* Blockquotes for narrative emphasis */
+.prose blockquote {
+    margin: 1.5em 0;
+    padding: 0.5em 1.5em;
+    border-left: 4px solid #60a5fa;
+    background-color: rgba(96, 165, 250, 0.1);
+    font-style: italic;
+    color: #d1d5db;
+}
+
+.prose blockquote p {
+    margin-bottom: 0;
+}
+
+/* Hide the H1 title in chapter content since it's in the header */
+.prose h1:first-child {
+    display: none;
+}
+
+/* Choice section styling */
+.prose .choices-section {
+    margin-top: 3em;
+    padding-top: 2em;
+    border-top: 1px solid #374151;
+}
+
+/* Prevent text selection on interactive elements */
+.no-select {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    user-select: none;
 }
 
-/* Chapter viewer improvements */
-.prose {
-    max-width: 65ch;
-    margin-left: auto;
-    margin-right: auto;
+/* Prevent cursor on buttons and labels */
+button,
+input[type="button"],
+input[type="submit"],
+label {
+    cursor: default;
 }
 
-/* Dark themed scrollbars for chapter content */
-.prose::-webkit-scrollbar {
+button:disabled {
+    cursor: not-allowed;
+}
+
+/* Dark scrollbars */
+::-webkit-scrollbar {
     width: 8px;
 }
 
-.prose::-webkit-scrollbar-track {
-    background: #374151; /* gray-700 */
+::-webkit-scrollbar-track {
+    background: #374151;
     border-radius: 4px;
 }
 
-.prose::-webkit-scrollbar-thumb {
-    background: #6b7280; /* gray-500 */
+::-webkit-scrollbar-thumb {
+    background: #6b7280;
     border-radius: 4px;
 }
 
-.prose::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af; /* gray-400 */
-}
-
-/* Dark themed scrollbars for all modal content */
-.bg-white.dark\\:bg-gray-800::-webkit-scrollbar {
-    width: 8px;
-}
-
-.bg-white.dark\\:bg-gray-800::-webkit-scrollbar-track {
-    background: #374151; /* gray-700 */
-    border-radius: 4px;
-}
-
-.bg-white.dark\\:bg-gray-800::-webkit-scrollbar-thumb {
-    background: #6b7280; /* gray-500 */
-    border-radius: 4px;
-}
-
-.bg-white.dark\\:bg-gray-800::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af; /* gray-400 */
-}
-
-/* Firefox scrollbar styling */
-.prose,
-.bg-white.dark\:bg-gray-800 {
-    scrollbar-width: thin;
-    scrollbar-color: #6b7280 #374151;
+::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
 }

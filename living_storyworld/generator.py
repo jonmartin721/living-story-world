@@ -48,9 +48,12 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
     # Add choices instruction if enabled
     if cfg.enable_choices:
         metadata_keys += (
-            ", choices (array of 3 objects with {id, text, description}). "
-            "Make choices diverse and meaningful: one safe option, one risky option, one unexpected option. "
-            "Each choice should genuinely influence the story's direction. Use IDs like 'choice-1', 'choice-2', 'choice-3'."
+            ", choices (array of 3 objects with {id, text, description}), story_health (object with {is_repetitive: bool, natural_ending_reached: bool, needs_fresh_direction: bool, notes: string}). "
+            "CHOICES MUST BE IMMEDIATE, SPONTANEOUS, IN-THE-MOMENT DECISIONS - not grand finalistic outcomes. "
+            "Focus on: micro-decisions, tactical choices, emotional reactions, small pivots. "
+            "Examples: 'Ask about the scar' vs 'Lie about where you were' vs 'Change the subject' OR 'Take the left tunnel' vs 'Wait and listen' vs 'Call out'. "
+            "AVOID: 'Embrace destiny', 'Face the final truth', 'Choose peace/war', 'Accept/reject fate', or any choice that sounds like a story ending. "
+            "Each choice should open new complications, not close the story. Use IDs like 'choice-1', 'choice-2', 'choice-3'."
         )
 
     sys_parts = [
@@ -59,7 +62,12 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         f"Always include a single HTML comment at the very top containing JSON metadata with keys: {metadata_keys} "
         "Introduce new characters or locations when they serve the story naturally. "
         + preset.system_directives,
-        f"\n\nMaturity Level: {maturity_instruction}"
+        f"\n\nMaturity Level: {maturity_instruction}",
+        "\n\nSTORY HEALTH MONITORING: In the metadata, analyze if: "
+        "(1) You're repeating beats/themes from recent chapters, "
+        "(2) The story has reached a natural conclusion, "
+        "(3) Fresh complications are needed. "
+        "If repetitive or concluded, either gracefully end OR inject unexpected complications to revitalize the narrative."
     ]
 
     # Add global instructions if present
@@ -72,14 +80,46 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
 
     sys = "".join(sys_parts)
 
-    # Build story summary from previous chapters for continuity
-    story_so_far = []
+    # Build efficient story context using stored summaries
+    story_context = []
     if state.chapters:
-        # Include summaries from recent chapters (last 3) for better continuity
-        recent_chapters = state.chapters[-3:]
+        # Get summaries from recent chapters (last 5-6 for good context)
+        recent_chapters = state.chapters[-6:] if len(state.chapters) >= 6 else state.chapters
+
         for ch in recent_chapters:
-            if ch.summary:
-                story_so_far.append(f"Chapter {ch.number}: {ch.summary}")
+            chapter_info = [f"Chapter {ch.number}: {ch.title}"]
+
+            # Use the AI-generated summary if available, otherwise fall back to basic summary
+            if hasattr(ch, 'ai_summary') and ch.ai_summary:
+                chapter_info.append(f"Events: {ch.ai_summary}")
+            elif ch.summary:
+                chapter_info.append(f"Summary: {ch.summary}")
+
+            # Include the selected choice and its impact (important for continuity)
+            if ch.selected_choice_id and ch.choices:
+                selected_choice = next((c for c in ch.choices if c.id == ch.selected_choice_id), None)
+                if selected_choice:
+                    chapter_info.append(f"Reader chose: '{selected_choice.text}'")
+                    if ch.choice_reasoning:
+                        chapter_info.append(f"Impact: {ch.choice_reasoning}")
+
+            # Include key characters and locations mentioned in this chapter
+            if ch.characters_in_scene:
+                chapter_info.append(f"Characters: {', '.join(ch.characters_in_scene)}")
+
+            story_context.append('\n'.join(chapter_info))
+
+        # Create a chained story progression
+        if len(state.chapters) > 6:
+            # For very long stories, include a condensed summary of older chapters
+            older_summary = []
+            for ch in state.chapters[-10:-6]:  # Chapters 7-10 from current
+                if hasattr(ch, 'ai_summary') and ch.ai_summary:
+                    older_summary.append(f"Ch {ch.number}: {ch.ai_summary}")
+                elif ch.summary:
+                    older_summary.append(f"Ch {ch.number}: {ch.summary}")
+            if older_summary:
+                story_context.insert(0, "Earlier story arc:\n" + "\n".join(older_summary))
 
     world_brief = {
         "title": cfg.title,
@@ -99,28 +139,29 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
 
     user_parts.append("World brief: " + json.dumps(world_brief) + "\n\n")
 
-    # Add story summary for continuity
-    if story_so_far:
-        user_parts.append("Story so far:\n" + "\n".join(story_so_far) + "\n\n")
+    # Add comprehensive story context for continuity
+    if story_context:
+        user_parts.append("Story progression:\n" + "\n\n".join(story_context) + "\n\n")
 
-    # Add previous choice context if applicable
-    if cfg.enable_choices and state.chapters:
-        prev_chapter = state.chapters[-1]
-        if prev_chapter.selected_choice_id and prev_chapter.choices:
-            selected_choice = next((c for c in prev_chapter.choices if c.id == prev_chapter.selected_choice_id), None)
-            if selected_choice:
-                choice_context = f"Previous Reader's Choice: {selected_choice.text}"
-                if prev_chapter.choice_reasoning:
-                    choice_context += f"\nReasoning: {prev_chapter.choice_reasoning}"
-                choice_context += "\n\nIncorporate the consequences of this choice naturally into the narrative.\n\n"
-                user_parts.append(choice_context)
+    # Add optional focus nudge first (lighter weight)
+    if focus:
+        user_parts.append(f"Optional narrative nudge (use as inspiration, but prioritize the reader's choice if present): {focus}\n\n")
 
     # Add author's note (strategic placement for style guidance)
     if cfg.authors_note:
         user_parts.append(f"Author's Note: {cfg.authors_note}\n\n")
 
-    if focus:
-        user_parts.append(f"Focus: {focus}\n\n")
+    # Add previous choice context LAST (strongest signal - most recent in context)
+    if cfg.enable_choices and state.chapters:
+        prev_chapter = state.chapters[-1]
+        if prev_chapter.selected_choice_id and prev_chapter.choices:
+            selected_choice = next((c for c in prev_chapter.choices if c.id == prev_chapter.selected_choice_id), None)
+            if selected_choice:
+                choice_context = f"READER'S CHOICE (PRIMARY DIRECTIVE): {selected_choice.text}"
+                if prev_chapter.choice_reasoning:
+                    choice_context += f"\nReasoning: {prev_chapter.choice_reasoning}"
+                choice_context += "\n\nThis choice MUST be the central driver of this chapter. Build the narrative directly from the consequences and implications of this decision. Any optional focus/nudges above are secondary to honoring this choice.\n\n"
+                user_parts.append(choice_context)
 
     # Variable chapter length with random variation
     import random
@@ -139,7 +180,8 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
     metadata_format = '<!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string, '
     metadata_format += '"new_characters": [{id, name, description}], "new_locations": [{id, name, description}]'
     if cfg.enable_choices:
-        metadata_format += ', "choices": [{"id": string, "text": string, "description": string}]'
+        metadata_format += ', "choices": [{"id": string, "text": string, "description": string}], '
+        metadata_format += '"story_health": {"is_repetitive": bool, "natural_ending_reached": bool, "needs_fresh_direction": bool, "notes": string}'
     metadata_format += '} -->\n'
 
     user_parts.extend([
@@ -213,6 +255,21 @@ def generate_chapter(
     if not isinstance(characters_in_scene, list):
         characters_in_scene = []
 
+    # Extract and log story health if present
+    if isinstance(meta, dict) and "story_health" in meta:
+        story_health = meta.get("story_health", {})
+        if isinstance(story_health, dict):
+            is_repetitive = story_health.get("is_repetitive", False)
+            natural_ending = story_health.get("natural_ending_reached", False)
+            needs_fresh = story_health.get("needs_fresh_direction", False)
+            health_notes = story_health.get("notes", "")
+
+            # Log warning if story health issues detected
+            if is_repetitive or natural_ending or needs_fresh:
+                print(f"[STORY HEALTH] Repetitive: {is_repetitive}, Natural End: {natural_ending}, Needs Fresh: {needs_fresh}", flush=True)
+                if health_notes:
+                    print(f"[STORY HEALTH] Notes: {health_notes}", flush=True)
+
     # Extract choices if present
     choices = []
     if isinstance(meta, dict) and "choices" in meta:
@@ -237,15 +294,27 @@ def generate_chapter(
     chapter_path = base_dir / "chapters" / filename
     chapter_path.write_text(md, encoding="utf-8")
 
+    # Create chapter object
     ch = Chapter(
         number=num,
         title=_extract_title(md) or f"Chapter {num}",
         filename=filename,
         summary=summary,
+        ai_summary=None,  # Will be set after AI summary generation
         scene_prompt=scene_prompt,
         characters_in_scene=[str(c) for c in characters_in_scene],
         choices=choices,
     )
+
+    # Generate AI summary for continuity (async but we'll await it)
+    import asyncio
+    loop = asyncio.new_event_loop()
+    ai_summary = loop.run_until_complete(generate_chapter_summary(md, cfg))
+    ch.ai_summary = ai_summary
+    loop.close()
+
+    if ai_summary:
+        print(f"[INFO] Generated AI summary for chapter {num}: {ai_summary[:50]}...", flush=True)
 
     # Optionally queue scene image generation marker (actual pixel gen in image module)
     if make_scene_image and scene_prompt:
@@ -367,3 +436,59 @@ Reasoning:"""
     except Exception as e:
         print(f"[WARN] Failed to infer choice reasoning: {e}", flush=True)
         return f"The reader chose to {choice_text.lower()}"
+
+
+async def generate_chapter_summary(
+    chapter_content: str,
+    cfg: WorldConfig
+) -> str:
+    """Use LLM to generate a concise summary of chapter events for story continuity.
+
+    Args:
+        chapter_content: The full text content of the chapter
+        cfg: World configuration for model settings
+
+    Returns:
+        A 2-3 sentence summary of key events and developments
+    """
+    settings = load_user_settings()
+    text_provider_name = settings.text_provider
+    api_key = get_api_key_for_provider(text_provider_name, settings)
+
+    try:
+        provider = get_text_provider(text_provider_name, api_key=api_key)
+    except Exception as e:
+        # If provider fails, return empty summary
+        return ""
+
+    # Extract just the story content (remove HTML/metadata)
+    import re
+    # Remove HTML metadata comments
+    content_clean = re.sub(r'<!--.*?-->', '', chapter_content, flags=re.DOTALL)
+    # Remove HTML tags
+    content_clean = re.sub(r'<[^>]+>', '', content_clean)
+    # Get first ~1000 characters for context
+    content_sample = content_clean[:1000]
+
+    prompt = f"""Generate a concise 2-3 sentence summary of this chapter's key events and plot developments for story continuity. Focus on what actually happens and any important changes.
+
+Chapter content:
+{content_sample}
+
+Summary:"""
+
+    messages = [
+        {"role": "system", "content": "You are a story editor. Create concise, accurate summaries that capture the essence of what happens in each chapter."},
+        {"role": "user", "content": prompt}
+    ]
+
+    try:
+        result = provider.generate(messages, temperature=0.3, model=cfg.text_model)
+        summary = result.content.strip()
+        # Limit to reasonable length
+        if len(summary) > 300:
+            summary = summary[:297] + "..."
+        return summary
+    except Exception as e:
+        print(f"[WARN] Failed to generate chapter summary: {e}", flush=True)
+        return ""

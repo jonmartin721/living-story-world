@@ -7,100 +7,33 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Living Storyworld</title>
-    <script>
-        window.tailwindConfig = {
-            darkMode: 'class'
-        }
-    </script>
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+      <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="/static/styles.css">
-    <style>
-        /* Always use dark mode styles */
-        .prose-sm,
-        .prose-sm > *,
-        .prose-sm p,
-        .prose-sm li,
-        .prose-sm strong,
-        .prose-sm em,
-        .prose-sm span,
-        .prose-sm a {
-            color: #f3f4f6 !important; /* gray-100 - much lighter */
-        }
-        .prose-sm h1,
-        .prose-sm h2,
-        .prose-sm h3,
-        .prose-sm h4,
-        .prose-sm h5,
-        .prose-sm h6 {
-            color: #ffffff !important; /* white */
-        }
-        /* Override prose-invert defaults */
-        .prose-invert {
-            --tw-prose-body: #f3f4f6 !important;
-            --tw-prose-headings: #ffffff !important;
-            --tw-prose-bold: #f3f4f6 !important;
-            --tw-prose-links: #f3f4f6 !important;
-        }
-        /* Additional overrides for chapter content */
-        .prose,
-        .prose > *,
-        .prose p,
-        .prose li,
-        .prose strong,
-        .prose em,
-        .prose span,
-        .prose a {
-            color: #f3f4f6 !important;
-        }
-        .prose h1,
-        .prose h2,
-        .prose h3,
-        .prose h4,
-        .prose h5,
-        .prose h6 {
-            color: #ffffff !important;
-        }
-        /* Hide the H1 title in chapter content since it's in the header */
-        .prose h1:first-child {
-            display: none;
-        }
-
-        /* Dark themed scrollbar for chapter viewer modal */
-        .max-w-2xl::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .max-w-2xl::-webkit-scrollbar-track {
-            background: #374151;
-            border-radius: 4px;
-        }
-
-        .max-w-2xl::-webkit-scrollbar-thumb {
-            background: #6b7280;
-            border-radius: 4px;
-        }
-
-        .max-w-2xl::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-        }
-
-        /* Firefox scrollbar styling for chapter modal */
-        .max-w-2xl {
-            scrollbar-width: thin;
-            scrollbar-color: #6b7280 #374151;
-        }
-    </style>
-</head>
-<body class="bg-gray-900 dark:bg-gray-900 transition-colors duration-200">
+  </head>
+<body class="bg-gray-900">
     <div x-data="app()" x-init="init()" class="min-h-screen">
         <!-- Header -->
-        <header class="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 transition-colors duration-200">
+        <header class="bg-gray-800 shadow-sm border-b border-gray-700">
             <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
-                        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Living Storyworld</h1>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Interactive narrative universe</p>
+                        <h1 class="text-2xl font-bold text-white">Living Storyworld</h1>
+                        <p class="text-sm text-gray-400">Interactive narrative universe</p>
+                    </div>
+
+                    <!-- Provider Info -->
+                    <div class="hidden md:block mr-6 text-right">
+                        <div class="text-xs text-gray-400 space-y-1">
+                            <div>
+                                <span class="text-gray-500">Text:</span>
+                                <span class="font-medium text-gray-300" x-text="settings.text_provider || 'openai'"></span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Image:</span>
+                                <span class="font-medium text-gray-300" x-text="settings.image_provider || 'replicate'"></span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Icon Buttons -->
@@ -108,7 +41,7 @@
                         <!-- Console Button -->
                         <button
                             @click="showConsole = true"
-                            class="p-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 relative dark:bg-gray-700 dark:hover:bg-gray-600"
+                            class="p-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 relative"
                             title="Console Logs">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -120,7 +53,7 @@
                         <!-- Settings Button -->
                         <button
                             @click="openSettings()"
-                            class="p-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:hover:bg-gray-600"
+                            class="p-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
                             title="Settings">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -135,15 +68,15 @@
         <!-- Main Content -->
         <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
             <!-- World Selector Bar -->
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4 mb-6 transition-colors duration-200">
+            <div class="bg-gray-800 shadow rounded-lg p-4 mb-6 transition-colors duration-200">
                 <div class="flex items-center justify-between gap-4">
                     <!-- Left: Dropdown Selector -->
                     <div class="flex items-center gap-3 flex-1 max-w-md">
-                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">World:</label>
+                        <label class="text-sm font-medium text-gray-300 whitespace-nowrap">World:</label>
                         <select
                             x-model="currentWorldSlug"
                             @change="switchWorld()"
-                            class="block w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                            class="block w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                             <option value="">Select a world...</option>
                             <template x-for="world in worlds" :key="world.slug">
                                 <option :value="world.slug" x-text="world.title"></option>
@@ -155,7 +88,7 @@
                     <div class="flex items-center gap-2">
                         <button
                             @click="showCreateWorld = true"
-                            class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600 whitespace-nowrap">
+                            class="px-3 py-2 bg-blue-700 text-white text-sm rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap">
                             + New
                         </button>
                         <button
@@ -177,38 +110,44 @@
             </div>
 
             <!-- World Details Card -->
-            <div x-show="currentWorld" x-cloak class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6 transition-colors duration-200">
+            <div x-show="currentWorld" x-cloak class="bg-gray-800 shadow rounded-lg p-6 mb-6 transition-colors duration-200">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2" x-text="currentWorld?.config?.title"></h2>
-                    <p class="text-base text-gray-600 dark:text-gray-300 mb-4" x-text="currentWorld?.config?.theme"></p>
-                    <div class="flex gap-6 text-sm text-gray-500 dark:text-gray-400 mb-6">
-                        <span>Chapters: <span class="font-semibold text-gray-700 dark:text-gray-200" x-text="currentWorld?.chapters?.length || 0"></span></span>
-                        <span>Style: <span class="font-semibold text-gray-700 dark:text-gray-200" x-text="currentWorld?.config?.style_pack"></span></span>
-                        <span>Model: <span class="font-semibold text-gray-700 dark:text-gray-200" x-text="currentWorld?.config?.image_model"></span></span>
+                    <h2 class="text-2xl font-bold text-white mb-2" x-text="currentWorld?.config?.title"></h2>
+                    <p class="text-base text-gray-300 mb-4" x-text="currentWorld?.config?.theme"></p>
+                    <div class="flex gap-6 text-sm text-gray-400 mb-6">
+                        <span>Chapters: <span class="font-semibold text-gray-200" x-text="currentWorld?.chapters?.length || 0"></span></span>
+                        <span>Style: <span class="font-semibold text-gray-200" x-text="currentWorld?.config?.style_pack"></span></span>
+                        <span>Model: <span class="font-semibold text-gray-200" x-text="currentWorld?.config?.image_model"></span></span>
                     </div>
                     <div class="flex items-center gap-4">
                         <button
                             @click="showGenerateChapter = true"
                             :disabled="generating"
-                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500"
-                            x-text="generating ? 'Generating...' : '+ Generate Chapter'">
+                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2">
+                            <div x-show="!generating">+ Generate Chapter</div>
+                            <div x-show="generating" class="flex items-center gap-2">
+                                <div class="relative w-4 h-4">
+                                    <svg class="w-4 h-4 transform -rotate-90" viewBox="0 0 16 16">
+                                        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none" class="text-green-200"></circle>
+                                        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none"
+                                                :stroke-dasharray="`${(2 * Math.PI * 6) * (progress.percent / 100)} ${2 * Math.PI * 6}`"
+                                                class="text-white transition-all duration-300"></circle>
+                                    </svg>
+                                </div>
+                                <span x-text="getProgressText()"></span>
+                            </div>
                         </button>
-                        <!-- Inline Generation Progress -->
-                        <div x-show="generating" x-cloak class="flex items-center space-x-2">
-                            <div class="w-4 h-4 border-2 border-green-500 dark:border-green-400 border-t-transparent rounded-full animate-spin"></div>
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300" x-text="progress.message"></span>
-                        </div>
-                    </div>
+                                </div>
                 </div>
             </div>
 
             <!-- No World Selected State -->
-            <div x-show="!currentWorld && currentWorldSlug === ''" class="bg-white dark:bg-gray-800 shadow rounded-lg p-12 mb-6 transition-colors duration-200 text-center">
-                <svg class="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div x-show="!currentWorld && currentWorldSlug === ''" class="bg-gray-800 shadow rounded-lg p-12 mb-6 transition-colors duration-200 text-center">
+                <svg class="mx-auto h-16 w-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
-                <h3 class="mt-4 text-lg font-medium text-gray-800 dark:text-white">No world selected</h3>
-                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Select a world from the dropdown above or create a new one to get started.</p>
+                <h3 class="mt-4 text-lg font-medium text-white">No world selected</h3>
+                <p class="mt-2 text-sm text-gray-400">Select a world from the dropdown above or create a new one to get started.</p>
             </div>
 
             <!-- World View (chapters, etc.) -->
@@ -217,9 +156,9 @@
                 <!-- Chapters Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <template x-for="chapter in currentWorld?.chapters" :key="chapter.number">
-                        <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200">
+                        <div class="bg-gray-800 shadow rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200">
                             <!-- Chapter Image -->
-                            <div x-show="chapter.scene" @click="viewChapter(chapter)" class="aspect-video bg-gray-200 dark:bg-gray-700 relative cursor-pointer hover:opacity-95 transition-opacity">
+                            <div x-show="chapter.scene" @click="viewChapter(chapter)" class="aspect-video bg-gray-700 relative cursor-pointer hover:opacity-95 transition-opacity">
                                 <img
                                     :src="chapter.scene"
                                     :alt="chapter.title"
@@ -230,10 +169,10 @@
                             <!-- Chapter Info -->
                             <div class="p-4">
                                 <div class="flex items-start justify-between mb-2">
-                                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400" x-text="'Chapter ' + chapter.number"></span>
+                                    <span class="text-xs font-semibold text-gray-400" x-text="'Chapter ' + chapter.number"></span>
                                 </div>
-                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2" x-text="stripChapterPrefix(chapter.title)"></h3>
-                                <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-4" x-text="chapter.summary"></p>
+                                <h3 class="text-lg font-semibold text-white mb-2" x-text="stripChapterPrefix(chapter.title)"></h3>
+                                <p class="text-sm text-gray-300 line-clamp-3 mb-4" x-text="chapter.summary"></p>
 
                                 <div class="flex gap-2">
                                     <button
@@ -262,15 +201,15 @@
                 </div>
 
                 <!-- Empty State -->
-                <div x-show="currentWorld && currentWorld.chapters?.length === 0" class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-200">
-                    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div x-show="currentWorld && currentWorld.chapters?.length === 0" class="text-center py-12 bg-gray-800 rounded-lg shadow transition-colors duration-200">
+                    <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-800 dark:text-white">No chapters yet</h3>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by generating your first chapter.</p>
+                    <h3 class="mt-2 text-sm font-medium text-white">No chapters yet</h3>
+                    <p class="mt-1 text-sm text-gray-400">Get started by generating your first chapter.</p>
                     <button
                         @click="showGenerateChapter = true"
-                        class="mt-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600">
+                        class="mt-4 px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-600">
                         Generate First Chapter
                     </button>
                 </div>
@@ -280,11 +219,10 @@
         <!-- Create World Modal -->
         <div x-show="showCreateWorld"
              x-cloak
-             class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50"
-             @click.self="showCreateWorld = false">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 transition-colors duration-200">
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 transition-colors duration-200 max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">Create New World</h3>
+                    <h3 class="text-lg font-bold text-white">Create New World</h3>
                     <button
                         type="button"
                         @click="randomWorld()"
@@ -301,30 +239,46 @@
                     </button>
                 </div>
                 <form @submit.prevent="createWorld()">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+                    <!-- Interactive Choices - Prominent Section -->
+                    <div class="mb-6 p-4 rounded-lg bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-2 border-purple-500/50">
+                        <label class="flex items-start cursor-pointer">
+                            <input
+                                type="checkbox"
+                                x-model="newWorld.enable_choices"
+                                class="w-5 h-5 mt-0.5 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 ring-offset-gray-800 focus:ring-2">
+                            <div class="ml-3">
+                                <span class="text-base font-bold text-white">⚡ Interactive Choices</span>
+                                <p class="text-sm text-gray-300 mt-1">Each chapter offers 3 narrative choices that shape the story</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Basic Info -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Title</label>
                             <input
                                 type="text"
                                 x-model="newWorld.title"
                                 required
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Theme</label>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Theme</label>
                             <input
                                 type="text"
                                 x-model="newWorld.theme"
                                 required
                                 placeholder="A brief description of your world"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Use 'Random World' above to generate everything at once</p>
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                         </div>
+
+                        <!-- Two column layout starts here -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Style Pack</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Style Pack</label>
                             <select
                                 x-model="newWorld.style_pack"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                 <option value="storybook-ink">Storybook Ink</option>
                                 <option value="watercolor-dream">Watercolor Dream</option>
                                 <option value="pixel-rpg">Pixel RPG</option>
@@ -336,19 +290,19 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image Model</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Image Model</label>
                             <select
                                 x-model="newWorld.image_model"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                <option value="flux-dev">Flux Dev (Quality, ~$0.025)</option>
-                                <option value="flux-schnell">Flux Schnell (Fast, ~$0.003)</option>
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                <option value="flux-dev">Flux Dev (Quality)</option>
+                                <option value="flux-schnell">Flux Schnell (Fast)</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Narrative Preset</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Narrative Preset</label>
                             <select
                                 x-model="newWorld.preset"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                 <option value="cozy-adventure">Cozy Adventure</option>
                                 <option value="noir-mystery">Noir Mystery</option>
                                 <option value="epic-fantasy">Epic Fantasy</option>
@@ -362,74 +316,65 @@
                                 <option value="post-apocalyptic">Post-Apocalyptic</option>
                                 <option value="historical-intrigue">Historical Intrigue</option>
                             </select>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Defines the overall narrative tone and pacing</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Maturity Level</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Maturity Level</label>
                             <select
                                 x-model="newWorld.maturity_level"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                <option value="general">General - All ages appropriate</option>
-                                <option value="teen">Teen - Mild violence and tension</option>
-                                <option value="mature">Mature - Moderate violence and adult themes</option>
-                                <option value="explicit">Explicit - Graphic content without censorship</option>
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                <option value="general">General</option>
+                                <option value="teen">Teen</option>
+                                <option value="mature">Mature</option>
+                                <option value="explicit">Explicit</option>
                             </select>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Controls content appropriateness and filtering</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chapter Length</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Chapter Length</label>
                             <select
                                 x-model="newWorld.chapter_length"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                 <option value="short">Short (~500 words)</option>
                                 <option value="medium">Medium (~1000 words)</option>
                                 <option value="long">Long (~2000 words)</option>
                             </select>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Varies naturally with each chapter</p>
-                        </div>
-                        <div>
-                            <label class="flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    x-model="newWorld.enable_choices"
-                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-                                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Enable Interactive Choices</span>
-                            </label>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Each chapter will offer 3 narrative choices that affect the story</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Memory/Lore (Optional)</label>
-                            <textarea
-                                x-model="newWorld.memory"
-                                rows="3"
-                                placeholder="Key facts, background lore, and context always included in prompts..."
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900"></textarea>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Always included in chapter generation context</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Author's Note (Optional)</label>
-                            <textarea
-                                x-model="newWorld.authors_note"
-                                rows="2"
-                                placeholder="Style guidance, tone preferences..."
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900"></textarea>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Inserted strategically in prompts for style guidance</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">World Instructions (Optional)</label>
-                            <textarea
-                                x-model="newWorld.world_instructions"
-                                rows="2"
-                                placeholder="Custom instructions specific to this world..."
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900"></textarea>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">World-specific directives for chapter generation</p>
                         </div>
                     </div>
+
+                    <!-- Optional Advanced Fields (Collapsible) -->
+                    <details class="mt-3">
+                        <summary class="text-sm font-medium text-gray-400 cursor-pointer hover:text-gray-300 mb-3">📝 Advanced Options (Optional)</summary>
+                        <div class="space-y-3 pt-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">Memory/Lore</label>
+                                <textarea
+                                    x-model="newWorld.memory"
+                                    rows="2"
+                                    placeholder="Key facts, background lore, and context..."
+                                    class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">Author's Note</label>
+                                <textarea
+                                    x-model="newWorld.authors_note"
+                                    rows="2"
+                                    placeholder="Style guidance, tone preferences..."
+                                    class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">World Instructions</label>
+                                <textarea
+                                    x-model="newWorld.world_instructions"
+                                    rows="2"
+                                    placeholder="Custom instructions specific to this world..."
+                                    class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500"></textarea>
+                            </div>
+                        </div>
+                    </details>
                     <div class="mt-6 flex justify-end gap-3">
                         <button
                             type="button"
                             @click="showCreateWorld = false"
-                            class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800">
+                            class="px-4 py-2 text-gray-300 border border-gray-600 rounded-md hover:bg-gray-700 bg-gray-800">
                             Cancel
                         </button>
                         <button
@@ -445,42 +390,41 @@
         <!-- Generate Chapter Modal -->
         <div x-show="showGenerateChapter"
              x-cloak
-             class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50"
-             @click.self="showGenerateChapter = false">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 transition-colors duration-200">
-                <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Generate Chapter</h3>
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50">
+            <div class="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 transition-colors duration-200">
+                <h3 class="text-lg font-bold text-white mb-4">Generate Chapter</h3>
                 <form @submit.prevent="generateChapter()">
                     <div class="space-y-4">
-                        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-2">
-                            <p class="text-xs text-blue-900 dark:text-blue-200">
+                        <div class="bg-blue-900/20 border border-blue-800 rounded-lg p-3 mb-2">
+                            <p class="text-xs text-blue-200">
                                 <strong>Note:</strong> The narrative style is set at the world level.
                                 This world uses the <span class="font-semibold" x-text="currentWorld?.config?.preset || 'cozy-adventure'"></span> preset.
                                 Edit the world to change its narrative style.
                             </p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Focus (Optional)</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Focus (Optional)</label>
                             <input
                                 type="text"
                                 x-model="generateOptions.focus"
                                 placeholder="e.g., 'The Archivist explores the sealed wing'"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Optional direction or emphasis for this chapter</p>
+                                class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                            <p class="text-xs text-gray-400 mt-1">Optional direction or emphasis for this chapter</p>
                         </div>
                         <div class="flex items-center">
                             <input
                                 type="checkbox"
                                 x-model="generateOptions.no_images"
                                 id="no-images"
-                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <label for="no-images" class="ml-2 text-sm text-gray-700">Skip image generation (text only)</label>
+                                class="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500">
+                            <label for="no-images" class="ml-2 text-sm text-gray-300">Skip image generation (text only)</label>
                         </div>
                     </div>
                     <div class="mt-6 flex justify-end gap-3">
                         <button
                             type="button"
                             @click="showGenerateChapter = false"
-                            class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800">
+                            class="px-4 py-2 text-gray-300 border border-gray-600 rounded-md hover:bg-gray-700 bg-gray-800">
                             Cancel
                         </button>
                         <button
@@ -496,28 +440,42 @@
         <!-- Edit World Modal -->
         <div x-show="showEditWorld"
              x-cloak
-             class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50"
-             @click.self="showEditWorld = false">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 transition-colors duration-200">
-                <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Edit World</h3>
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 transition-colors duration-200 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-bold text-white mb-4">Edit World</h3>
                 <form @submit.prevent="updateWorld()">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+                    <!-- Interactive Choices - Prominent Section -->
+                    <div class="mb-6 p-4 rounded-lg bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-2 border-purple-500/50">
+                        <label class="flex items-start cursor-pointer">
+                            <input
+                                type="checkbox"
+                                x-model="editWorld.enable_choices"
+                                class="w-5 h-5 mt-0.5 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 ring-offset-gray-800 focus:ring-2">
+                            <div class="ml-3">
+                                <span class="text-base font-bold text-white">⚡ Interactive Choices</span>
+                                <p class="text-sm text-gray-300 mt-1">Each chapter offers 3 narrative choices that shape the story</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Basic Info -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Title</label>
                             <input
                                 type="text"
                                 x-model="editWorld.title"
                                 required
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                         </div>
-                        <div>
+                        <div class="md:col-span-2">
                             <div class="flex justify-between items-center mb-1">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Theme</label>
+                                <label class="block text-sm font-medium text-gray-300">Theme</label>
                                 <button
                                     type="button"
                                     @click="randomThemeEdit()"
                                     :disabled="generatingTheme"
-                                    class="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:text-gray-400 disabled:cursor-not-allowed">
+                                    class="text-xs text-blue-400 hover:text-blue-300 font-medium disabled:text-gray-400 disabled:cursor-not-allowed">
                                     <span x-show="!generatingTheme">🎲 Random</span>
                                     <span x-show="generatingTheme">⏳ Generating...</span>
                                 </button>
@@ -526,13 +484,15 @@
                                 type="text"
                                 x-model="editWorld.theme"
                                 required
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                         </div>
+
+                        <!-- Two column layout starts here -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Style Pack</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Style Pack</label>
                             <select
                                 x-model="editWorld.style_pack"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                 <option value="storybook-ink">Storybook Ink</option>
                                 <option value="watercolor-dream">Watercolor Dream</option>
                                 <option value="pixel-rpg">Pixel RPG</option>
@@ -544,19 +504,19 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image Model</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Image Model</label>
                             <select
                                 x-model="editWorld.image_model"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                <option value="flux-dev">Flux Dev (Quality, ~$0.025)</option>
-                                <option value="flux-schnell">Flux Schnell (Fast, ~$0.003)</option>
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                <option value="flux-dev">Flux Dev (Quality)</option>
+                                <option value="flux-schnell">Flux Schnell (Fast)</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Narrative Preset</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Narrative Preset</label>
                             <select
                                 x-model="editWorld.preset"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                 <option value="cozy-adventure">Cozy Adventure</option>
                                 <option value="noir-mystery">Noir Mystery</option>
                                 <option value="epic-fantasy">Epic Fantasy</option>
@@ -570,74 +530,65 @@
                                 <option value="post-apocalyptic">Post-Apocalyptic</option>
                                 <option value="historical-intrigue">Historical Intrigue</option>
                             </select>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Defines the overall narrative tone and pacing</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Maturity Level</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Maturity Level</label>
                             <select
                                 x-model="editWorld.maturity_level"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                <option value="general">General - All ages appropriate</option>
-                                <option value="teen">Teen - Mild violence and tension</option>
-                                <option value="mature">Moderate violence and adult themes</option>
-                                <option value="explicit">Explicit - Graphic content without censorship</option>
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                <option value="general">General</option>
+                                <option value="teen">Teen</option>
+                                <option value="mature">Mature</option>
+                                <option value="explicit">Explicit</option>
                             </select>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Controls content appropriateness and filtering</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chapter Length</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Chapter Length</label>
                             <select
                                 x-model="editWorld.chapter_length"
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                 <option value="short">Short (~500 words)</option>
                                 <option value="medium">Medium (~1000 words)</option>
                                 <option value="long">Long (~2000 words)</option>
                             </select>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Varies naturally with each chapter</p>
-                        </div>
-                        <div>
-                            <label class="flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    x-model="editWorld.enable_choices"
-                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-                                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Enable Interactive Choices</span>
-                            </label>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Each chapter will offer 3 narrative choices that affect the story</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Memory/Lore (Optional)</label>
-                            <textarea
-                                x-model="editWorld.memory"
-                                rows="3"
-                                placeholder="Key facts, background lore, and context always included in prompts..."
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900"></textarea>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Always included in chapter generation context</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Author's Note (Optional)</label>
-                            <textarea
-                                x-model="editWorld.authors_note"
-                                rows="2"
-                                placeholder="Style guidance, tone preferences..."
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900"></textarea>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Inserted strategically in prompts for style guidance</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">World Instructions (Optional)</label>
-                            <textarea
-                                x-model="editWorld.world_instructions"
-                                rows="2"
-                                placeholder="Custom instructions specific to this world..."
-                                class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900"></textarea>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">World-specific directives for chapter generation</p>
                         </div>
                     </div>
+
+                    <!-- Optional Advanced Fields (Collapsible) -->
+                    <details class="mt-3">
+                        <summary class="text-sm font-medium text-gray-400 cursor-pointer hover:text-gray-300 mb-3">📝 Advanced Options (Optional)</summary>
+                        <div class="space-y-3 pt-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">Memory/Lore</label>
+                                <textarea
+                                    x-model="editWorld.memory"
+                                    rows="2"
+                                    placeholder="Key facts, background lore, and context..."
+                                    class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">Author's Note</label>
+                                <textarea
+                                    x-model="editWorld.authors_note"
+                                    rows="2"
+                                    placeholder="Style guidance, tone preferences..."
+                                    class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">World Instructions</label>
+                                <textarea
+                                    x-model="editWorld.world_instructions"
+                                    rows="2"
+                                    placeholder="Custom instructions specific to this world..."
+                                    class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500"></textarea>
+                            </div>
+                        </div>
+                    </details>
                     <div class="mt-6 flex justify-end gap-3">
                         <button
                             type="button"
                             @click="showEditWorld = false"
-                            class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800">
+                            class="px-4 py-2 text-gray-300 border border-gray-600 rounded-md hover:bg-gray-700 bg-gray-800">
                             Cancel
                         </button>
                         <button
@@ -653,15 +604,14 @@
         <!-- Settings Modal -->
         <div x-show="showSettings"
              x-cloak
-             class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50 p-4"
-             @click.self="showSettings = false">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200">
-                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4">
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200">
+                <div class="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-white">Settings</h3>
+                        <h3 class="text-xl font-bold text-white">Settings</h3>
                         <button
                             @click="showSettings = false"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            class="text-gray-400 hover:text-gray-300">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -672,19 +622,19 @@
                     <div class="flex gap-2 mt-4 border-b">
                         <button
                             @click="settingsTab = 'api'"
-                            :class="settingsTab === 'api' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+                            :class="settingsTab === 'api' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
                             class="px-4 py-2 border-b-2 font-medium text-sm">
                             API Configuration
                         </button>
                         <button
                             @click="settingsTab = 'instructions'"
-                            :class="settingsTab === 'instructions' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            :class="settingsTab === 'instructions' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
                             class="px-4 py-2 border-b-2 font-medium text-sm">
                             Global Instructions
                         </button>
                         <button
                             @click="settingsTab = 'defaults'"
-                            :class="settingsTab === 'defaults' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            :class="settingsTab === 'defaults' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-300'"
                             class="px-4 py-2 border-b-2 font-medium text-sm">
                             Defaults
                         </button>
@@ -695,16 +645,16 @@
                     <div class="p-6">
                         <!-- API Configuration Tab -->
                         <div x-show="settingsTab === 'api'" class="space-y-6">
-                            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                                <p class="text-sm text-blue-900 dark:text-blue-200">Configure your API providers and keys. API keys are securely stored and never displayed.</p>
+                            <div class="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
+                                <p class="text-sm text-blue-200">Configure your API providers and keys. API keys are securely stored and never displayed.</p>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Text Generation Provider</label>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Text Generation Provider</label>
                                     <select
                                         x-model="settingsForm.text_provider"
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                         <option value="openai">OpenAI</option>
                                         <option value="together">Together AI</option>
                                         <option value="huggingface">Hugging Face</option>
@@ -712,10 +662,10 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image Generation Provider</label>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Image Generation Provider</label>
                                     <select
                                         x-model="settingsForm.image_provider"
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                         <option value="replicate">Replicate</option>
                                         <option value="huggingface">Hugging Face</option>
                                         <option value="pollinations">Pollinations.ai (Free)</option>
@@ -726,117 +676,117 @@
 
                             <!-- API Keys -->
                             <div class="space-y-4">
-                                <h4 class="font-semibold text-gray-800 dark:text-white">API Keys</h4>
+                                <h4 class="font-semibold text-white">API Keys</h4>
 
                                 <div>
                                     <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">OpenAI API Key</label>
+                                        <label class="block text-sm font-medium text-gray-300">OpenAI API Key</label>
                                         <span x-show="settings.has_openai_key" class="text-xs text-green-600">✓ Configured</span>
                                     </div>
                                     <input
                                         type="password"
                                         x-model="settingsForm.openai_api_key"
                                         placeholder="sk-..."
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to keep existing key</p>
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                    <p class="text-xs text-gray-400 mt-1">Leave blank to keep existing key</p>
                                 </div>
 
                                 <div>
                                     <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Together AI API Key</label>
+                                        <label class="block text-sm font-medium text-gray-300">Together AI API Key</label>
                                         <span x-show="settings.has_together_key" class="text-xs text-green-600">✓ Configured</span>
                                     </div>
                                     <input
                                         type="password"
                                         x-model="settingsForm.together_api_key"
                                         placeholder="Enter API key..."
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to keep existing key</p>
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                    <p class="text-xs text-gray-400 mt-1">Leave blank to keep existing key</p>
                                 </div>
 
                                 <div>
                                     <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Hugging Face API Key</label>
+                                        <label class="block text-sm font-medium text-gray-300">Hugging Face API Key</label>
                                         <span x-show="settings.has_huggingface_key" class="text-xs text-green-600">✓ Configured</span>
                                     </div>
                                     <input
                                         type="password"
                                         x-model="settingsForm.huggingface_api_key"
                                         placeholder="hf_..."
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to keep existing key. Free tier available.</p>
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                    <p class="text-xs text-gray-400 mt-1">Leave blank to keep existing key. Free tier available.</p>
                                 </div>
 
                                 <div>
                                     <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Groq API Key</label>
+                                        <label class="block text-sm font-medium text-gray-300">Groq API Key</label>
                                         <span x-show="settings.has_groq_key" class="text-xs text-green-600">✓ Configured</span>
                                     </div>
                                     <input
                                         type="password"
                                         x-model="settingsForm.groq_api_key"
                                         placeholder="gsk_..."
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to keep existing key. Free tier available.</p>
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                    <p class="text-xs text-gray-400 mt-1">Leave blank to keep existing key. Free tier available.</p>
                                 </div>
 
                                 <div>
                                     <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Replicate API Token</label>
+                                        <label class="block text-sm font-medium text-gray-300">Replicate API Token</label>
                                         <span x-show="settings.has_replicate_token" class="text-xs text-green-600">✓ Configured</span>
                                     </div>
                                     <input
                                         type="password"
                                         x-model="settingsForm.replicate_api_token"
                                         placeholder="r8_..."
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to keep existing token</p>
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                    <p class="text-xs text-gray-400 mt-1">Leave blank to keep existing token</p>
                                 </div>
 
                                 <div>
                                     <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Fal.ai API Key</label>
+                                        <label class="block text-sm font-medium text-gray-300">Fal.ai API Key</label>
                                         <span x-show="settings.has_fal_key" class="text-xs text-green-600">✓ Configured</span>
                                     </div>
                                     <input
                                         type="password"
                                         x-model="settingsForm.fal_api_key"
                                         placeholder="Enter API key..."
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to keep existing key. Free tier available.</p>
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                    <p class="text-xs text-gray-400 mt-1">Leave blank to keep existing key. Free tier available.</p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Global Instructions Tab -->
                         <div x-show="settingsTab === 'instructions'" class="space-y-4">
-                            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                                <p class="text-sm text-blue-900 dark:text-blue-200">Global instructions apply to all chapters across all worlds. Use this to set your preferred writing style, tone, or general guidelines.</p>
+                            <div class="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
+                                <p class="text-sm text-blue-200">Global instructions apply to all chapters across all worlds. Use this to set your preferred writing style, tone, or general guidelines.</p>
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Global Instructions</label>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">Global Instructions</label>
                                 <textarea
                                     x-model="settingsForm.global_instructions"
                                     rows="10"
                                     placeholder="Example: Write with vivid sensory details. Keep dialogue natural and sparse. Maintain an introspective tone. Avoid clichés."
-                                    class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900"></textarea>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">These instructions are always included in the system prompt for chapter generation.</p>
+                                    class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500"></textarea>
+                                <p class="text-xs text-gray-400 mt-1">These instructions are always included in the system prompt for chapter generation.</p>
                             </div>
                         </div>
 
                         <!-- Defaults Tab -->
                         <div x-show="settingsTab === 'defaults'" class="space-y-4">
-                            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                                <p class="text-sm text-blue-900 dark:text-blue-200">Set default preferences for new worlds and chapter generation.</p>
+                            <div class="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
+                                <p class="text-sm text-blue-200">Set default preferences for new worlds and chapter generation.</p>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Style Pack</label>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Default Style Pack</label>
                                     <select
                                         x-model="settingsForm.default_style_pack"
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                         <option value="storybook-ink">Storybook Ink</option>
                                         <option value="watercolor-dream">Watercolor Dream</option>
                                         <option value="pixel-rpg">Pixel RPG</option>
@@ -849,10 +799,10 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Narrative Preset</label>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Default Narrative Preset</label>
                                     <select
                                         x-model="settingsForm.default_preset"
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                         <option value="cozy-adventure">Cozy Adventure</option>
                                         <option value="noir-mystery">Noir Mystery</option>
                                         <option value="epic-fantasy">Epic Fantasy</option>
@@ -869,33 +819,35 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Text Model</label>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Default Text Model</label>
                                     <input
                                         type="text"
                                         x-model="settingsForm.default_text_model"
                                         placeholder="gpt-4o-mini"
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Provider-specific model name</p>
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                    <p class="text-xs text-gray-400 mt-1">Provider-specific model name</p>
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Image Model</label>
-                                    <input
-                                        type="text"
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Default Image Model</label>
+                                    <select
                                         x-model="settingsForm.default_image_model"
-                                        placeholder="flux-dev"
-                                        class="w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-900">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Provider-specific model name</p>
+                                        class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
+                                        <template x-for="option in getImageModelOptions()" :key="option.value">
+                                            <option :value="option.value" x-text="option.label"></option>
+                                        </template>
+                                    </select>
+                                    <p class="text-xs text-gray-400 mt-1">Models available for <span x-text="settingsForm.image_provider || 'replicate'"></span></p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="bg-gray-50 dark:bg-gray-900 px-6 py-4 flex justify-end gap-3 sticky bottom-0">
+                    <div class="bg-gray-900 px-6 py-4 flex justify-end gap-3 sticky bottom-0">
                         <button
                             type="button"
                             @click="showSettings = false"
-                            class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800">
+                            class="px-4 py-2 text-gray-300 border border-gray-600 rounded-md hover:bg-gray-700 bg-gray-800">
                             Cancel
                         </button>
                         <button
@@ -917,7 +869,7 @@
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50 p-4"
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4"
              @click.self="viewingChapter = null">
             <div x-show="viewingChapter"
                  x-transition:enter="transition ease-out duration-200"
@@ -926,30 +878,49 @@
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95"
-                 class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200">
-                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-lg font-bold text-gray-800 dark:text-white" x-text="viewingChapter?.title"></h3>
+                 class="bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200"
+                 id="chapter-viewer-modal">
+                <div class="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-white" x-text="viewingChapter?.title"></h3>
                     <button
                         @click="viewingChapter = null"
-                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        class="text-gray-400 hover:text-gray-300">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
-                <div class="p-8 bg-white dark:bg-gray-800 transition-colors duration-200">
+                <div class="p-8 bg-gray-800 transition-colors duration-200">
                     <img
                         x-show="viewingChapter?.scene"
                         :src="viewingChapter?.scene"
-                        class="max-w-md mx-auto rounded-lg mb-6 shadow-md">
+                        class="w-full rounded-lg mb-6 shadow-md">
+
+                    <!-- Chapter Navigation -->
+                    <div x-show="viewingChapter" class="flex items-center justify-between mb-6 pb-4 border-b border-gray-700">
+                        <button
+                            @click="navigateChapter('prev')"
+                            :disabled="!hasPrevChapter()"
+                            class="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-700 transition-colors">
+                            ← Previous
+                        </button>
+                        <span class="text-gray-400 text-sm" x-text="'Chapter ' + viewingChapter?.number + ' of ' + currentWorld?.chapters?.length"></span>
+                        <button
+                            @click="navigateChapter('next')"
+                            :disabled="!hasNextChapter()"
+                            class="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-700 transition-colors">
+                            Next →
+                        </button>
+                    </div>
+
                     <div
                         x-html="chapterContent"
-                        class="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
+                        class="prose prose-sm prose-invert max-w-none leading-relaxed">
                     </div>
 
                     <!-- Chapter Choices Section -->
-                    <div x-show="viewingChapter?.choices && viewingChapter.choices.length > 0" class="mt-8 border-t dark:border-gray-700 pt-8">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">What happens next?</h3>
+                    <div x-show="viewingChapter?.choices && viewingChapter.choices.length > 0" class="mt-8 border-t border-gray-700 pt-8">
+                        <h3 class="text-xl font-bold text-white mb-4">What happens next?</h3>
 
                         <!-- Choice pending state -->
                         <div x-show="!viewingChapter.selected_choice_id">
@@ -978,6 +949,37 @@
                             <div x-show="viewingChapter.choice_reasoning" class="text-sm text-gray-400 mt-2" x-text="viewingChapter.choice_reasoning"></div>
                         </div>
                     </div>
+
+                    <!-- Generate Next Chapter Button -->
+                    <div x-show="viewingChapter?.number >= currentWorld?.chapters?.length - 1"
+                         class="mt-8 flex justify-end items-center gap-4">
+                        <button
+                            @click="!generating && (viewingChapter?.number < currentWorld?.chapters?.length ? (viewChapter(currentWorld.chapters[currentWorld.chapters.length - 1], true)) : generateChapter())"
+                            :disabled="generating"
+                            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 shadow-lg">
+                            <!-- Show plus icon when generating -->
+                            <svg x-show="!generating && viewingChapter?.number === currentWorld?.chapters?.length" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <!-- Show next arrow when new chapter is available -->
+                            <svg x-show="!generating && viewingChapter?.number < currentWorld?.chapters?.length" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                            <span x-show="!generating" class="text-white" x-text="viewingChapter?.number < currentWorld?.chapters?.length ? 'Next Chapter' : 'Generate Next Chapter'"></span>
+                            <div x-show="generating" class="flex items-center gap-2">
+                                <div class="relative w-5 h-5">
+                                    <svg class="w-5 h-5 transform -rotate-90" viewBox="0 0 20 20">
+                                        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none" class="text-blue-300"></circle>
+                                        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none"
+                                                :stroke-dasharray="`${(2 * Math.PI * 8) * (progress.percent / 100)} ${2 * Math.PI * 8}`"
+                                                class="text-white transition-all duration-300"></circle>
+                                    </svg>
+                                </div>
+                                <span x-text="getProgressText()"></span>
+                            </div>
+                        </button>
+
+                        </div>
                 </div>
             </div>
         </div>
@@ -988,24 +990,24 @@
              class="fixed inset-0 z-50 overflow-y-auto"
              @keydown.escape.window="confirmDialog.reject()">
             <div class="flex items-center justify-center min-h-screen px-4">
-                <div class="fixed inset-0 bg-black opacity-50" @click="confirmDialog.reject()"></div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full z-10 transition-colors duration-200">
-                    <div class="bg-white dark:bg-gray-800 px-6 pt-5 pb-4">
+                <div class="fixed inset-0 bg-black opacity-50"></div>
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full z-10 transition-colors duration-200">
+                    <div class="bg-gray-800 px-6 pt-5 pb-4">
                         <div class="flex items-start">
-                            <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                                <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-900/20">
+                                <svg class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
                             <div class="ml-4 flex-1">
-                                <h3 class="text-lg font-medium text-gray-800 dark:text-white" x-text="confirmDialog.message"></h3>
+                                <h3 class="text-lg font-medium text-white" x-text="confirmDialog.message"></h3>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-gray-50 dark:bg-gray-900 px-6 py-4 flex gap-3 justify-end">
+                    <div class="bg-gray-900 px-6 py-4 flex gap-3 justify-end">
                         <button
                             @click="confirmDialog.reject()"
-                            class="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            class="px-4 py-2 text-gray-300 border border-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
                             Cancel
                         </button>
                         <button
@@ -1021,11 +1023,10 @@
         <!-- Console Viewer Modal -->
         <div x-show="showConsole"
              x-cloak
-             class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50 p-4"
-             @click.self="showConsole = false">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col transition-colors duration-200">
-                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-gray-800 dark:text-white">Console Logs</h3>
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col transition-colors duration-200">
+                <div class="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-white">Console Logs</h3>
                     <div class="flex items-center gap-3">
                         <button
                             @click="copyConsoleLogs()"
@@ -1039,7 +1040,7 @@
                         </button>
                         <button
                             @click="showConsole = false"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            class="text-gray-400 hover:text-gray-300">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -1071,11 +1072,10 @@
         <!-- Regeneration Options Dialog -->
         <div x-show="showRegenerateOptions"
              x-cloak
-             class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50 p-4"
-             @click.self="showRegenerateOptions = false">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full transition-colors duration-200">
-                <div class="px-6 py-4 border-b dark:border-gray-700">
-                    <h3 class="text-xl font-bold text-gray-800 dark:text-white">What would you like to regenerate?</h3>
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-lg shadow-xl max-w-md w-full transition-colors duration-200">
+                <div class="px-6 py-4 border-b border-gray-700">
+                    <h3 class="text-xl font-bold text-white">What would you like to regenerate?</h3>
                 </div>
                 <div class="p-6 space-y-3">
                     <button
@@ -1097,10 +1097,10 @@
                         <div class="text-sm text-gray-100 mt-1">Keep the current text</div>
                     </button>
                 </div>
-                <div class="px-6 py-4 border-t dark:border-gray-700 flex justify-end">
+                <div class="px-6 py-4 border-t border-gray-700 flex justify-end">
                     <button
                         @click="showRegenerateOptions = false"
-                        class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        class="px-4 py-2 text-gray-300 hover:text-white">
                         Cancel
                     </button>
                 </div>
@@ -1117,21 +1117,21 @@
                      x-transition:leave="transition ease-in duration-200"
                      x-transition:leave-start="translate-y-0 opacity-100"
                      x-transition:leave-end="translate-y-2 opacity-0"
-                     class="max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 dark:ring-gray-700 transition-colors duration-200">
+                     class="min-w-80 max-w-sm bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-gray-700 transition-colors duration-200">
                     <div class="p-4">
                         <div class="flex items-start">
                             <div class="flex-shrink-0">
-                                <svg x-show="toast.type === 'error'" class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg x-show="toast.type === 'error'" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <svg x-show="toast.type === 'success'" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg x-show="toast.type === 'success'" class="h-6 w-6 text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <div class="ml-3 w-0 flex-1">
-                                <p class="text-sm font-medium text-gray-800 dark:text-white" x-text="toast.message"></p>
+                            <div class="ml-3 flex-1 min-w-0">
+                                <p class="text-sm font-medium text-white break-words" x-text="toast.message"></p>
                             </div>
-                            <div class="ml-4 flex-shrink-0 flex">
+                            <div class="ml-4 flex-shrink-0">
                                 <button @click="toast.show = false" class="inline-flex text-gray-400 hover:text-gray-500 focus:outline-none">
                                     <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -1145,6 +1145,6 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=10"></script>
+    <script src="/static/app.js?v=14"></script>
 </body>
 </html>

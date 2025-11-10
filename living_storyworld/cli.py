@@ -70,7 +70,6 @@ def cmd_chapter(args: argparse.Namespace) -> None:
         state,
         focus=args.focus,
         make_scene_image=not args.no_images,
-        preset_key=args.preset or settings.default_preset,
     )
 
     # Update state
@@ -250,7 +249,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     sp.set_defaults(func=cmd_setup)
 
     sp = sub.add_parser("web", help="Launch the web interface")
-    sp.add_argument("--port", type=int, default=8000, help="Port to run the server on (default: 8000)")
+    sp.add_argument("--port", type=int, default=8001, help="Port to run the server on (default: 8001)")
     sp.add_argument("--no-browser", action="store_true", help="Don't open browser automatically")
     def _web(args: argparse.Namespace) -> None:
         import webbrowser

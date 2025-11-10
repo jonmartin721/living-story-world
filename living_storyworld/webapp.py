@@ -40,7 +40,7 @@ app = FastAPI(
 # Default: localhost for development
 allowed_origins_str = os.environ.get(
     "ALLOWED_ORIGINS",
-    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:9999,http://127.0.0.1:9999"
+    "http://localhost:8001,http://127.0.0.1:8001,http://localhost:9999,http://127.0.0.1:9999"
 )
 allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
 

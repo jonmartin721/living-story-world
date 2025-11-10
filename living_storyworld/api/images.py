@@ -64,7 +64,7 @@ async def generate_image(slug: str, request: ImageGenerateRequest):
         executor,
         generate_scene_image,
         dirs["base"],
-        cfg.image_model,
+        "flux-dev",
         cfg.style_pack,
         prompt,
         chapter_num

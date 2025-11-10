@@ -14,6 +14,7 @@ from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world, save_world
 from ..generator import generate_chapter, infer_choice_reasoning
 from ..image import generate_scene_image
+from ..settings import load_user_settings
 
 router = APIRouter(prefix="/api/worlds/{slug}/chapters", tags=["chapters"])
 
@@ -177,7 +178,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             await queue.put({
                 "stage": "image",
                 "percent": 90,
-                "message": f"Calling Replicate API ({cfg.image_model})..."
+                "message": f"Calling Replicate API (flux-dev)..."
             })
 
             # Start image generation in background
@@ -186,14 +187,14 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 executor,
                 generate_scene_image,
                 dirs["base"],
-                cfg.image_model,
+                "flux-dev",
                 cfg.style_pack,
                 chapter.scene_prompt,
                 chapter.number
             )
 
             # Send progress updates while waiting (flux-dev ~8-12s, flux-schnell ~2-4s)
-            estimated_image_duration = 10.0 if cfg.image_model == "flux-dev" else 3.0
+            estimated_image_duration = 10.0
             start_percent = 90
             end_percent = 93
             update_interval = 0.5
@@ -337,7 +338,7 @@ async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionReq
         raise HTTPException(status_code=404, detail="Chapter not found")
 
     # Verify chapter has choices
-    choices = chapter_data.get("choices", [])
+    choices = chapter_data.choices
     if not choices:
         raise HTTPException(status_code=400, detail="Chapter has no choices")
 
@@ -345,12 +346,12 @@ async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionReq
     choice_id = request.choice_id
     if choice_id == "auto":
         import random
-        choice_id = random.choice(choices)["id"]
+        choice_id = random.choice(choices).id
 
     # Find the selected choice
     selected_choice = None
     for choice in choices:
-        if choice["id"] == choice_id:
+        if choice.id == choice_id:
             selected_choice = choice
             break
 
@@ -359,15 +360,15 @@ async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionReq
 
     # Infer reasoning using LLM
     reasoning = await infer_choice_reasoning(
-        choice_text=selected_choice["text"],
-        chapter_summary=chapter_data.get("summary", ""),
+        choice_text=selected_choice.text,
+        chapter_summary=chapter_data.summary or "",
         world_theme=cfg.theme,
         cfg=cfg
     )
 
     # Update chapter with selection
-    chapter_data["selected_choice_id"] = choice_id
-    chapter_data["choice_reasoning"] = reasoning
+    chapter_data.selected_choice_id = choice_id
+    chapter_data.choice_reasoning = reasoning
     state.chapters[chapter_index] = chapter_data
 
     # Save world state
@@ -375,7 +376,11 @@ async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionReq
 
     return {
         "success": True,
-        "choice": selected_choice,
+        "choice": {
+            "id": selected_choice.id,
+            "text": selected_choice.text,
+            "description": selected_choice.description
+        },
         "reasoning": reasoning
     }
 
@@ -499,7 +504,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             await queue.put({
                 "stage": "image",
                 "percent": 90,
-                "message": f"Calling Replicate API ({cfg.image_model})..."
+                "message": f"Calling Replicate API (flux-dev)..."
             })
 
             # Start image generation with smooth progress
@@ -508,14 +513,14 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
                 executor,
                 generate_scene_image,
                 dirs["base"],
-                cfg.image_model,
+                "flux-dev",
                 cfg.style_pack,
                 chapter.scene_prompt,
                 chapter.number
             )
 
             # Send progress updates while waiting
-            estimated_image_duration = 10.0 if cfg.image_model == "flux-dev" else 3.0
+            estimated_image_duration = 10.0
             start_percent = 90
             end_percent = 93
             update_interval = 0.5

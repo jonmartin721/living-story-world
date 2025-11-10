@@ -15,7 +15,9 @@ class WorldCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=200, description="World title")
     theme: str = Field(..., min_length=1, max_length=1000, description="World theme/description")
     style_pack: str = Field(default="storybook-ink", max_length=100)
-    image_model: str = Field(default="flux-dev", max_length=100)
+    maturity_level: str = Field(default="general", max_length=20)
+    preset: str = Field(default="cozy-adventure", max_length=50)
+    enable_choices: bool = Field(default=False)
     slug: Optional[str] = Field(None, max_length=100)
     memory: Optional[str] = Field(None, max_length=10000, description="Persistent world memory")
     authors_note: Optional[str] = Field(None, max_length=5000, description="Author's notes/instructions")
@@ -30,7 +32,9 @@ class WorldUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     theme: Optional[str] = Field(None, min_length=1, max_length=1000)
     style_pack: Optional[str] = Field(None, max_length=100)
-    image_model: Optional[str] = Field(None, max_length=100)
+    maturity_level: Optional[str] = Field(None, max_length=20)
+    preset: Optional[str] = Field(None, max_length=50)
+    enable_choices: Optional[bool] = Field(None)
     memory: Optional[str] = Field(None, max_length=10000)
     authors_note: Optional[str] = Field(None, max_length=5000)
     world_instructions: Optional[str] = Field(None, max_length=5000)
@@ -46,7 +50,9 @@ class WorldResponse(BaseModel):
     theme: str
     style_pack: str
     text_model: str
-    image_model: str
+    maturity_level: str
+    preset: str
+    enable_choices: bool
     tick: int
     chapter_count: int
     is_current: bool
@@ -71,7 +77,9 @@ async def list_worlds():
                     theme=cfg.theme,
                     style_pack=cfg.style_pack,
                     text_model=cfg.text_model,
-                    image_model=cfg.image_model,
+                    maturity_level=getattr(cfg, 'maturity_level', 'general'),
+                    preset=getattr(cfg, 'preset', 'cozy-adventure'),
+                    enable_choices=getattr(cfg, 'enable_choices', False),
                     tick=state.tick,
                     chapter_count=len(state.chapters),
                     is_current=(cfg.slug == current),
@@ -122,7 +130,9 @@ async def create_world(request: WorldCreateRequest):
         theme=request.theme,
         style_pack=request.style_pack,
         slug=request.slug,
-        image_model=request.image_model,
+        maturity_level=request.maturity_level,
+        preset=request.preset,
+        enable_choices=request.enable_choices,
         memory=request.memory,
         authors_note=request.authors_note,
         world_instructions=request.world_instructions
@@ -135,7 +145,9 @@ async def create_world(request: WorldCreateRequest):
         theme=cfg.theme,
         style_pack=cfg.style_pack,
         text_model=cfg.text_model,
-        image_model=cfg.image_model,
+        maturity_level=cfg.maturity_level,
+        preset=cfg.preset,
+        enable_choices=cfg.enable_choices,
         tick=state.tick,
         chapter_count=len(state.chapters),
         is_current=True,
@@ -168,13 +180,24 @@ async def get_world(slug: str):
 
     chapters = []
     for ch in state.chapters:
+        # Convert Choice dataclass objects to dicts
+        choices_data = []
+        for choice in ch.choices:
+            choices_data.append({
+                "id": choice.id,
+                "text": choice.text,
+                "description": choice.description
+            })
+
         chapters.append({
             "number": ch.number,
             "title": ch.title,
             "filename": ch.filename,
             "summary": ch.summary,
             "scene": scene_for_chapter.get(ch.number),
-            "characters_in_scene": ch.characters_in_scene
+            "characters_in_scene": ch.characters_in_scene,
+            "choices": choices_data,
+            "selected_choice_id": ch.selected_choice_id
         })
 
     return {
@@ -184,7 +207,9 @@ async def get_world(slug: str):
             "theme": cfg.theme,
             "style_pack": cfg.style_pack,
             "text_model": cfg.text_model,
-            "image_model": cfg.image_model,
+            "maturity_level": getattr(cfg, 'maturity_level', 'general'),
+            "preset": getattr(cfg, 'preset', 'cozy-adventure'),
+            "enable_choices": getattr(cfg, 'enable_choices', False),
             "memory": getattr(cfg, 'memory', None),
             "authors_note": getattr(cfg, 'authors_note', None),
             "world_instructions": getattr(cfg, 'world_instructions', None)
@@ -236,8 +261,12 @@ async def update_world(slug: str, request: WorldUpdateRequest):
         cfg.theme = request.theme
     if request.style_pack is not None:
         cfg.style_pack = request.style_pack
-    if request.image_model is not None:
-        cfg.image_model = request.image_model
+    if request.maturity_level is not None:
+        cfg.maturity_level = request.maturity_level
+    if request.preset is not None:
+        cfg.preset = request.preset
+    if request.enable_choices is not None:
+        cfg.enable_choices = request.enable_choices
     if request.memory is not None:
         cfg.memory = request.memory
     if request.authors_note is not None:
@@ -254,7 +283,9 @@ async def update_world(slug: str, request: WorldUpdateRequest):
             "slug": cfg.slug,
             "theme": cfg.theme,
             "style_pack": cfg.style_pack,
-            "image_model": cfg.image_model,
+            "maturity_level": getattr(cfg, 'maturity_level', 'general'),
+            "preset": getattr(cfg, 'preset', 'cozy-adventure'),
+            "enable_choices": getattr(cfg, 'enable_choices', False),
             "memory": cfg.memory,
             "authors_note": cfg.authors_note,
             "world_instructions": cfg.world_instructions

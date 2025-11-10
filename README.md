@@ -55,7 +55,7 @@ A persistent narrative universe you can explore via a simple CLI. It generates c
    ```bash
    python3 -m living_storyworld.cli web
    ```
-   Opens at `http://localhost:8000` with full GUI for browsing, generating, and viewing chapters.
+   Opens at `http://localhost:8001` with full GUI for browsing, generating, and viewing chapters.
 
    **Option B: Static HTML viewer**
    ```bash
@@ -86,7 +86,7 @@ A persistent narrative universe you can explore via a simple CLI. It generates c
   - Generate chapters with real-time progress
   - View chapters with scene images in card layout
   - Regenerate images on demand
-  - Runs locally at `http://localhost:8000`
+  - Runs locally at `http://localhost:8001`
 
 - Setup wizard (saves API key locally with 600 perms):
   - `python3 -m living_storyworld.cli setup --style storybook-ink --preset cozy-adventure`

@@ -60,7 +60,7 @@ function app() {
             preset: 'cozy-adventure',
             maturity_level: 'general',
             chapter_length: 'medium',
-            enable_choices: false,
+            enable_choices: true,
             memory: '',
             authors_note: '',
             world_instructions: ''
@@ -74,7 +74,7 @@ function app() {
             preset: '',
             maturity_level: '',
             chapter_length: '',
-            enable_choices: false,
+            enable_choices: true,
             memory: '',
             authors_note: '',
             world_instructions: ''
@@ -142,6 +142,35 @@ function app() {
         stripChapterPrefix(title) {
             if (!title) return '';
             return title.replace(/^Chapter\s+\d+:\s*/, '');
+        },
+
+        // Helper: Get progress text in "Generating... x/y" format
+        getProgressText() {
+            if (!this.progress || !this.progress.stage) {
+                return 'Processing...';
+            }
+
+            const stage = this.progress.stage;
+            const hasImages = !this.generateOptions.no_images;
+
+            // Determine current step and total steps based on backend stages
+            let currentStep = 1;
+            let totalSteps = hasImages ? 3 : 2;
+
+            // Map backend stages to step numbers:
+            // With images: init/text (step 1) → image (step 2) → saving (step 3)
+            // Without images: init/text (step 1) → saving (step 2)
+            if (stage === 'init' || stage === 'text') {
+                currentStep = 1;
+            } else if (stage === 'image') {
+                currentStep = 2;
+            } else if (stage === 'saving') {
+                currentStep = hasImages ? 3 : 2;
+            } else if (stage === 'complete' || stage === 'done') {
+                currentStep = totalSteps;
+            }
+
+            return `Generating... ${currentStep}/${totalSteps}`;
         },
 
         // Console logging methods
@@ -491,6 +520,7 @@ function app() {
             this.showGenerateChapter = false;
             this.generating = true;
             this.progress = { percent: 0, message: 'Starting...', stage: 'init' };
+            this._lastLoggedStage = null;
             this.addConsoleLog('Starting chapter generation...', 'info');
 
             try {
@@ -510,7 +540,11 @@ function app() {
                 evtSource.addEventListener('progress', (e) => {
                     const data = JSON.parse(e.data);
                     this.progress = data;
-                    this.addConsoleLog(data.message, 'log');
+                    // Only log stage changes, not every progress update
+                    if (data.stage !== this._lastLoggedStage) {
+                        this.addConsoleLog(data.message, 'log');
+                        this._lastLoggedStage = data.stage;
+                    }
                 });
 
                 evtSource.addEventListener('complete', (e) => {
@@ -518,6 +552,7 @@ function app() {
                     this.currentWorld.chapters.push(chapter);
                     this.generating = false;
                     this.progress = { percent: 100, message: 'Complete!', stage: 'done' };
+                    this._lastLoggedStage = null;
                     this.addConsoleLog(`Chapter ${chapter.number} generated successfully!`, 'success');
                     evtSource.close();
 
@@ -542,7 +577,7 @@ function app() {
             }
         },
 
-        async viewChapter(chapter) {
+        async viewChapter(chapter, scrollToTop = false) {
             this.viewingChapter = chapter;
 
             try {
@@ -551,6 +586,17 @@ function app() {
 
                 // Simple markdown to HTML conversion
                 this.chapterContent = this.markdownToHtml(data.content);
+
+                // Scroll to top if requested
+                if (scrollToTop) {
+                    // Use nextTick to ensure DOM is updated before scrolling
+                    this.$nextTick(() => {
+                        const modalContent = document.getElementById('chapter-viewer-modal');
+                        if (modalContent) {
+                            modalContent.scrollTop = 0;
+                        }
+                    });
+                }
             } catch (error) {
                 console.error('Failed to load chapter content:', error);
                 this.chapterContent = '<p>Failed to load chapter content.</p>';
@@ -558,6 +604,25 @@ function app() {
         },
 
         async selectChoice(chapterNum, choiceId) {
+            // Find the choice text for confirmation
+            const chapter = this.viewingChapter;
+            let choiceText = 'this choice';
+            if (chapter && chapter.choices) {
+                const choice = chapter.choices.find(c => c.id === choiceId);
+                if (choice) {
+                    choiceText = `"${choice.text}"`;
+                }
+            }
+
+            // Show confirmation dialog
+            const confirmed = await this.confirm(
+                `You've chosen ${choiceText}. This decision is permanent and will influence the next chapter. Are you sure?`
+            );
+
+            if (!confirmed) {
+                return; // User cancelled
+            }
+
             this.selectingChoice = true;
             try {
                 const response = await fetch(
@@ -669,6 +734,7 @@ function app() {
 
             this.generating = true;
             this.progress = { percent: 0, message: 'Starting full regeneration...', stage: 'init' };
+            this._lastLoggedStage = null;
             this.addConsoleLog(`Starting reroll of chapter ${chapterNum}...`, 'info');
 
             try {
@@ -691,7 +757,11 @@ function app() {
                 evtSource.addEventListener('progress', (e) => {
                     const data = JSON.parse(e.data);
                     this.progress = data;
-                    this.addConsoleLog(data.message, 'log');
+                    // Only log stage changes, not every progress update
+                    if (data.stage !== this._lastLoggedStage) {
+                        this.addConsoleLog(data.message, 'log');
+                        this._lastLoggedStage = data.stage;
+                    }
                 });
 
                 evtSource.addEventListener('complete', (e) => {
@@ -705,6 +775,7 @@ function app() {
 
                     this.generating = false;
                     this.progress = { percent: 100, message: 'Chapter regenerated!', stage: 'done' };
+                    this._lastLoggedStage = null;
                     this.addConsoleLog(`Chapter ${chapterNum} regenerated successfully!`, 'success');
                     evtSource.close();
                 });
@@ -798,6 +869,37 @@ function app() {
             }
         },
 
+        hasPrevChapter() {
+            if (!this.viewingChapter || !this.currentWorld?.chapters) return false;
+            return this.viewingChapter.number > 1;
+        },
+
+        hasNextChapter() {
+            if (!this.viewingChapter || !this.currentWorld?.chapters) return false;
+            const maxChapter = Math.max(...this.currentWorld.chapters.map(ch => ch.number));
+            return this.viewingChapter.number < maxChapter;
+        },
+
+        navigateChapter(direction) {
+            if (!this.viewingChapter || !this.currentWorld?.chapters) return;
+
+            const currentNum = this.viewingChapter.number;
+            let targetNum;
+
+            if (direction === 'prev') {
+                targetNum = currentNum - 1;
+            } else if (direction === 'next') {
+                targetNum = currentNum + 1;
+            } else {
+                return;
+            }
+
+            const targetChapter = this.currentWorld.chapters.find(ch => ch.number === targetNum);
+            if (targetChapter) {
+                this.viewChapter(targetChapter);
+            }
+        },
+
         markdownToHtml(markdown) {
             // Very basic markdown to HTML conversion
             // In production, you'd want to use a proper markdown library
@@ -826,6 +928,47 @@ function app() {
             }).join('\n');
 
             return html;
+        },
+
+        // Helper function to get image model options based on selected provider
+        getImageModelOptions() {
+            const provider = this.settingsForm.image_provider || 'replicate';
+
+            switch (provider) {
+                case 'replicate':
+                    return [
+                        { value: 'flux-dev', label: 'Flux Dev (Higher Quality)' },
+                        { value: 'flux-schnell', label: 'Flux Schnell (Faster)' }
+                    ];
+                case 'huggingface':
+                    return [
+                        { value: 'stabilityai/stable-diffusion-xl-base-1.0', label: 'Stable Diffusion XL' },
+                        { value: 'black-forest-labs/FLUX.1-dev', label: 'FLUX.1 Dev' },
+                        { value: 'black-forest-labs/FLUX.1-schnell', label: 'FLUX.1 Schnell' },
+                        { value: 'stabilityai/stable-diffusion-2-1', label: 'Stable Diffusion 2.1' },
+                        { value: 'runwayml/stable-diffusion-v1-5', label: 'Stable Diffusion 1.5' }
+                    ];
+                case 'pollinations':
+                    return [
+                        { value: 'flux', label: 'Flux' },
+                        { value: 'flux-dev', label: 'Flux Dev' },
+                        { value: 'flux-schnell', label: 'Flux Schnell' },
+                        { value: 'sdxl', label: 'Stable Diffusion XL' },
+                        { value: 'sd3', label: 'Stable Diffusion 3' }
+                    ];
+                case 'falai':
+                    return [
+                        { value: 'flux/schnell', label: 'Flux Schnell' },
+                        { value: 'flux/dev', label: 'Flux Dev' },
+                        { value: 'stability-ai/sd3', label: 'Stable Diffusion 3' },
+                        { value: 'stability-ai/sd-xl', label: 'Stable Diffusion XL' }
+                    ];
+                default:
+                    return [
+                        { value: 'flux-dev', label: 'Flux Dev' },
+                        { value: 'flux-schnell', label: 'Flux Schnell' }
+                    ];
+            }
         }
     }
 }

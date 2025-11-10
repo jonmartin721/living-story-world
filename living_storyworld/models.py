@@ -43,6 +43,7 @@ class Chapter:
     title: str
     filename: str
     summary: Optional[str] = None
+    ai_summary: Optional[str] = None  # AI-generated concise summary for continuity
     scene_prompt: Optional[str] = None
     characters_in_scene: List[str] = field(default_factory=list)
     choices: List[Choice] = field(default_factory=list)
@@ -57,7 +58,6 @@ class WorldConfig:
     theme: str
     style_pack: str = "storybook-ink"
     text_model: str = "gpt-4o-mini"
-    image_model: str = "flux-schnell"
     maturity_level: str = "general"  # general, teen, mature, explicit
     preset: str = "cozy-adventure"  # Narrative preset defines the vibe/tone
     enable_choices: bool = False  # Interactive chapter choices
