@@ -10,6 +10,8 @@ from typing import Dict, Optional, Tuple
 from .models import WorldConfig, WorldState, Chapter
 from .presets import PRESETS, DEFAULT_PRESET
 from .config import STYLE_PACKS
+from .settings import load_user_settings, get_api_key_for_provider
+from .providers import get_text_provider
 
 
 def _get_client():
@@ -23,7 +25,13 @@ def _get_client():
 def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[str], preset_key: Optional[str] = None) -> Tuple[str, list[dict], float]:
     style = STYLE_PACKS.get(cfg.style_pack, STYLE_PACKS["storybook-ink"])  # textual art bible for images
     preset = PRESETS.get(preset_key or "", DEFAULT_PRESET)
-    sys = (
+
+    # Load global instructions from user settings
+    settings = load_user_settings()
+    global_instructions = settings.global_instructions or ""
+
+    # Build system message with global + world-specific instructions
+    sys_parts = [
         "You are a narrative engine for a persistent storyworld. "
         "Write evocative, tightly paced chapters that advance arcs within a coherent world. "
         "Always include a single HTML comment at the very top containing JSON metadata with keys: "
@@ -31,7 +39,18 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         "summary (string), new_characters (array of {id, name, description}), new_locations (array of {id, name, description}). "
         "Introduce new characters or locations when they serve the story naturally. "
         + preset.system_directives
-    )
+    ]
+
+    # Add global instructions if present
+    if global_instructions:
+        sys_parts.append(f"\n\nGlobal Instructions: {global_instructions}")
+
+    # Add world-specific instructions if present
+    if cfg.world_instructions:
+        sys_parts.append(f"\n\nWorld Instructions: {cfg.world_instructions}")
+
+    sys = "".join(sys_parts)
+
     world_brief = {
         "title": cfg.title,
         "theme": cfg.theme,
@@ -40,21 +59,35 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         "known_characters": list(state.characters.keys()),
         "known_locations": list(state.locations.keys()),
     }
-    user = (
-        "World brief: "
-        + json.dumps(world_brief)
-        + "\n\n"
-        + (f"Focus: {focus}\n\n" if focus else "")
-        + "Write Chapter "
-        + str(state.next_chapter)
-        + ":\n"
-        + "Title (H1), rich prose (700-900 words), light dialogue, tangible sensory detail, and a memorable closing beat.\n"
-        + 'At top, put: <!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string, '
-        + '"new_characters": [{id, name, description}], "new_locations": [{id, name, description}]} -->\n'
-        + "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n"
-        + f"Art direction (for scene_prompt only): {style}.\n"
-        + f"Preset instructions: {preset.text_instructions}"
-    )
+
+    # Build user message with memory and author's note
+    user_parts = []
+
+    # Add memory/lore first (always in context)
+    if cfg.memory:
+        user_parts.append(f"Memory/Lore:\n{cfg.memory}\n\n")
+
+    user_parts.append("World brief: " + json.dumps(world_brief) + "\n\n")
+
+    # Add author's note (strategic placement for style guidance)
+    if cfg.authors_note:
+        user_parts.append(f"Author's Note: {cfg.authors_note}\n\n")
+
+    if focus:
+        user_parts.append(f"Focus: {focus}\n\n")
+
+    user_parts.extend([
+        f"Write Chapter {state.next_chapter}:\n",
+        "Title (H1), rich prose (700-900 words), light dialogue, tangible sensory detail, and a memorable closing beat.\n",
+        'At top, put: <!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string, ',
+        '"new_characters": [{id, name, description}], "new_locations": [{id, name, description}]} -->\n',
+        "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n",
+        f"Art direction (for scene_prompt only): {style}.\n",
+        f"Preset instructions: {preset.text_instructions}"
+    ])
+
+    user = "".join(user_parts)
+
     messages = [
         {"role": "system", "content": sys},
         {"role": "user", "content": user},
@@ -81,15 +114,31 @@ def generate_chapter(
     make_scene_image: bool = True,
     preset_key: Optional[str] = None,
 ) -> Chapter:
-    client = _get_client()
+    # Load settings to determine which provider to use
+    settings = load_user_settings()
+    text_provider_name = settings.text_provider
+    api_key = get_api_key_for_provider(text_provider_name, settings)
 
-    style, messages, temp = _build_chapter_prompt(cfg, state, focus, preset_key=preset_key)
-    resp = client.chat.completions.create(
-        model=cfg.text_model,
-        messages=messages,
-        temperature=temp,
-    )
-    md = resp.choices[0].message.content or ""
+    # Get the text provider
+    try:
+        provider = get_text_provider(text_provider_name, api_key=api_key)
+    except Exception as e:
+        # Fallback to legacy OpenAI client if provider setup fails
+        print(f"[WARN] Provider {text_provider_name} failed, falling back to OpenAI: {e}", flush=True)
+        client = _get_client()
+        style, messages, temp = _build_chapter_prompt(cfg, state, focus, preset_key=preset_key)
+        resp = client.chat.completions.create(
+            model=cfg.text_model,
+            messages=messages,
+            temperature=temp,
+        )
+        md = resp.choices[0].message.content or ""
+    else:
+        # Use the provider abstraction
+        style, messages, temp = _build_chapter_prompt(cfg, state, focus, preset_key=preset_key)
+        result = provider.generate(messages, temperature=temp, model=cfg.text_model)
+        md = result.content
+        print(f"[INFO] Generated chapter using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
 
     meta = _parse_meta(md)
     scene_prompt = str(meta.get("scene_prompt", "")) if isinstance(meta, dict) else ""

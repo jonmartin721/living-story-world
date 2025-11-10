@@ -17,6 +17,9 @@ class WorldCreateRequest(BaseModel):
     style_pack: str = "storybook-ink"
     image_model: str = "flux-dev"
     slug: Optional[str] = None
+    memory: Optional[str] = None
+    authors_note: Optional[str] = None
+    world_instructions: Optional[str] = None
 
 
 class WorldUpdateRequest(BaseModel):
@@ -24,6 +27,9 @@ class WorldUpdateRequest(BaseModel):
     theme: Optional[str] = None
     style_pack: Optional[str] = None
     image_model: Optional[str] = None
+    memory: Optional[str] = None
+    authors_note: Optional[str] = None
+    world_instructions: Optional[str] = None
 
 
 class WorldResponse(BaseModel):
@@ -36,6 +42,9 @@ class WorldResponse(BaseModel):
     tick: int
     chapter_count: int
     is_current: bool
+    memory: Optional[str] = None
+    authors_note: Optional[str] = None
+    world_instructions: Optional[str] = None
 
 
 @router.get("", response_model=List[WorldResponse])
@@ -57,7 +66,10 @@ async def list_worlds():
                     image_model=cfg.image_model,
                     tick=state.tick,
                     chapter_count=len(state.chapters),
-                    is_current=(cfg.slug == current)
+                    is_current=(cfg.slug == current),
+                    memory=getattr(cfg, 'memory', None),
+                    authors_note=getattr(cfg, 'authors_note', None),
+                    world_instructions=getattr(cfg, 'world_instructions', None)
                 ))
             except Exception:
                 # Skip invalid worlds
@@ -74,7 +86,10 @@ async def create_world(request: WorldCreateRequest):
         theme=request.theme,
         style_pack=request.style_pack,
         slug=request.slug,
-        image_model=request.image_model
+        image_model=request.image_model,
+        memory=request.memory,
+        authors_note=request.authors_note,
+        world_instructions=request.world_instructions
     )
 
     cfg, state, _ = load_world(slug)
@@ -87,7 +102,10 @@ async def create_world(request: WorldCreateRequest):
         image_model=cfg.image_model,
         tick=state.tick,
         chapter_count=len(state.chapters),
-        is_current=True
+        is_current=True,
+        memory=cfg.memory,
+        authors_note=cfg.authors_note,
+        world_instructions=cfg.world_instructions
     )
 
 
@@ -125,7 +143,10 @@ async def get_world(slug: str):
             "theme": cfg.theme,
             "style_pack": cfg.style_pack,
             "text_model": cfg.text_model,
-            "image_model": cfg.image_model
+            "image_model": cfg.image_model,
+            "memory": getattr(cfg, 'memory', None),
+            "authors_note": getattr(cfg, 'authors_note', None),
+            "world_instructions": getattr(cfg, 'world_instructions', None)
         },
         "state": {
             "tick": state.tick,
@@ -166,6 +187,12 @@ async def update_world(slug: str, request: WorldUpdateRequest):
         cfg.style_pack = request.style_pack
     if request.image_model is not None:
         cfg.image_model = request.image_model
+    if request.memory is not None:
+        cfg.memory = request.memory
+    if request.authors_note is not None:
+        cfg.authors_note = request.authors_note
+    if request.world_instructions is not None:
+        cfg.world_instructions = request.world_instructions
 
     save_world(slug, cfg, state, dirs)
 
@@ -176,7 +203,10 @@ async def update_world(slug: str, request: WorldUpdateRequest):
             "slug": cfg.slug,
             "theme": cfg.theme,
             "style_pack": cfg.style_pack,
-            "image_model": cfg.image_model
+            "image_model": cfg.image_model,
+            "memory": cfg.memory,
+            "authors_note": cfg.authors_note,
+            "world_instructions": cfg.world_instructions
         }
     }
 

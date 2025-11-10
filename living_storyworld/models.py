@@ -49,6 +49,11 @@ class WorldConfig:
     text_model: str = "gpt-4o-mini"
     image_model: str = "flux-dev"
 
+    # NAI-style memory system
+    memory: Optional[str] = None  # Always included in context (lore, background, key facts)
+    authors_note: Optional[str] = None  # Inserted at strategic point in prompt (style guidance, tone)
+    world_instructions: Optional[str] = None  # Custom instructions specific to this world
+
 
 @dataclass
 class WorldState:

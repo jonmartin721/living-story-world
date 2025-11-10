@@ -32,6 +32,13 @@
                         </select>
 
                         <button
+                            @click="openSettings()"
+                            class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            title="Settings">
+                            ⚙️ Settings
+                        </button>
+
+                        <button
                             @click="showCreateWorld = true"
                             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             New World
@@ -67,6 +74,12 @@
                             </div>
                         </div>
                         <div class="flex gap-2">
+                            <button
+                                @click="deleteWorld()"
+                                class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                title="Delete this world">
+                                Delete
+                            </button>
                             <button
                                 @click="openEditWorld()"
                                 class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
@@ -218,6 +231,33 @@
                                 <option value="flux-schnell">Flux Schnell (Fast, ~$0.003)</option>
                             </select>
                         </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Memory/Lore (Optional)</label>
+                            <textarea
+                                x-model="newWorld.memory"
+                                rows="3"
+                                placeholder="Key facts, background lore, and context always included in prompts..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Always included in chapter generation context</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Author's Note (Optional)</label>
+                            <textarea
+                                x-model="newWorld.authors_note"
+                                rows="2"
+                                placeholder="Style guidance, tone preferences..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Inserted strategically in prompts for style guidance</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">World Instructions (Optional)</label>
+                            <textarea
+                                x-model="newWorld.world_instructions"
+                                rows="2"
+                                placeholder="Custom instructions specific to this world..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                            <p class="text-xs text-gray-500 mt-1">World-specific directives for chapter generation</p>
+                        </div>
                     </div>
                     <div class="mt-6 flex justify-end gap-3">
                         <button
@@ -349,6 +389,33 @@
                                 <option value="flux-schnell">Flux Schnell (Fast, ~$0.003)</option>
                             </select>
                         </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Memory/Lore (Optional)</label>
+                            <textarea
+                                x-model="editWorld.memory"
+                                rows="3"
+                                placeholder="Key facts, background lore, and context always included in prompts..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Always included in chapter generation context</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Author's Note (Optional)</label>
+                            <textarea
+                                x-model="editWorld.authors_note"
+                                rows="2"
+                                placeholder="Style guidance, tone preferences..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Inserted strategically in prompts for style guidance</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">World Instructions (Optional)</label>
+                            <textarea
+                                x-model="editWorld.world_instructions"
+                                rows="2"
+                                placeholder="Custom instructions specific to this world..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                            <p class="text-xs text-gray-500 mt-1">World-specific directives for chapter generation</p>
+                        </div>
                     </div>
                     <div class="mt-6 flex justify-end gap-3">
                         <button
@@ -361,6 +428,256 @@
                             type="submit"
                             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                             Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div x-show="showSettings"
+             x-cloak
+             class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4"
+             @click.self="showSettings = false">
+            <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-white border-b px-6 py-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-gray-900">Settings</h3>
+                        <button
+                            @click="showSettings = false"
+                            class="text-gray-400 hover:text-gray-600">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex gap-2 mt-4 border-b">
+                        <button
+                            @click="settingsTab = 'api'"
+                            :class="settingsTab === 'api' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            class="px-4 py-2 border-b-2 font-medium text-sm">
+                            API Configuration
+                        </button>
+                        <button
+                            @click="settingsTab = 'instructions'"
+                            :class="settingsTab === 'instructions' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            class="px-4 py-2 border-b-2 font-medium text-sm">
+                            Global Instructions
+                        </button>
+                        <button
+                            @click="settingsTab = 'defaults'"
+                            :class="settingsTab === 'defaults' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                            class="px-4 py-2 border-b-2 font-medium text-sm">
+                            Defaults
+                        </button>
+                    </div>
+                </div>
+
+                <form @submit.prevent="saveSettings()">
+                    <div class="p-6">
+                        <!-- API Configuration Tab -->
+                        <div x-show="settingsTab === 'api'" class="space-y-6">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p class="text-sm text-blue-900">Configure your API providers and keys. API keys are securely stored and never displayed.</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Text Generation Provider</label>
+                                    <select
+                                        x-model="settingsForm.text_provider"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="openai">OpenAI</option>
+                                        <option value="together">Together AI</option>
+                                        <option value="huggingface">Hugging Face</option>
+                                        <option value="groq">Groq</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Image Generation Provider</label>
+                                    <select
+                                        x-model="settingsForm.image_provider"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="replicate">Replicate</option>
+                                        <option value="huggingface">Hugging Face</option>
+                                        <option value="pollinations">Pollinations.ai (Free)</option>
+                                        <option value="fal">Fal.ai</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- API Keys -->
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-gray-900">API Keys</h4>
+
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">OpenAI API Key</label>
+                                        <span x-show="settings.has_openai_key" class="text-xs text-green-600">✓ Configured</span>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        x-model="settingsForm.openai_api_key"
+                                        placeholder="sk-..."
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">Leave blank to keep existing key</p>
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">Together AI API Key</label>
+                                        <span x-show="settings.has_together_key" class="text-xs text-green-600">✓ Configured</span>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        x-model="settingsForm.together_api_key"
+                                        placeholder="Enter API key..."
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">Leave blank to keep existing key</p>
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">Hugging Face API Key</label>
+                                        <span x-show="settings.has_huggingface_key" class="text-xs text-green-600">✓ Configured</span>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        x-model="settingsForm.huggingface_api_key"
+                                        placeholder="hf_..."
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">Leave blank to keep existing key. Free tier available.</p>
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">Groq API Key</label>
+                                        <span x-show="settings.has_groq_key" class="text-xs text-green-600">✓ Configured</span>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        x-model="settingsForm.groq_api_key"
+                                        placeholder="gsk_..."
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">Leave blank to keep existing key. Free tier available.</p>
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">Replicate API Token</label>
+                                        <span x-show="settings.has_replicate_token" class="text-xs text-green-600">✓ Configured</span>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        x-model="settingsForm.replicate_api_token"
+                                        placeholder="r8_..."
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">Leave blank to keep existing token</p>
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">Fal.ai API Key</label>
+                                        <span x-show="settings.has_fal_key" class="text-xs text-green-600">✓ Configured</span>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        x-model="settingsForm.fal_api_key"
+                                        placeholder="Enter API key..."
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">Leave blank to keep existing key. Free tier available.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Global Instructions Tab -->
+                        <div x-show="settingsTab === 'instructions'" class="space-y-4">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p class="text-sm text-blue-900">Global instructions apply to all chapters across all worlds. Use this to set your preferred writing style, tone, or general guidelines.</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Global Instructions</label>
+                                <textarea
+                                    x-model="settingsForm.global_instructions"
+                                    rows="10"
+                                    placeholder="Example: Write with vivid sensory details. Keep dialogue natural and sparse. Maintain an introspective tone. Avoid clichés."
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                                <p class="text-xs text-gray-500 mt-1">These instructions are always included in the system prompt for chapter generation.</p>
+                            </div>
+                        </div>
+
+                        <!-- Defaults Tab -->
+                        <div x-show="settingsTab === 'defaults'" class="space-y-4">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p class="text-sm text-blue-900">Set default preferences for new worlds and chapter generation.</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Default Style Pack</label>
+                                    <select
+                                        x-model="settingsForm.default_style_pack"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="storybook-ink">Storybook Ink</option>
+                                        <option value="watercolor-dream">Watercolor Dream</option>
+                                        <option value="pixel-rpg">Pixel RPG</option>
+                                        <option value="comic-book">Comic Book</option>
+                                        <option value="noir-sketch">Noir Sketch</option>
+                                        <option value="art-nouveau">Art Nouveau</option>
+                                        <option value="oil-painting">Oil Painting</option>
+                                        <option value="lowpoly-iso">Lowpoly Isometric</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Default Narrative Preset</label>
+                                    <select
+                                        x-model="settingsForm.default_preset"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="cozy-adventure">Cozy Adventure</option>
+                                        <option value="noir-mystery">Noir Mystery</option>
+                                        <option value="epic-fantasy">Epic Fantasy</option>
+                                        <option value="solarpunk-explorer">Solarpunk Explorer</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Default Text Model</label>
+                                    <input
+                                        type="text"
+                                        x-model="settingsForm.default_text_model"
+                                        placeholder="gpt-4o-mini"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">Provider-specific model name</p>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Default Image Model</label>
+                                    <input
+                                        type="text"
+                                        x-model="settingsForm.default_image_model"
+                                        placeholder="flux-dev"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">Provider-specific model name</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 sticky bottom-0">
+                        <button
+                            type="button"
+                            @click="showSettings = false"
+                            class="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            Save Settings
                         </button>
                     </div>
                 </form>

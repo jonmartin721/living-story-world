@@ -9,21 +9,61 @@ function app() {
         showCreateWorld: false,
         showEditWorld: false,
         showGenerateChapter: false,
+        showSettings: false,
+        settingsTab: 'api',
         viewingChapter: null,
         chapterContent: '',
+
+        settings: {
+            text_provider: 'openai',
+            image_provider: 'replicate',
+            has_openai_key: false,
+            has_together_key: false,
+            has_huggingface_key: false,
+            has_groq_key: false,
+            has_replicate_token: false,
+            has_fal_key: false,
+            global_instructions: '',
+            default_style_pack: 'storybook-ink',
+            default_preset: 'cozy-adventure',
+            default_text_model: 'gpt-4o-mini',
+            default_image_model: 'flux-dev'
+        },
+
+        settingsForm: {
+            text_provider: '',
+            image_provider: '',
+            openai_api_key: '',
+            together_api_key: '',
+            huggingface_api_key: '',
+            groq_api_key: '',
+            replicate_api_token: '',
+            fal_api_key: '',
+            global_instructions: '',
+            default_style_pack: '',
+            default_preset: '',
+            default_text_model: '',
+            default_image_model: ''
+        },
 
         newWorld: {
             title: '',
             theme: '',
             style_pack: 'storybook-ink',
-            image_model: 'flux-dev'
+            image_model: 'flux-dev',
+            memory: '',
+            authors_note: '',
+            world_instructions: ''
         },
 
         editWorld: {
             title: '',
             theme: '',
             style_pack: '',
-            image_model: ''
+            image_model: '',
+            memory: '',
+            authors_note: '',
+            world_instructions: ''
         },
 
         generateOptions: {
@@ -68,12 +108,83 @@ function app() {
         },
 
         async init() {
+            await this.loadSettings();
             await this.loadWorlds();
             // Auto-select current world if any
             const currentWorld = this.worlds.find(w => w.is_current);
             if (currentWorld) {
                 this.currentWorldSlug = currentWorld.slug;
                 await this.loadWorld();
+            }
+        },
+
+        async loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                this.settings = await response.json();
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        },
+
+        openSettings() {
+            // Populate settings form with current settings
+            this.settingsForm = {
+                text_provider: this.settings.text_provider,
+                image_provider: this.settings.image_provider,
+                openai_api_key: '',
+                together_api_key: '',
+                huggingface_api_key: '',
+                groq_api_key: '',
+                replicate_api_token: '',
+                fal_api_key: '',
+                global_instructions: this.settings.global_instructions || '',
+                default_style_pack: this.settings.default_style_pack,
+                default_preset: this.settings.default_preset,
+                default_text_model: this.settings.default_text_model,
+                default_image_model: this.settings.default_image_model
+            };
+            this.settingsTab = 'api';
+            this.showSettings = true;
+        },
+
+        async saveSettings() {
+            try {
+                // Build request with only non-empty API keys
+                const payload = {
+                    text_provider: this.settingsForm.text_provider,
+                    image_provider: this.settingsForm.image_provider,
+                    global_instructions: this.settingsForm.global_instructions,
+                    default_style_pack: this.settingsForm.default_style_pack,
+                    default_preset: this.settingsForm.default_preset,
+                    default_text_model: this.settingsForm.default_text_model,
+                    default_image_model: this.settingsForm.default_image_model
+                };
+
+                // Only include API keys if they're not empty (user entered them)
+                if (this.settingsForm.openai_api_key) payload.openai_api_key = this.settingsForm.openai_api_key;
+                if (this.settingsForm.together_api_key) payload.together_api_key = this.settingsForm.together_api_key;
+                if (this.settingsForm.huggingface_api_key) payload.huggingface_api_key = this.settingsForm.huggingface_api_key;
+                if (this.settingsForm.groq_api_key) payload.groq_api_key = this.settingsForm.groq_api_key;
+                if (this.settingsForm.replicate_api_token) payload.replicate_api_token = this.settingsForm.replicate_api_token;
+                if (this.settingsForm.fal_api_key) payload.fal_api_key = this.settingsForm.fal_api_key;
+
+                const response = await fetch('/api/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save settings');
+                }
+
+                this.showSettings = false;
+                await this.loadSettings();
+                alert('Settings saved successfully!');
+            } catch (error) {
+                console.error('Failed to save settings:', error);
+                alert('Failed to save settings. Check console for details.');
             }
         },
 
@@ -118,7 +229,10 @@ function app() {
                 title: this.currentWorld.config.title,
                 theme: this.currentWorld.config.theme,
                 style_pack: this.currentWorld.config.style_pack,
-                image_model: this.currentWorld.config.image_model
+                image_model: this.currentWorld.config.image_model,
+                memory: this.currentWorld.config.memory || '',
+                authors_note: this.currentWorld.config.authors_note || '',
+                world_instructions: this.currentWorld.config.world_instructions || ''
             };
             this.showEditWorld = true;
         },
@@ -147,6 +261,37 @@ function app() {
             } catch (error) {
                 console.error('Failed to update world:', error);
                 alert('Failed to update world. Check console for details.');
+            }
+        },
+
+        async deleteWorld() {
+            if (!this.currentWorldSlug) return;
+
+            const worldTitle = this.currentWorld?.config?.title || this.currentWorldSlug;
+            if (!confirm(`Are you sure you want to delete "${worldTitle}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/worlds/${this.currentWorldSlug}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete world');
+                }
+
+                // Clear current world
+                this.currentWorldSlug = '';
+                this.currentWorld = null;
+
+                // Reload worlds list
+                await this.loadWorlds();
+
+                alert('World deleted successfully!');
+            } catch (error) {
+                console.error('Failed to delete world:', error);
+                alert('Failed to delete world. Check console for details.');
             }
         },
 
