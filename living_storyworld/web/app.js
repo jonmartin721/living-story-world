@@ -11,6 +11,8 @@ function app() {
         showGenerateChapter: false,
         showSettings: false,
         showConsole: false,
+        showRegenerateOptions: false,
+        regenerateChapterNum: null,
         settingsTab: 'api',
         viewingChapter: null,
         chapterContent: '',
@@ -268,16 +270,25 @@ function app() {
 
         toggleDarkMode() {
             this.darkMode = !this.darkMode;
-            localStorage.setItem('darkMode', this.darkMode);
+            localStorage.setItem('darkMode', String(this.darkMode));
+            console.log('Dark mode toggled to:', this.darkMode);
             this.applyDarkMode();
         },
 
         applyDarkMode() {
+            const html = document.documentElement;
+            // Force remove first to ensure clean state
+            html.classList.remove('dark');
+
             if (this.darkMode) {
-                document.documentElement.classList.add('dark');
+                html.classList.add('dark');
+                console.log('Applied dark mode class');
             } else {
-                document.documentElement.classList.remove('dark');
+                console.log('Removed dark mode class');
             }
+
+            // Force a style recalculation
+            void html.offsetHeight;
         },
 
         async loadSettings() {
@@ -562,6 +573,63 @@ function app() {
             } catch (error) {
                 console.error('Failed to load chapter content:', error);
                 this.chapterContent = '<p>Failed to load chapter content.</p>';
+            }
+        },
+
+        showRegenerateDialog(chapterNum) {
+            this.regenerateChapterNum = chapterNum;
+            this.showRegenerateOptions = true;
+        },
+
+        async handleRegenerate(type) {
+            this.showRegenerateOptions = false;
+            const chapterNum = this.regenerateChapterNum;
+
+            if (!chapterNum) return;
+
+            if (type === 'everything') {
+                await this.rerollChapter(chapterNum);
+            } else if (type === 'text') {
+                // Text-only regeneration: reroll without images
+                await this.rerollChapterTextOnly(chapterNum);
+            } else if (type === 'image') {
+                await this.regenerateImage(chapterNum);
+            }
+        },
+
+        async rerollChapterTextOnly(chapterNum) {
+            if (!await this.confirm('Regenerate chapter text only? The current image will be kept.')) return;
+
+            this.generating = true;
+            this.progress = { percent: 0, message: 'Starting text regeneration...', stage: 'init' };
+            this.addConsoleLog(`Starting text-only reroll of chapter ${chapterNum}...`, 'info');
+
+            try {
+                // Start reroll with images disabled
+                const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters/${chapterNum}/reroll`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        preset: 'cozy-adventure',
+                        no_images: true  // Generate text only, keep image
+                    })
+                });
+
+                const { job_id } = await response.json();
+                this.addConsoleLog(`Text-only reroll job created: ${job_id}`, 'info');
+
+                // Poll for completion
+                await this.pollJobStatus(job_id);
+
+                this.showToast('Chapter text regenerated successfully!', 'success');
+                await this.loadWorld(this.currentWorldSlug);
+            } catch (error) {
+                console.error('Failed to regenerate chapter text:', error);
+                this.addConsoleLog(`Error regenerating text: ${error.message}`, 'error');
+                this.showToast('Failed to regenerate chapter text. Check console for details.');
+            } finally {
+                this.generating = false;
+                this.progress = { percent: 0, message: '', stage: '' };
             }
         },
 

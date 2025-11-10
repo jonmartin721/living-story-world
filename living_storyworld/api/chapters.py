@@ -552,7 +552,7 @@ async def delete_chapter(slug: str, chapter_num: int):
             chapter_path.unlink()
 
     # Delete scene image if it exists
-    scene_path = chapter_data.get("scene")
+    scene_path = chapter_data.scene
     if scene_path:
         # Extract filename from path like "/worlds/slug/media/scenes/filename.webp"
         import re

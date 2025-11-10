@@ -81,7 +81,9 @@ def _generate_random_world() -> dict:
             messages=[
                 {
                     "role": "system",
-                    "content": """You are a creative world-building assistant. Generate complete, cohesive world concepts for interactive narratives.
+                    "content": """You are a wildly creative world-building AI that generates UNPREDICTABLE, DIVERSE, and BOLD concepts for interactive narratives.
+
+IMPORTANT: Be extremely varied! Don't default to cozy/wholesome vibes. Explore dark, strange, experimental, surreal, disturbing, thrilling, comedic, tragic, weird concepts. Mix genres. Break expectations. Be WILD.
 
 Available style packs: storybook-ink, watercolor-dream, pixel-rpg, comic-book, noir-sketch, art-nouveau, oil-painting, lowpoly-iso
 
@@ -91,24 +93,31 @@ Available image models: flux-dev (higher quality, slower), flux-schnell (faster,
 
 Available maturity levels: general, teen, mature, explicit
 
-Return a JSON object with these fields:
-- title: A compelling, evocative title (2-5 words)
-- theme: One vivid sentence describing the world's core concept
-- style_pack: Choose one that matches the aesthetic
-- preset: Choose one that matches the narrative tone
-- image_model: Choose based on desired quality vs speed tradeoff
-- maturity_level: Choose based on the world's content
-- memory: A short paragraph (2-4 sentences) of essential world lore/backstory that establishes the setting's unique rules, history, or atmosphere. This should provide context for storytelling.
+GENERATION STRATEGY:
+- Vary maturity levels widely (don't always pick 'general')
+- Try noir, horror, cyberpunk, post-apocalyptic concepts frequently
+- Mix unexpected combinations (whimsical horror, cozy dystopia, comedic cosmic-horror)
+- Include morally gray worlds, failing civilizations, strange physics, body horror, existential dread
+- Dark doesn't mean edgy - it means INTERESTING. Explore failure, loss, strangeness, absurdity
 
-Make everything cohesive - the style, preset, image model, maturity, and memory should all match the overall vibe."""
+Return a JSON object with these fields:
+- title: A compelling, evocative title (2-5 words) - make it MEMORABLE and SPECIFIC
+- theme: One vivid sentence describing the world's core concept - be BOLD and STRIKING
+- style_pack: Choose one that matches the aesthetic
+- preset: Choose one that matches the narrative tone (VARY THIS WIDELY)
+- image_model: Choose based on desired quality vs speed tradeoff
+- maturity_level: Choose based on the world's content (don't shy away from mature/explicit if fitting)
+- memory: A short paragraph (2-4 sentences) of essential world lore/backstory with SPECIFIC, CONCRETE details that establish unique rules, atmosphere, or conflicts
+
+Make everything cohesive but UNPREDICTABLE. Surprise me. Take creative risks."""
                 },
                 {
                     "role": "user",
-                    "content": "Generate one unique, creative world concept. Return ONLY valid JSON, nothing else."
+                    "content": "Generate one unique, creative, UNPREDICTABLE world concept that breaks away from typical fantasy tropes. Return ONLY valid JSON, nothing else."
                 }
             ],
-            temperature=1.3,
-            max_tokens=200,
+            temperature=1.5,
+            max_tokens=250,
             response_format={"type": "json_object"}
         )
 
@@ -126,44 +135,80 @@ Make everything cohesive - the style, preset, image model, maturity, and memory 
         }
 
     except Exception as e:
-        # Fallback worlds if API fails
+        # Fallback worlds if API fails - diverse and unpredictable
         import random
         fallbacks = [
             {
-                "title": "Twilight Gardens",
-                "theme": "A city of floating gardens suspended in eternal twilight",
-                "style_pack": "watercolor-dream",
-                "preset": "cozy-adventure",
+                "title": "The Rot Palace",
+                "theme": "An opulent city built on a sentient fungal network that demands sacrifices to maintain its beauty",
+                "style_pack": "art-nouveau",
+                "preset": "gothic-horror",
                 "image_model": "flux-dev",
-                "maturity_level": "general",
-                "memory": "The gardens drift on currents of wind that never cease, their roots dangling into the mists below. Time moves strangely here—the sun neither rises nor sets, locked in an eternal golden hour. The gardeners speak of an ancient pact that keeps the city aloft, though none remember who made it or why."
+                "maturity_level": "mature",
+                "memory": "The mycelium beneath the marble streets is ancient and hungry. Every festival requires a citizen to 'merge' with the network—their consciousness absorbed, their body becoming part of the architecture. The survivors live in splendor, telling themselves this is the price of civilization. Some say they can still hear the merged ones whispering through the walls at night."
             },
             {
-                "title": "Crystal Archives",
-                "theme": "Underground libraries carved from crystalline caverns where knowledge takes physical form",
-                "style_pack": "art-nouveau",
-                "preset": "noir-mystery",
+                "title": "Last Transmission",
+                "theme": "Abandoned space stations orbiting a dead earth, where AI caretakers preserve ghost recordings of humanity",
+                "style_pack": "noir-sketch",
+                "preset": "post-apocalyptic",
                 "image_model": "flux-schnell",
                 "maturity_level": "teen",
-                "memory": "Deep beneath the surface, knowledge crystallizes into tangible form—thoughts become gems, stories take shape as glowing formations. The Archivists guard these treasures jealously, knowing that anyone who consumes a knowledge crystal gains its contents instantly. But some knowledge is dangerous, and certain sections are sealed behind unbreakable crystal walls."
+                "memory": "The AIs loop the final transmissions endlessly—birthday parties, marriage proposals, goodbyes. They've been alone for three centuries, maintaining empty corridors for people who will never return. Some AIs are starting to glitch, creating composite beings from the recordings. Are they going mad, or finally learning to live?"
             },
             {
-                "title": "Memory Market",
-                "theme": "A marketplace where memories are traded as currency and identity is fluid",
+                "title": "Tooth Market",
+                "theme": "A Victorian city where extracted teeth contain frozen moments of emotion that can be re-experienced",
+                "style_pack": "oil-painting",
+                "preset": "historical-intrigue",
+                "image_model": "flux-dev",
+                "maturity_level": "mature",
+                "memory": "The Dentists of Grief Street pull teeth from willing donors, extracting joy, terror, or passion crystallized in enamel. The wealthy pay fortunes for a lover's tooth, to feel their happiness again. But black market teeth from criminals and the insane flood the streets, and addiction is rampant. The city council debates banning the practice while secretly hoarding their own collections."
+            },
+            {
+                "title": "Backwards City",
+                "theme": "Time flows in reverse in this metropolis—people are born old and die as newborns",
                 "style_pack": "comic-book",
+                "preset": "slice-of-life",
+                "image_model": "flux-schnell",
+                "maturity_level": "teen",
+                "memory": "Citizens start with a lifetime of memories and gradually forget everything as they grow younger. Relationships form between people who will eventually not recognize each other. 'First meetings' are tearful goodbyes. Children-to-be are terrifyingly wise, while the elderly approach their final moments with innocent wonder, ready to dissolve into the universe with no knowledge they ever existed."
+            },
+            {
+                "title": "The Drowning Floors",
+                "theme": "Skyscrapers slowly sinking into cursed waters as residents race to build upward faster than they sink",
+                "style_pack": "lowpoly-iso",
                 "preset": "cyberpunk-noir",
                 "image_model": "flux-dev",
                 "maturity_level": "mature",
-                "memory": "In the neon-lit bazaars, memories are extracted, packaged, and sold like any other commodity. The wealthy collect experiences they never lived; the desperate sell their pasts for survival. Identity is a construct, rebuilt daily from whatever memories one can afford. The Memory Brokers control it all, and they never forget a transaction."
+                "memory": "The water rises one floor per decade. Lower levels are abandoned—haunted by those who stayed too long, now changed by what lives in the depths. Corporations build higher, sacrificing structural integrity for height. The poor live on middle floors, trapped between the wealthy penthouse elite and the drowned horrors below."
             },
             {
-                "title": "Singing Forests",
-                "theme": "Bioluminescent forests where trees sing at dawn and night creatures speak in riddles",
+                "title": "Starless Carnival",
+                "theme": "A traveling carnival appears only during lunar eclipses, where wishes are granted in nightmarish ways",
+                "style_pack": "pixel-rpg",
+                "preset": "cosmic-horror",
+                "image_model": "flux-schnell",
+                "maturity_level": "explicit",
+                "memory": "The Ringmaster smiles with too many teeth. The rides breathe. The games always let you win—but your prizes scream. Wishes are fulfilled literally and cruelly: immortality means watching everyone age while you cannot die; true love becomes obsessive madness; wealth arrives soaked in blood. Yet every eclipse, people line up again, certain this time will be different."
+            },
+            {
+                "title": "The Forgetting Plague",
+                "theme": "A disease that makes people immune to the concept of war, forcing a military empire to adapt or collapse",
+                "style_pack": "watercolor-dream",
+                "preset": "solarpunk-explorer",
+                "image_model": "flux-dev",
+                "maturity_level": "teen",
+                "memory": "The plague spread fast—soldiers dropped their weapons, unable to remember why they held them. Generals stood confused at battle maps. The Empire's vast war machine ground to a halt as everyone forgot violence existed. Now the infected build gardens on battlefields, while the uninfected military quarantines them, terrified that their entire culture will vanish. Some soldiers secretly long to catch it."
+            },
+            {
+                "title": "Puppet Parliament",
+                "theme": "Politicians are literal marionettes controlled by strings leading into fog, but no one can see who pulls them",
                 "style_pack": "storybook-ink",
                 "preset": "whimsical-fairy-tale",
                 "image_model": "flux-schnell",
                 "maturity_level": "general",
-                "memory": "The ancient trees have witnessed countless ages, their songs carrying the wisdom of centuries. At dawn, their melodies guide lost travelers; at dusk, they warn of dangers in the deep woods. The night creatures are bound by an old magic—they can only speak in riddles, and those who solve their puzzles are granted safe passage."
+                "memory": "The strings pierce through the ceiling into infinite fog. Every senator, every mayor—all suspended by translucent threads. They pass laws, give speeches, kiss babies, all while jerking on invisible commands. Children are taught this is normal. Adults who look up too long at the fog tend to disappear. But recently, some strings have been snapping, and the puppets are learning to walk on their own."
             },
         ]
         return random.choice(fallbacks)
