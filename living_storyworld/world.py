@@ -41,14 +41,6 @@ def init_world(
     write_json(dirs["base"] / "config.json", asdict(cfg))
     write_json(dirs["base"] / "world.json", asdict(state))
     set_current_world(slug)
-    # Seed with a starter location and character for momentum
-    if not state.locations:
-        loc = Location(id="flooded-stacks", name="The Flooded Stacks", description="A drowned archive of leaning shelves and floating books.", tags=["library", "flooded"]) 
-        state.locations[loc.id] = loc.__dict__
-    if not state.characters:
-        ch = Character(id="the-archivist", name="The Archivist", epithet="Warden of Lost Pages", traits=["resolute", "curious"], description="A patient seeker with a brass monocle and a waterlogged coat.")
-        state.characters[ch.id] = ch.__dict__
-    write_json(dirs["base"] / "world.json", asdict(state))
     # Minimal web index placeholder
     (dirs["web"] / "index.html").write_text("""
 <!doctype html>

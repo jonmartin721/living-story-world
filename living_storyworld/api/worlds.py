@@ -222,8 +222,8 @@ async def delete_world(slug: str):
 
     # If this was the current world, unset it
     if get_current_world() == slug:
-        from ..storage import CURRENT_WORLD_FILE
-        if CURRENT_WORLD_FILE.exists():
-            CURRENT_WORLD_FILE.unlink()
+        from ..storage import CURRENT_FILE
+        if CURRENT_FILE.exists():
+            CURRENT_FILE.unlink()
 
     return {"message": f"World {slug} deleted"}
