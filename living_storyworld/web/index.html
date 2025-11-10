@@ -150,6 +150,13 @@
                                         title="Regenerate image only">
                                         🎨
                                     </button>
+                                    <button
+                                        @click="deleteChapter(chapter.number)"
+                                        :disabled="generating"
+                                        class="px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                        title="Delete chapter">
+                                        🗑️
+                                    </button>
                                 </div>
                             </div>
                         </div>

@@ -494,6 +494,34 @@ function app() {
             }
         },
 
+        async deleteChapter(chapterNum) {
+            if (!confirm('Delete this chapter permanently? This cannot be undone.')) return;
+
+            try {
+                const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters/${chapterNum}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                // Remove chapter from local state
+                const chapterIndex = this.currentWorld.chapters.findIndex(ch => ch.number === chapterNum);
+                if (chapterIndex !== -1) {
+                    this.currentWorld.chapters.splice(chapterIndex, 1);
+                }
+
+                // Close modal if open
+                this.showChapterModal = false;
+                this.chapterContent = '';
+
+            } catch (error) {
+                console.error('Failed to delete chapter:', error);
+                alert('Failed to delete chapter. Check console for details.');
+            }
+        },
+
         async regenerateImage(chapterNum) {
             if (!confirm('Regenerate the scene image for this chapter?')) return;
 

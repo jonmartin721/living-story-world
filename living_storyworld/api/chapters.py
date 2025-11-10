@@ -516,3 +516,57 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             "job_id": job_id  # For support reference
         })
         print(f"ERROR in chapter reroll: {error_msg}")
+
+
+@router.delete("/{chapter_num}")
+async def delete_chapter(slug: str, chapter_num: int):
+    """Delete a specific chapter"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not (WORLDS_DIR / slug).exists():
+        raise HTTPException(status_code=404, detail="World not found")
+
+    loop = asyncio.get_event_loop()
+    cfg, state, dirs = await loop.run_in_executor(executor, load_world, slug)
+
+    # Find the chapter in state
+    chapter_index = None
+    chapter_data = None
+    for i, ch in enumerate(state.chapters):
+        if ch.get("number") == chapter_num:
+            chapter_index = i
+            chapter_data = ch
+            break
+
+    if chapter_index is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+
+    # Delete chapter file
+    chapter_filename = chapter_data.get("filename")
+    if chapter_filename:
+        chapter_path = dirs["base"] / "chapters" / chapter_filename
+        if chapter_path.exists():
+            chapter_path.unlink()
+
+    # Delete scene image if it exists
+    scene_path = chapter_data.get("scene")
+    if scene_path:
+        # Extract filename from path like "/worlds/slug/media/scenes/filename.webp"
+        import re
+        match = re.search(r'/scenes/(.+)$', scene_path)
+        if match:
+            scene_filename = match.group(1)
+            scene_file = dirs["base"] / "media" / "scenes" / scene_filename
+            if scene_file.exists():
+                scene_file.unlink()
+
+    # Remove chapter from state
+    state.chapters.pop(chapter_index)
+
+    # Save world state
+    await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
+
+    return {"success": True, "message": f"Chapter {chapter_num} deleted"}
