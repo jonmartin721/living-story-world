@@ -51,6 +51,8 @@ function app() {
             theme: '',
             style_pack: 'storybook-ink',
             image_model: 'flux-dev',
+            preset: 'cozy-adventure',
+            maturity_level: 'general',
             memory: '',
             authors_note: '',
             world_instructions: ''
@@ -61,13 +63,14 @@ function app() {
             theme: '',
             style_pack: '',
             image_model: '',
+            preset: '',
+            maturity_level: '',
             memory: '',
             authors_note: '',
             world_instructions: ''
         },
 
         generateOptions: {
-            preset: 'cozy-adventure',
             focus: '',
             no_images: false
         },
@@ -230,6 +233,8 @@ function app() {
                 theme: this.currentWorld.config.theme,
                 style_pack: this.currentWorld.config.style_pack,
                 image_model: this.currentWorld.config.image_model,
+                preset: this.currentWorld.config.preset || 'cozy-adventure',
+                maturity_level: this.currentWorld.config.maturity_level || 'general',
                 memory: this.currentWorld.config.memory || '',
                 authors_note: this.currentWorld.config.authors_note || '',
                 world_instructions: this.currentWorld.config.world_instructions || ''

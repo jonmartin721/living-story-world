@@ -97,15 +97,65 @@
                 </div>
 
                 <!-- Generation Progress -->
-                <div x-show="generating" class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6" x-cloak>
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-medium text-blue-900" x-text="progress.message"></span>
-                        <span class="text-sm text-blue-700" x-text="progress.percent + '%'"></span>
-                    </div>
-                    <div class="w-full bg-blue-200 rounded-full h-2.5">
-                        <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" :style="`width: ${progress.percent}%`"></div>
+                <div x-show="generating" class="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 mb-6 shadow-lg" x-cloak>
+                    <!-- Animated background gradient -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-pink-400/10 animate-pulse"></div>
+
+                    <div class="relative">
+                        <!-- Header with icon -->
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span class="text-sm font-semibold text-blue-900" x-text="progress.message"></span>
+                            </div>
+                            <span class="text-lg font-bold text-blue-700 tabular-nums" x-text="progress.percent + '%'"></span>
+                        </div>
+
+                        <!-- Modern progress bar with gradient -->
+                        <div class="relative w-full h-3 bg-gray-200/50 rounded-full overflow-hidden shadow-inner">
+                            <!-- Shimmer effect -->
+                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"
+                                 style="transform: translateX(-100%); animation: shimmer 2s infinite;"></div>
+
+                            <!-- Progress fill with gradient -->
+                            <div class="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-500 ease-out shadow-lg relative overflow-hidden"
+                                 :style="`width: ${progress.percent}%`">
+                                <!-- Inner shine effect -->
+                                <div class="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent"></div>
+                                <!-- Pulse animation on the leading edge -->
+                                <div class="absolute right-0 top-0 bottom-0 w-2 bg-white/50 blur-sm"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stage indicator dots -->
+                        <div class="flex items-center justify-between mt-3 px-1">
+                            <div class="flex items-center gap-1">
+                                <div class="w-2 h-2 rounded-full transition-all duration-300"
+                                     :class="progress.percent >= 10 ? 'bg-blue-500 shadow-lg shadow-blue-500/50' : 'bg-gray-300'"></div>
+                                <div class="w-2 h-2 rounded-full transition-all duration-300"
+                                     :class="progress.percent >= 50 ? 'bg-purple-500 shadow-lg shadow-purple-500/50' : 'bg-gray-300'"></div>
+                                <div class="w-2 h-2 rounded-full transition-all duration-300"
+                                     :class="progress.percent >= 90 ? 'bg-pink-500 shadow-lg shadow-pink-500/50' : 'bg-gray-300'"></div>
+                                <div class="w-2 h-2 rounded-full transition-all duration-300"
+                                     :class="progress.percent >= 100 ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-gray-300'"></div>
+                            </div>
+                            <span class="text-xs text-gray-600 font-medium" x-text="progress.stage || 'Processing...'"></span>
+                        </div>
                     </div>
                 </div>
+
+                <style>
+                    @keyframes shimmer {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(200%); }
+                    }
+                    .animate-shimmer {
+                        animation: shimmer 2s infinite;
+                    }
+                </style>
 
                 <!-- Chapters Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -232,6 +282,38 @@
                             </select>
                         </div>
                         <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Narrative Preset</label>
+                            <select
+                                x-model="newWorld.preset"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="cozy-adventure">Cozy Adventure</option>
+                                <option value="noir-mystery">Noir Mystery</option>
+                                <option value="epic-fantasy">Epic Fantasy</option>
+                                <option value="solarpunk-explorer">Solarpunk Explorer</option>
+                                <option value="gothic-horror">Gothic Horror</option>
+                                <option value="space-opera">Space Opera</option>
+                                <option value="slice-of-life">Slice of Life</option>
+                                <option value="cosmic-horror">Cosmic Horror</option>
+                                <option value="cyberpunk-noir">Cyberpunk Noir</option>
+                                <option value="whimsical-fairy-tale">Whimsical Fairy Tale</option>
+                                <option value="post-apocalyptic">Post-Apocalyptic</option>
+                                <option value="historical-intrigue">Historical Intrigue</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Defines the overall narrative tone and pacing</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Maturity Level</label>
+                            <select
+                                x-model="newWorld.maturity_level"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="general">General - All ages appropriate</option>
+                                <option value="teen">Teen - Mild violence and tension</option>
+                                <option value="mature">Mature - Moderate violence and adult themes</option>
+                                <option value="explicit">Explicit - Graphic content without censorship</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Controls content appropriateness and filtering</p>
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Memory/Lore (Optional)</label>
                             <textarea
                                 x-model="newWorld.memory"
@@ -285,16 +367,12 @@
                 <h3 class="text-lg font-bold text-gray-900 mb-4">Generate Chapter</h3>
                 <form @submit.prevent="generateChapter()">
                     <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Narrative Preset</label>
-                            <select
-                                x-model="generateOptions.preset"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="cozy-adventure">Cozy Adventure</option>
-                                <option value="noir-mystery">Noir Mystery</option>
-                                <option value="epic-fantasy">Epic Fantasy</option>
-                                <option value="solarpunk-explorer">Solarpunk Explorer</option>
-                            </select>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                            <p class="text-xs text-blue-900">
+                                <strong>Note:</strong> The narrative style is set at the world level.
+                                This world uses the <span class="font-semibold" x-text="currentWorld?.config?.preset || 'cozy-adventure'"></span> preset.
+                                Edit the world to change its narrative style.
+                            </p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Focus (Optional)</label>
@@ -303,6 +381,7 @@
                                 x-model="generateOptions.focus"
                                 placeholder="e.g., 'The Archivist explores the sealed wing'"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Optional direction or emphasis for this chapter</p>
                         </div>
                         <div class="flex items-center">
                             <input
@@ -310,7 +389,7 @@
                                 x-model="generateOptions.no_images"
                                 id="no-images"
                                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <label for="no-images" class="ml-2 text-sm text-gray-700">Skip image generation</label>
+                            <label for="no-images" class="ml-2 text-sm text-gray-700">Skip image generation (text only)</label>
                         </div>
                     </div>
                     <div class="mt-6 flex justify-end gap-3">
@@ -388,6 +467,38 @@
                                 <option value="flux-dev">Flux Dev (Quality, ~$0.025)</option>
                                 <option value="flux-schnell">Flux Schnell (Fast, ~$0.003)</option>
                             </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Narrative Preset</label>
+                            <select
+                                x-model="editWorld.preset"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="cozy-adventure">Cozy Adventure</option>
+                                <option value="noir-mystery">Noir Mystery</option>
+                                <option value="epic-fantasy">Epic Fantasy</option>
+                                <option value="solarpunk-explorer">Solarpunk Explorer</option>
+                                <option value="gothic-horror">Gothic Horror</option>
+                                <option value="space-opera">Space Opera</option>
+                                <option value="slice-of-life">Slice of Life</option>
+                                <option value="cosmic-horror">Cosmic Horror</option>
+                                <option value="cyberpunk-noir">Cyberpunk Noir</option>
+                                <option value="whimsical-fairy-tale">Whimsical Fairy Tale</option>
+                                <option value="post-apocalyptic">Post-Apocalyptic</option>
+                                <option value="historical-intrigue">Historical Intrigue</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Defines the overall narrative tone and pacing</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Maturity Level</label>
+                            <select
+                                x-model="editWorld.maturity_level"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="general">General - All ages appropriate</option>
+                                <option value="teen">Teen - Mild violence and tension</option>
+                                <option value="mature">Mature - Moderate violence and adult themes</option>
+                                <option value="explicit">Explicit - Graphic content without censorship</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Controls content appropriateness and filtering</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Memory/Lore (Optional)</label>
@@ -641,6 +752,14 @@
                                         <option value="noir-mystery">Noir Mystery</option>
                                         <option value="epic-fantasy">Epic Fantasy</option>
                                         <option value="solarpunk-explorer">Solarpunk Explorer</option>
+                                        <option value="gothic-horror">Gothic Horror</option>
+                                        <option value="space-opera">Space Opera</option>
+                                        <option value="slice-of-life">Slice of Life</option>
+                                        <option value="cosmic-horror">Cosmic Horror</option>
+                                        <option value="cyberpunk-noir">Cyberpunk Noir</option>
+                                        <option value="whimsical-fairy-tale">Whimsical Fairy Tale</option>
+                                        <option value="post-apocalyptic">Post-Apocalyptic</option>
+                                        <option value="historical-intrigue">Historical Intrigue</option>
                                     </select>
                                 </div>
 

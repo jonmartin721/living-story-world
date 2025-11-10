@@ -207,12 +207,17 @@ class TogetherAIProvider(TextProvider):
 
 
 class HuggingFaceProvider(TextProvider):
-    """Hugging Face Inference API provider."""
+    """Hugging Face Inference API provider.
+
+    Works with or without API key:
+    - With API key: Higher rate limits
+    - Without API key: Free tier with lower rate limits
+    """
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("HUGGINGFACE_API_KEY")
-        if not self.api_key:
-            raise RuntimeError("Hugging Face API key not found. Set HUGGINGFACE_API_KEY environment variable or pass api_key parameter.")
+        # API key is optional - free tier is available without one
+        self.using_free_tier = not self.api_key
 
     def generate(
         self,
@@ -228,7 +233,11 @@ class HuggingFaceProvider(TextProvider):
         # Convert messages to prompt (Hugging Face expects text prompt)
         prompt = self._messages_to_prompt(messages)
 
-        headers = {"Authorization": f"Bearer {self.api_key}"}
+        # Build headers - include auth only if we have an API key
+        headers = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
         payload = {
             "inputs": prompt,
             "parameters": {
@@ -238,23 +247,54 @@ class HuggingFaceProvider(TextProvider):
             }
         }
 
-        response = requests.post(api_url, headers=headers, json=payload)
-        response.raise_for_status()
+        try:
+            response = requests.post(api_url, headers=headers, json=payload, timeout=120)
 
-        result = response.json()
-        if isinstance(result, list) and len(result) > 0:
-            content = result[0].get("generated_text", "")
-        else:
-            content = result.get("generated_text", "")
+            # Handle rate limiting
+            if response.status_code == 429:
+                if self.using_free_tier:
+                    raise RuntimeError(
+                        "Rate limit reached on HuggingFace free tier. "
+                        "Please wait a few minutes or add a HuggingFace API key in Settings for higher limits. "
+                        "Get a free key at: https://huggingface.co/settings/tokens"
+                    )
+                else:
+                    raise RuntimeError(
+                        "Rate limit reached on HuggingFace API. Please wait a moment and try again."
+                    )
 
-        cost = self.estimate_cost(messages, model_name)
+            # Handle model loading
+            if response.status_code == 503:
+                error_data = response.json() if response.content else {}
+                if "loading" in str(error_data).lower():
+                    raise RuntimeError(
+                        f"Model {model_name} is loading. Please wait 20-30 seconds and try again. "
+                        "HuggingFace models need to warm up on first use."
+                    )
+                raise RuntimeError(f"HuggingFace service temporarily unavailable: {error_data}")
 
-        return TextGenerationResult(
-            content=content,
-            provider="huggingface",
-            model=model_name,
-            estimated_cost=cost,
-        )
+            response.raise_for_status()
+
+            result = response.json()
+            if isinstance(result, list) and len(result) > 0:
+                content = result[0].get("generated_text", "")
+            else:
+                content = result.get("generated_text", "")
+
+            cost = self.estimate_cost(messages, model_name)
+
+            return TextGenerationResult(
+                content=content,
+                provider="huggingface" + (" (free)" if self.using_free_tier else ""),
+                model=model_name,
+                estimated_cost=cost,
+            )
+        except requests.exceptions.Timeout:
+            raise RuntimeError(
+                "HuggingFace API request timed out. The model may be slow to respond. Try again in a moment."
+            )
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"HuggingFace API error: {str(e)}")
 
     def _messages_to_prompt(self, messages: list[dict[str, str]]) -> str:
         """Convert chat messages to a single prompt string."""
@@ -283,7 +323,7 @@ class HuggingFaceProvider(TextProvider):
 
     @property
     def requires_api_key(self) -> bool:
-        return True
+        return False  # API key is optional - works on free tier without one
 
 
 class GroqProvider(TextProvider):
@@ -350,7 +390,7 @@ class GroqProvider(TextProvider):
 
 
 class OpenRouterProvider(TextProvider):
-    """OpenRouter text generation provider - supports GLM-4 and many other models."""
+    """OpenRouter text generation provider - supports GLM-4.6 and many other models."""
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
@@ -392,13 +432,16 @@ class OpenRouterProvider(TextProvider):
         )
 
     def get_default_model(self) -> str:
-        return "zhipuai/glm-4-plus"  # GLM-4-Plus is excellent for creative writing
+        return "z-ai/glm-4.6"  # GLM-4.6 with 200K context, advanced reasoning and coding
 
     def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
         """OpenRouter pricing varies by model."""
         model_name = model or self.get_default_model()
+        # GLM-4.6: ~$0.15/1M input, ~$0.60/1M output (15% cheaper than GLM-4-Plus)
+        if "glm-4.6" in model_name.lower():
+            return (1000 * 0.15 / 1_000_000) + (1000 * 0.60 / 1_000_000)
         # GLM-4-Plus: ~$0.50/1M input, ~$2.00/1M output
-        if "glm-4" in model_name.lower():
+        elif "glm-4" in model_name.lower():
             return (1000 * 0.50 / 1_000_000) + (1000 * 2.00 / 1_000_000)
         # Other models vary
         return 0.003

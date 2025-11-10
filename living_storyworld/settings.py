@@ -25,9 +25,9 @@ CONFIG_PATH = _config_dir() / "config.json"
 
 @dataclass
 class UserSettings:
-    # API provider selections
-    text_provider: str = "groq"
-    image_provider: str = "replicate"
+    # API provider selections (default to free providers)
+    text_provider: str = "huggingface"  # Free tier with API key
+    image_provider: str = "pollinations"  # Completely free, no API key needed
 
     # API keys for various providers
     openai_api_key: Optional[str] = None
@@ -44,8 +44,8 @@ class UserSettings:
     # Default preferences
     default_style_pack: str = "storybook-ink"
     default_preset: str = "cozy-adventure"
-    default_text_model: str = "llama-3.3-70b-versatile"
-    default_image_model: str = "flux-dev"
+    default_text_model: str = "mistralai/Mistral-7B-Instruct-v0.3"  # Free HuggingFace model
+    default_image_model: str = "flux"  # Pollinations default
     default_maturity_level: str = "general"
 
 
