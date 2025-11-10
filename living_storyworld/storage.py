@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from dataclasses import asdict, is_dataclass
@@ -40,8 +41,6 @@ def read_json(path: Path, default: Optional[Any] = None) -> Any:
 
     Returns default value if file doesn't exist or JSON is invalid.
     """
-    import logging
-
     if not path.exists():
         return default
 
