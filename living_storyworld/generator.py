@@ -114,7 +114,8 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
 
     user_parts.extend([
         f"Write Chapter {state.next_chapter}:\n",
-        f"Title (H1), rich prose ({min_words}-{max_words} words), light dialogue, tangible sensory detail, and a memorable closing beat.\n",
+        f"Start with a unique chapter title as H1 (do NOT include 'Chapter {state.next_chapter}' in the title - just the evocative name). ",
+        f"Then write {min_words}-{max_words} words of rich prose with light dialogue, tangible sensory detail, and a memorable closing beat.\n",
         'At top, put: <!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string, ',
         '"new_characters": [{id, name, description}], "new_locations": [{id, name, description}]} -->\n',
         "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n",
@@ -211,9 +212,13 @@ def generate_chapter(
 
 
 def _extract_title(md: str) -> Optional[str]:
+    import re
     for line in md.splitlines():
         if line.strip().startswith("# "):
-            return line.strip("# ").strip()
+            title = line.strip("# ").strip()
+            # Strip "Chapter X:" or "Chapter X -" prefix if present
+            title = re.sub(r'^Chapter\s+\d+\s*[:\-]\s*', '', title, flags=re.IGNORECASE)
+            return title
     return None
 
 

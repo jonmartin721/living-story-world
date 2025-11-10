@@ -4,44 +4,63 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Living Storyworld</title>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
     <div x-data="app()" x-init="init()" class="min-h-screen">
         <!-- Header -->
-        <header class="bg-white shadow-sm border-b">
+        <header class="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 transition-colors duration-200">
             <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Living Storyworld</h1>
-                        <p class="text-sm text-gray-500">Interactive narrative universe</p>
+                    <div class="flex-1">
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Living Storyworld</h1>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Interactive narrative universe</p>
                     </div>
 
-                    <!-- World Selector -->
-                    <div class="flex items-center gap-4">
-                        <select
-                            x-model="currentWorldSlug"
-                            @change="switchWorld()"
-                            class="block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">Select a world...</option>
-                            <template x-for="world in worlds" :key="world.slug">
-                                <option :value="world.slug" x-text="world.title"></option>
-                            </template>
-                        </select>
-
+                    <!-- Icon Buttons -->
+                    <div class="flex items-center gap-2">
+                        <!-- Console Button -->
                         <button
-                            @click="openSettings()"
-                            class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            title="Settings">
-                            ⚙️ Settings
+                            @click="showConsole = true"
+                            class="p-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 relative dark:bg-gray-700 dark:hover:bg-gray-600"
+                            title="Console Logs">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span x-show="consoleLogs.length > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" x-text="consoleLogs.length"></span>
                         </button>
 
+                        <!-- Dark Mode Toggle -->
                         <button
-                            @click="showCreateWorld = true"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            New World
+                            @click="toggleDarkMode()"
+                            class="p-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:hover:bg-gray-600"
+                            title="Toggle Dark Mode">
+                            <!-- Sun Icon (shown in dark mode) -->
+                            <svg x-show="darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <!-- Moon Icon (shown in light mode) -->
+                            <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                        </button>
+
+                        <!-- Settings Button -->
+                        <button
+                            @click="openSettings()"
+                            class="p-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:hover:bg-gray-600"
+                            title="Settings">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -50,27 +69,52 @@
 
         <!-- Main Content -->
         <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+            <!-- World Selector Card -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6 transition-colors duration-200">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select World</label>
+                        <select
+                            x-model="currentWorldSlug"
+                            @change="switchWorld()"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="">Select a world...</option>
+                            <template x-for="world in worlds" :key="world.slug">
+                                <option :value="world.slug" x-text="world.title"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="pt-6">
+                        <button
+                            @click="showCreateWorld = true"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600 whitespace-nowrap">
+                            New World
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- No World Selected -->
             <div x-show="!currentWorldSlug" class="text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No world selected</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by creating a new world or selecting an existing one.</p>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No world selected</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Select a world from above or create a new one to get started.</p>
             </div>
 
             <!-- World View -->
             <div x-show="currentWorldSlug" x-cloak>
                 <!-- World Info -->
-                <div x-show="currentWorld" class="bg-white shadow rounded-lg p-6 mb-6">
+                <div x-show="currentWorld" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6 transition-colors duration-200">
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="px-2 py-0.5 text-xs font-semibold text-blue-700 bg-blue-100 rounded">World</span>
-                                <h2 class="text-xl font-bold text-gray-900" x-text="currentWorld?.config?.title"></h2>
+                                <span class="px-2 py-0.5 text-xs font-semibold text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900 rounded">World</span>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-white" x-text="currentWorld?.config?.title"></h2>
                             </div>
-                            <p class="text-sm text-gray-600 mt-1" x-text="currentWorld?.config?.theme"></p>
-                            <div class="flex gap-4 mt-2 text-xs text-gray-500">
+                            <p class="text-sm text-gray-600 dark:text-gray-300 mt-1" x-text="currentWorld?.config?.theme"></p>
+                            <div class="flex gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
                                 <span>Style: <span x-text="currentWorld?.config?.style_pack"></span></span>
                                 <span>Model: <span x-text="currentWorld?.config?.image_model"></span></span>
                                 <span>Chapters: <span x-text="currentWorld?.chapters?.length || 0"></span></span>
@@ -99,140 +143,25 @@
                     </div>
                 </div>
 
-                <!-- Generation Progress -->
-                <div x-show="generating" class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-8 mb-6 shadow-lg" x-cloak>
-                    <!-- Circular Progress Indicator -->
-                    <div class="flex flex-col items-center justify-center space-y-6">
-                        <!-- SVG Circle -->
-                        <div class="relative">
-                            <svg class="transform -rotate-90 w-40 h-40" viewBox="0 0 160 160">
-                                <!-- Background circle -->
-                                <circle cx="80" cy="80" r="70" stroke="#e5e7eb" stroke-width="12" fill="none" />
-                                <!-- Progress circle with gradient -->
-                                <defs>
-                                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-                                        <stop offset="50%" style="stop-color:#6366f1;stop-opacity:1" />
-                                        <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
-                                    </linearGradient>
-                                </defs>
-                                <circle cx="80" cy="80" r="70"
-                                        stroke="url(#progressGradient)"
-                                        stroke-width="12"
-                                        fill="none"
-                                        stroke-linecap="round"
-                                        class="transition-all duration-500 ease-out"
-                                        :style="`stroke-dasharray: ${439.8 * progress.percent / 100} 439.8`" />
-                            </svg>
-                            <!-- Percentage in center -->
-                            <div class="absolute inset-0 flex items-center justify-center">
-                                <div class="text-center">
-                                    <div class="text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent" x-text="progress.percent + '%'"></div>
-                                    <div class="text-xs text-gray-500 mt-1 font-medium">Complete</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Status Message -->
-                        <div class="text-center">
-                            <div class="flex items-center justify-center space-x-2 mb-3">
-                                <div class="flex space-x-1">
-                                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
-                                    <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
-                                    <div class="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
-                                </div>
-                            </div>
-                            <p class="text-base font-medium text-gray-700" x-text="progress.message"></p>
-                        </div>
-
-                        <!-- Stage Indicators -->
-                        <div class="flex items-center justify-center space-x-4 pt-4 border-t border-blue-100 w-full">
-                            <!-- Loading Stage -->
-                            <div class="flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300"
-                                 :class="{
-                                     'bg-blue-100 shadow-sm': progress.stage === 'init',
-                                     'bg-green-50': progress.percent > 8 && progress.stage !== 'init',
-                                     'bg-gray-50': progress.percent <= 8 && progress.stage !== 'init'
-                                 }">
-                                <div class="w-5 h-5 flex items-center justify-center">
-                                    <svg x-show="progress.percent > 8" class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                    <div x-show="progress.stage === 'init'" class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <div x-show="progress.percent <= 8 && progress.stage !== 'init'" class="w-3 h-3 bg-gray-300 rounded-full"></div>
-                                </div>
-                                <span class="text-xs font-medium"
-                                      :class="{
-                                          'text-blue-700': progress.stage === 'init',
-                                          'text-green-600': progress.percent > 8 && progress.stage !== 'init',
-                                          'text-gray-400': progress.percent <= 8 && progress.stage !== 'init'
-                                      }">Loading</span>
-                            </div>
-
-                            <!-- Writing Stage -->
-                            <div class="flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300"
-                                 :class="{
-                                     'bg-blue-100 shadow-sm': progress.stage === 'text',
-                                     'bg-green-50': progress.percent >= 90 && progress.stage !== 'text',
-                                     'bg-gray-50': progress.percent < 10 && progress.stage !== 'text'
-                                 }">
-                                <div class="w-5 h-5 flex items-center justify-center">
-                                    <svg x-show="progress.percent >= 90" class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                    <div x-show="progress.stage === 'text'" class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <div x-show="progress.percent < 10 && progress.stage !== 'text'" class="w-3 h-3 bg-gray-300 rounded-full"></div>
-                                </div>
-                                <span class="text-xs font-medium"
-                                      :class="{
-                                          'text-blue-700': progress.stage === 'text',
-                                          'text-green-600': progress.percent >= 90 && progress.stage !== 'text',
-                                          'text-gray-400': progress.percent < 10 && progress.stage !== 'text'
-                                      }">Writing</span>
-                            </div>
-
-                            <!-- Image Stage -->
-                            <div class="flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300"
-                                 :class="{
-                                     'bg-blue-100 shadow-sm': progress.stage === 'image',
-                                     'bg-green-50': progress.percent >= 95 && progress.stage !== 'image',
-                                     'bg-gray-50': progress.percent < 90 && progress.stage !== 'image'
-                                 }">
-                                <div class="w-5 h-5 flex items-center justify-center">
-                                    <svg x-show="progress.percent >= 95" class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                    <div x-show="progress.stage === 'image'" class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <div x-show="progress.percent < 90 && progress.stage !== 'image'" class="w-3 h-3 bg-gray-300 rounded-full"></div>
-                                </div>
-                                <span class="text-xs font-medium"
-                                      :class="{
-                                          'text-blue-700': progress.stage === 'image',
-                                          'text-green-600': progress.percent >= 95 && progress.stage !== 'image',
-                                          'text-gray-400': progress.percent < 90 && progress.stage !== 'image'
-                                      }">Image</span>
-                            </div>
-
-                            <!-- Saving Stage -->
-                            <div class="flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300"
-                                 :class="{
-                                     'bg-blue-100 shadow-sm': progress.stage === 'saving',
-                                     'bg-green-50': progress.percent === 100,
-                                     'bg-gray-50': progress.percent < 95 && progress.stage !== 'saving'
-                                 }">
-                                <div class="w-5 h-5 flex items-center justify-center">
-                                    <svg x-show="progress.percent === 100" class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                    <div x-show="progress.stage === 'saving'" class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <div x-show="progress.percent < 95 && progress.stage !== 'saving'" class="w-3 h-3 bg-gray-300 rounded-full"></div>
-                                </div>
-                                <span class="text-xs font-medium"
-                                      :class="{
-                                          'text-blue-700': progress.stage === 'saving',
-                                          'text-green-600': progress.percent === 100,
-                                          'text-gray-400': progress.percent < 95 && progress.stage !== 'saving'
-                                      }">Saving</span>
+                <!-- Generation Progress - Minimal Slide-Through -->
+                <div x-show="generating"
+                     class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg mb-6 shadow-sm overflow-hidden transition-colors duration-200"
+                     x-cloak>
+                    <div class="flex items-center justify-center py-4 px-6 min-h-[60px]">
+                        <div class="flex items-center space-x-3">
+                            <!-- Spinner -->
+                            <div class="w-5 h-5 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                            <!-- Message with slide animation -->
+                            <div class="relative overflow-hidden h-6 w-64">
+                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300 absolute inset-0 flex items-center transition-all duration-500 ease-out"
+                                   :key="progress.message"
+                                   x-transition:enter="transition ease-out duration-500"
+                                   x-transition:enter-start="opacity-0 -translate-y-4"
+                                   x-transition:enter-end="opacity-100 translate-y-0"
+                                   x-transition:leave="transition ease-in duration-300"
+                                   x-transition:leave-start="opacity-100 translate-y-0"
+                                   x-transition:leave-end="opacity-0 translate-y-4"
+                                   x-text="progress.message"></p>
                             </div>
                         </div>
                     </div>
@@ -241,9 +170,9 @@
                 <!-- Chapters Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <template x-for="chapter in currentWorld?.chapters" :key="chapter.number">
-                        <div class="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                        <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200">
                             <!-- Chapter Image -->
-                            <div x-show="chapter.scene" class="aspect-video bg-gray-200 relative">
+                            <div x-show="chapter.scene" class="aspect-video bg-gray-200 dark:bg-gray-700 relative">
                                 <img
                                     :src="chapter.scene"
                                     :alt="chapter.title"
@@ -254,10 +183,10 @@
                             <!-- Chapter Info -->
                             <div class="p-4">
                                 <div class="flex items-start justify-between mb-2">
-                                    <span class="text-xs font-semibold text-gray-500" x-text="'Chapter ' + chapter.number"></span>
+                                    <span class="text-xs font-semibold text-gray-500 dark:text-gray-400" x-text="'Chapter ' + chapter.number"></span>
                                 </div>
-                                <h3 class="text-lg font-semibold text-gray-900 mb-2" x-text="stripChapterPrefix(chapter.title)"></h3>
-                                <p class="text-sm text-gray-600 line-clamp-3 mb-4" x-text="chapter.summary"></p>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2" x-text="stripChapterPrefix(chapter.title)"></h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-4" x-text="chapter.summary"></p>
 
                                 <div class="flex gap-2">
                                     <button
@@ -294,15 +223,15 @@
                 </div>
 
                 <!-- Empty State -->
-                <div x-show="currentWorld && currentWorld.chapters?.length === 0" class="text-center py-12 bg-white rounded-lg shadow">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div x-show="currentWorld && currentWorld.chapters?.length === 0" class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-200">
+                    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">No chapters yet</h3>
-                    <p class="mt-1 text-sm text-gray-500">Get started by generating your first chapter.</p>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No chapters yet</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by generating your first chapter.</p>
                     <button
                         @click="showGenerateChapter = true"
-                        class="mt-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                        class="mt-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600">
                         Generate First Chapter
                     </button>
                 </div>
@@ -981,6 +910,56 @@
                             Confirm
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Console Viewer Modal -->
+        <div x-show="showConsole"
+             x-cloak
+             class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50 p-4"
+             @click.self="showConsole = false">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col transition-colors duration-200">
+                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Console Logs</h3>
+                    <div class="flex items-center gap-3">
+                        <button
+                            @click="copyConsoleLogs()"
+                            class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            Copy All
+                        </button>
+                        <button
+                            @click="clearConsoleLogs()"
+                            class="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Clear
+                        </button>
+                        <button
+                            @click="showConsole = false"
+                            class="text-gray-400 hover:text-gray-600">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-6 font-mono text-sm bg-gray-900 text-gray-100">
+                    <div x-show="consoleLogs.length === 0" class="text-gray-500 text-center py-8">
+                        No console logs yet. Logs will appear here during chapter generation.
+                    </div>
+                    <template x-for="(log, index) in consoleLogs" :key="index">
+                        <div class="mb-2 hover:bg-gray-800 px-2 py-1 rounded">
+                            <span class="text-gray-500 text-xs" x-text="log.timestamp"></span>
+                            <span class="ml-2"
+                                  :class="{
+                                      'text-red-400': log.type === 'error',
+                                      'text-yellow-400': log.type === 'warning',
+                                      'text-green-400': log.type === 'success',
+                                      'text-blue-400': log.type === 'info',
+                                      'text-gray-300': log.type === 'log'
+                                  }"
+                                  x-text="log.message"></span>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>

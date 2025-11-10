@@ -5,14 +5,17 @@ function app() {
         currentWorld: null,
         generating: false,
         generatingTheme: false,
-        progress: { percent: 0, message: '' },
+        progress: { percent: 0, message: '', stage: '' },
         showCreateWorld: false,
         showEditWorld: false,
         showGenerateChapter: false,
         showSettings: false,
+        showConsole: false,
         settingsTab: 'api',
         viewingChapter: null,
         chapterContent: '',
+        consoleLogs: [],
+        darkMode: false,
 
         settings: {
             text_provider: 'openai',
@@ -134,6 +137,36 @@ function app() {
             return title.replace(/^Chapter\s+\d+:\s*/, '');
         },
 
+        // Console logging methods
+        addConsoleLog(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            this.consoleLogs.push({ timestamp, message, type });
+            // Auto-scroll console if open
+            this.$nextTick(() => {
+                if (this.showConsole) {
+                    const consoleDiv = document.querySelector('.overflow-y-auto.font-mono');
+                    if (consoleDiv) {
+                        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+                    }
+                }
+            });
+        },
+
+        clearConsoleLogs() {
+            this.consoleLogs = [];
+        },
+
+        copyConsoleLogs() {
+            const text = this.consoleLogs
+                .map(log => `[${log.timestamp}] ${log.type.toUpperCase()}: ${log.message}`)
+                .join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                this.showToast('Console logs copied to clipboard!', 'success');
+            }).catch(() => {
+                this.showToast('Failed to copy logs to clipboard');
+            });
+        },
+
         async randomWorld() {
             this.generatingTheme = true;
 
@@ -211,6 +244,18 @@ function app() {
         },
 
         async init() {
+            // Load dark mode preference - default to system preference
+            const savedMode = localStorage.getItem('darkMode');
+            if (savedMode === null) {
+                // No saved preference, use system preference
+                this.darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            } else {
+                this.darkMode = savedMode === 'true';
+            }
+
+            // Apply dark mode to document
+            this.applyDarkMode();
+
             await this.loadSettings();
             await this.loadWorlds();
             // Auto-select current world if any
@@ -218,6 +263,20 @@ function app() {
             if (currentWorld) {
                 this.currentWorldSlug = currentWorld.slug;
                 await this.loadWorld();
+            }
+        },
+
+        toggleDarkMode() {
+            this.darkMode = !this.darkMode;
+            localStorage.setItem('darkMode', this.darkMode);
+            this.applyDarkMode();
+        },
+
+        applyDarkMode() {
+            if (this.darkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
             }
         },
 
@@ -439,7 +498,8 @@ function app() {
 
             this.showGenerateChapter = false;
             this.generating = true;
-            this.progress = { percent: 0, message: 'Starting...' };
+            this.progress = { percent: 0, message: 'Starting...', stage: 'init' };
+            this.addConsoleLog('Starting chapter generation...', 'info');
 
             try {
                 // Start generation
@@ -450,6 +510,7 @@ function app() {
                 });
 
                 const { job_id } = await response.json();
+                this.addConsoleLog(`Job created: ${job_id}`, 'info');
 
                 // Listen to SSE stream
                 const evtSource = new EventSource(`/api/worlds/${this.currentWorldSlug}/chapters/stream/${job_id}`);
@@ -457,13 +518,15 @@ function app() {
                 evtSource.addEventListener('progress', (e) => {
                     const data = JSON.parse(e.data);
                     this.progress = data;
+                    this.addConsoleLog(data.message, 'log');
                 });
 
                 evtSource.addEventListener('complete', (e) => {
                     const chapter = JSON.parse(e.data);
                     this.currentWorld.chapters.push(chapter);
                     this.generating = false;
-                    this.progress = { percent: 100, message: 'Complete!' };
+                    this.progress = { percent: 100, message: 'Complete!', stage: 'done' };
+                    this.addConsoleLog(`Chapter ${chapter.number} generated successfully!`, 'success');
                     evtSource.close();
 
                     // Reset form
@@ -473,6 +536,7 @@ function app() {
 
                 evtSource.addEventListener('error', (e) => {
                     console.error('Generation error:', e);
+                    this.addConsoleLog('Chapter generation failed: ' + (e.message || 'Unknown error'), 'error');
                     this.showToast('Chapter generation failed. Check console for details.');
                     this.generating = false;
                     evtSource.close();
@@ -480,6 +544,7 @@ function app() {
 
             } catch (error) {
                 console.error('Failed to generate chapter:', error);
+                this.addConsoleLog('Failed to generate chapter: ' + error.message, 'error');
                 this.showToast('Failed to generate chapter. Check console for details.');
                 this.generating = false;
             }
@@ -504,7 +569,8 @@ function app() {
             if (!await this.confirm('Regenerate this chapter completely? Both text and image will be replaced.')) return;
 
             this.generating = true;
-            this.progress = { percent: 0, message: 'Starting full regeneration...' };
+            this.progress = { percent: 0, message: 'Starting full regeneration...', stage: 'init' };
+            this.addConsoleLog(`Starting reroll of chapter ${chapterNum}...`, 'info');
 
             try {
                 // Start reroll with images enabled
@@ -518,6 +584,7 @@ function app() {
                 });
 
                 const { job_id } = await response.json();
+                this.addConsoleLog(`Reroll job created: ${job_id}`, 'info');
 
                 // Listen to SSE stream
                 const evtSource = new EventSource(`/api/worlds/${this.currentWorldSlug}/chapters/stream/${job_id}`);
@@ -525,6 +592,7 @@ function app() {
                 evtSource.addEventListener('progress', (e) => {
                     const data = JSON.parse(e.data);
                     this.progress = data;
+                    this.addConsoleLog(data.message, 'log');
                 });
 
                 evtSource.addEventListener('complete', (e) => {
@@ -537,12 +605,14 @@ function app() {
                     }
 
                     this.generating = false;
-                    this.progress = { percent: 100, message: 'Chapter regenerated!' };
+                    this.progress = { percent: 100, message: 'Chapter regenerated!', stage: 'done' };
+                    this.addConsoleLog(`Chapter ${chapterNum} regenerated successfully!`, 'success');
                     evtSource.close();
                 });
 
                 evtSource.addEventListener('error', (e) => {
                     console.error('Reroll error:', e);
+                    this.addConsoleLog('Chapter reroll failed: ' + (e.message || 'Unknown error'), 'error');
                     this.showToast('Chapter regeneration failed, check console.');
                     this.generating = false;
                     evtSource.close();
@@ -550,6 +620,7 @@ function app() {
 
             } catch (error) {
                 console.error('Failed to reroll chapter:', error);
+                this.addConsoleLog('Failed to reroll chapter: ' + error.message, 'error');
                 this.showToast('Failed to regenerate chapter. Check console for details.');
                 this.generating = false;
             }
@@ -587,10 +658,12 @@ function app() {
             if (!await this.confirm('Regenerate the scene image for this chapter?')) return;
 
             this.generating = true;
-            this.progress = { percent: 10, message: 'Regenerating image...' };
+            this.progress = { percent: 10, message: 'Regenerating image...', stage: 'image' };
+            this.addConsoleLog(`Starting image regeneration for chapter ${chapterNum}...`, 'info');
 
             try {
-                this.progress = { percent: 30, message: 'Calling image API...' };
+                this.progress = { percent: 30, message: 'Calling image API...', stage: 'image' };
+                this.addConsoleLog('Calling image generation API...', 'log');
 
                 const response = await fetch(`/api/worlds/${this.currentWorldSlug}/images`, {
                     method: 'POST',
@@ -602,7 +675,8 @@ function app() {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
-                this.progress = { percent: 80, message: 'Processing image...' };
+                this.progress = { percent: 80, message: 'Processing image...', stage: 'image' };
+                this.addConsoleLog('Processing generated image...', 'log');
 
                 const data = await response.json();
 
@@ -612,12 +686,14 @@ function app() {
                     chapter.scene = data.scene + '?' + Date.now(); // Cache bust
                 }
 
-                this.progress = { percent: 100, message: 'Image regenerated!' };
+                this.progress = { percent: 100, message: 'Image regenerated!', stage: 'done' };
+                this.addConsoleLog(`Image for chapter ${chapterNum} regenerated successfully!`, 'success');
                 setTimeout(() => {
                     this.generating = false;
                 }, 1000);
             } catch (error) {
                 console.error('Failed to regenerate image:', error);
+                this.addConsoleLog('Failed to regenerate image: ' + error.message, 'error');
                 this.showToast('Failed to regenerate image: ' + error.message);
                 this.generating = false;
             }
