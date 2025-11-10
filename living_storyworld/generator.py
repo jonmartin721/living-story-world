@@ -22,13 +22,22 @@ def _get_client():
     return OpenAI()
 
 
-def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[str], preset_key: Optional[str] = None) -> Tuple[str, list[dict], float]:
+def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[str]) -> Tuple[str, list[dict], float]:
     style = STYLE_PACKS.get(cfg.style_pack, STYLE_PACKS["storybook-ink"])  # textual art bible for images
-    preset = PRESETS.get(preset_key or "", DEFAULT_PRESET)
+    preset = PRESETS.get(cfg.preset, DEFAULT_PRESET)
 
     # Load global instructions from user settings
     settings = load_user_settings()
     global_instructions = settings.global_instructions or ""
+
+    # Maturity level guidance
+    maturity_guidance = {
+        "general": "Keep content appropriate for all ages. Avoid violence, profanity, and mature themes.",
+        "teen": "Keep content appropriate for teen audiences. Mild violence and tension is acceptable, but avoid explicit content.",
+        "mature": "Content may include moderate violence, adult themes, and occasional strong language. Keep sexual content subtle/implied.",
+        "explicit": "Content may include graphic violence, explicit language, and mature sexual themes. Write authentically without censorship."
+    }
+    maturity_instruction = maturity_guidance.get(cfg.maturity_level, maturity_guidance["general"])
 
     # Build system message with global + world-specific instructions
     sys_parts = [
@@ -38,7 +47,8 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         "scene_prompt (string describing a wide scene illustration), characters_in_scene (string array), "
         "summary (string), new_characters (array of {id, name, description}), new_locations (array of {id, name, description}). "
         "Introduce new characters or locations when they serve the story naturally. "
-        + preset.system_directives
+        + preset.system_directives,
+        f"\n\nMaturity Level: {maturity_instruction}"
     ]
 
     # Add global instructions if present
@@ -112,7 +122,6 @@ def generate_chapter(
     state: WorldState,
     focus: Optional[str] = None,
     make_scene_image: bool = True,
-    preset_key: Optional[str] = None,
 ) -> Chapter:
     # Load settings to determine which provider to use
     settings = load_user_settings()
@@ -126,7 +135,7 @@ def generate_chapter(
         # Fallback to legacy OpenAI client if provider setup fails
         print(f"[WARN] Provider {text_provider_name} failed, falling back to OpenAI: {e}", flush=True)
         client = _get_client()
-        style, messages, temp = _build_chapter_prompt(cfg, state, focus, preset_key=preset_key)
+        style, messages, temp = _build_chapter_prompt(cfg, state, focus)
         resp = client.chat.completions.create(
             model=cfg.text_model,
             messages=messages,
@@ -135,7 +144,7 @@ def generate_chapter(
         md = resp.choices[0].message.content or ""
     else:
         # Use the provider abstraction
-        style, messages, temp = _build_chapter_prompt(cfg, state, focus, preset_key=preset_key)
+        style, messages, temp = _build_chapter_prompt(cfg, state, focus)
         result = provider.generate(messages, temperature=temp, model=cfg.text_model)
         md = result.content
         print(f"[INFO] Generated chapter using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)

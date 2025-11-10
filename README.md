@@ -1,13 +1,13 @@
 # Living Storyworld
 
-A persistent narrative universe you can explore via a simple CLI. It generates chapters (Markdown) using OpenAI and scene illustrations using Flux via Replicate, then builds a lightweight HTML index for viewing.
+A persistent narrative universe you can explore via a simple CLI. It generates chapters (Markdown) using Groq (Llama 3.3) and scene illustrations using Flux via Replicate, then builds a lightweight HTML index for viewing.
 
 ## Prerequisites
 
 - **Python 3.8+** (developed with 3.10+)
-- **OpenAI API key** for text generation ([get one here](https://platform.openai.com/api-keys))
+- **Groq API key** for text generation ([get one here](https://console.groq.com/keys)) - Free tier available!
 - **Replicate API token** for image generation ([get one here](https://replicate.com/account/api-tokens))
-- **Note**: This tool makes API calls to OpenAI (text) and Replicate (images). Each chapter generation uses `gpt-4o-mini` (text, ~$0.01) and `flux-dev` (images, ~$0.025), typical cost per chapter: ~$0.035 USD.
+- **Note**: This tool makes API calls to Groq (text) and Replicate (images). Each chapter generation uses `llama-3.3-70b-versatile` (text, ~$0.001) and `flux-dev` (images, ~$0.025), typical cost per chapter: ~$0.026 USD.
 
 ## Quickstart
 
@@ -111,10 +111,18 @@ Story tone and pacing options (use with `--preset` flag):
 - `noir-mystery`: Moody, wry, metaphor-rich, moral gray zones.
 - `epic-fantasy`: Grand vistas, mythic stakes, lyrical cadence.
 - `solarpunk-explorer`: Inventive systems, hopepunk tone, practical wonder.
+- `gothic-horror`: Atmospheric dread, psychological tension, haunting beauty.
+- `space-opera`: Galactic scale, diverse cultures, political intrigue among the stars.
+- `slice-of-life`: Quiet moments, everyday magic, character-focused intimacy.
+- `cosmic-horror`: Existential dread, incomprehensible forces, sanity fraying.
+- `cyberpunk-noir`: High-tech low-life, neon-soaked streets, corporate shadows.
+- `whimsical-fairy-tale`: Playful enchantment, talking creatures, moral lessons with heart.
+- `post-apocalyptic`: Survival amid ruins, harsh beauty, rebuilding hope.
+- `historical-intrigue`: Period authenticity, courtly machinations, personal stakes in grand events.
 
 ## Notes
 
-- **Text model**: `gpt-4o-mini` (configurable in `worlds/<slug>/config.json`)
+- **Text model**: `llama-3.3-70b-versatile` via Groq (configurable in `worlds/<slug>/config.json` or Settings UI)
 - **Image model**: `flux-dev` via Replicate (landscape 16:9 aspect ratio by default)
   - Choose at world creation with `--image-model` flag
   - Alternative: `flux-schnell` for faster/cheaper generation (~$0.003 per image)

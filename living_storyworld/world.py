@@ -15,6 +15,8 @@ def init_world(
     style_pack: str = "storybook-ink",
     slug: Optional[str] = None,
     image_model: str = "flux-dev",
+    maturity_level: str = "general",
+    preset: str = "cozy-adventure",
     memory: Optional[str] = None,
     authors_note: Optional[str] = None,
     world_instructions: Optional[str] = None
@@ -27,6 +29,8 @@ def init_world(
         theme=theme,
         style_pack=style_pack,
         image_model=image_model,
+        maturity_level=maturity_level,
+        preset=preset,
         memory=memory,
         authors_note=authors_note,
         world_instructions=world_instructions

@@ -127,8 +127,9 @@ class ReplicateProvider(ImageProvider):
     ALLOWED_MODELS = {"flux-dev", "flux-schnell"}
     ALLOWED_ASPECT_RATIOS = {"1:1", "16:9", "21:9", "4:3", "3:4", "9:16"}
 
-    def __init__(self, api_token: Optional[str] = None):
-        self.api_token = api_token or os.environ.get("REPLICATE_API_TOKEN")
+    def __init__(self, api_token: Optional[str] = None, api_key: Optional[str] = None):
+        # Accept both api_token and api_key for backward compatibility
+        self.api_token = api_token or api_key or os.environ.get("REPLICATE_API_TOKEN")
         if not self.api_token:
             raise RuntimeError("Replicate API token not found. Set REPLICATE_API_TOKEN environment variable or pass api_token parameter.")
 

@@ -26,7 +26,7 @@ CONFIG_PATH = _config_dir() / "config.json"
 @dataclass
 class UserSettings:
     # API provider selections
-    text_provider: str = "openai"
+    text_provider: str = "groq"
     image_provider: str = "replicate"
 
     # API keys for various providers
@@ -34,6 +34,7 @@ class UserSettings:
     together_api_key: Optional[str] = None
     huggingface_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
     replicate_api_token: Optional[str] = None
     fal_api_key: Optional[str] = None
 
@@ -43,8 +44,9 @@ class UserSettings:
     # Default preferences
     default_style_pack: str = "storybook-ink"
     default_preset: str = "cozy-adventure"
-    default_text_model: str = "gpt-4o-mini"
+    default_text_model: str = "llama-3.3-70b-versatile"
     default_image_model: str = "flux-dev"
+    default_maturity_level: str = "general"
 
 
 def load_user_settings() -> UserSettings:
@@ -117,6 +119,9 @@ def ensure_provider_api_keys(settings: Optional[UserSettings] = None) -> None:
     if s.groq_api_key and not os.environ.get("GROQ_API_KEY"):
         os.environ["GROQ_API_KEY"] = s.groq_api_key
 
+    if s.openrouter_api_key and not os.environ.get("OPENROUTER_API_KEY"):
+        os.environ["OPENROUTER_API_KEY"] = s.openrouter_api_key
+
     if s.replicate_api_token and not os.environ.get("REPLICATE_API_TOKEN"):
         os.environ["REPLICATE_API_TOKEN"] = s.replicate_api_token
 
@@ -128,7 +133,7 @@ def get_api_key_for_provider(provider: str, settings: Optional[UserSettings] = N
     """Get API key for a specific provider from settings or environment.
 
     Args:
-        provider: Provider name (e.g., "openai", "together", "replicate")
+        provider: Provider name (e.g., "openai", "together", "replicate", "openrouter")
         settings: Optional UserSettings instance (loads if not provided)
 
     Returns:
@@ -142,6 +147,7 @@ def get_api_key_for_provider(provider: str, settings: Optional[UserSettings] = N
         "together": (os.environ.get("TOGETHER_API_KEY"), s.together_api_key),
         "huggingface": (os.environ.get("HUGGINGFACE_API_KEY"), s.huggingface_api_key),
         "groq": (os.environ.get("GROQ_API_KEY"), s.groq_api_key),
+        "openrouter": (os.environ.get("OPENROUTER_API_KEY"), s.openrouter_api_key),
         "replicate": (os.environ.get("REPLICATE_API_TOKEN"), s.replicate_api_token),
         "fal": (os.environ.get("FAL_KEY"), s.fal_api_key),
     }

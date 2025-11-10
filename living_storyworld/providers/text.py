@@ -349,11 +349,74 @@ class GroqProvider(TextProvider):
         return True
 
 
+class OpenRouterProvider(TextProvider):
+    """OpenRouter text generation provider - supports GLM-4 and many other models."""
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
+        if not self.api_key:
+            raise RuntimeError("OpenRouter API key not found. Set OPENROUTER_API_KEY environment variable or pass api_key parameter.")
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        temperature: float = 1.0,
+        model: Optional[str] = None,
+    ) -> TextGenerationResult:
+        try:
+            from openai import OpenAI  # OpenRouter uses OpenAI SDK
+        except ImportError as e:
+            raise RuntimeError("OpenAI SDK not installed. Run: pip install openai>=1.0") from e
+
+        # OpenRouter is OpenAI-compatible
+        client = OpenAI(
+            api_key=self.api_key,
+            base_url="https://openrouter.ai/api/v1",
+        )
+        model_name = model or self.get_default_model()
+
+        resp = client.chat.completions.create(
+            model=model_name,
+            messages=messages,  # type: ignore
+            temperature=temperature,
+        )
+
+        content = resp.choices[0].message.content or ""
+        cost = self.estimate_cost(messages, model_name)
+
+        return TextGenerationResult(
+            content=content,
+            provider="openrouter",
+            model=model_name,
+            estimated_cost=cost,
+        )
+
+    def get_default_model(self) -> str:
+        return "zhipuai/glm-4-plus"  # GLM-4-Plus is excellent for creative writing
+
+    def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
+        """OpenRouter pricing varies by model."""
+        model_name = model or self.get_default_model()
+        # GLM-4-Plus: ~$0.50/1M input, ~$2.00/1M output
+        if "glm-4" in model_name.lower():
+            return (1000 * 0.50 / 1_000_000) + (1000 * 2.00 / 1_000_000)
+        # Other models vary
+        return 0.003
+
+    @property
+    def provider_name(self) -> str:
+        return "OpenRouter"
+
+    @property
+    def requires_api_key(self) -> bool:
+        return True
+
+
 def get_text_provider(provider_name: str, api_key: Optional[str] = None) -> TextProvider:
     """Factory function to get a text provider by name.
 
     Args:
-        provider_name: One of "openai", "together", "huggingface", "groq"
+        provider_name: One of "openai", "together", "huggingface", "groq", "openrouter"
         api_key: Optional API key (falls back to environment variables)
 
     Returns:
@@ -367,6 +430,7 @@ def get_text_provider(provider_name: str, api_key: Optional[str] = None) -> Text
         "together": TogetherAIProvider,
         "huggingface": HuggingFaceProvider,
         "groq": GroqProvider,
+        "openrouter": OpenRouterProvider,
     }
 
     provider_class = providers.get(provider_name.lower())

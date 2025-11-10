@@ -25,7 +25,6 @@ active_jobs: Dict[str, asyncio.Queue] = {}
 
 
 class ChapterGenerateRequest(BaseModel):
-    preset: str = Field(default="cozy-adventure", max_length=100)
     focus: Optional[str] = Field(None, max_length=1000, description="Focus/direction for the chapter")
     no_images: bool = False
 
@@ -112,15 +111,16 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             "message": "World loaded, preparing generation..."
         })
 
-        # Generate text
+        # Generate text with smooth progress updates
         await queue.put({
             "stage": "text",
             "percent": 10,
             "message": "Calling OpenAI API for chapter text..."
         })
 
+        # Start text generation in background
         text_start = time.time()
-        chapter = await loop.run_in_executor(
+        text_future = loop.run_in_executor(
             executor,
             generate_chapter,
             dirs["base"],
@@ -128,8 +128,34 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             state,
             request.focus,
             request.no_images,
-            request.preset
         )
+
+        # Send progress updates while waiting (estimated ~25-35 seconds for text generation)
+        estimated_duration = 30.0  # seconds
+        start_percent = 10
+        end_percent = 85
+        update_interval = 0.5  # Update every 0.5 seconds
+
+        while not text_future.done():
+            elapsed = time.time() - text_start
+            progress_ratio = min(elapsed / estimated_duration, 1.0)
+            # Use easing function for smoother progress (slower at end)
+            eased_progress = 1 - (1 - progress_ratio) ** 2
+            current_percent = int(start_percent + (end_percent - start_percent) * eased_progress)
+
+            await queue.put({
+                "stage": "text",
+                "percent": current_percent,
+                "message": f"Generating chapter text... ({elapsed:.0f}s)"
+            })
+
+            try:
+                await asyncio.wait_for(asyncio.shield(text_future), timeout=update_interval)
+                break
+            except asyncio.TimeoutError:
+                continue
+
+        chapter = await text_future
         text_duration = time.time() - text_start
         print(f"[TIMING] Text generation: {text_duration:.2f}s", flush=True)
 
@@ -148,8 +174,9 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 "message": f"Calling Replicate API ({cfg.image_model})..."
             })
 
+            # Start image generation in background
             image_start = time.time()
-            image_path = await loop.run_in_executor(
+            image_future = loop.run_in_executor(
                 executor,
                 generate_scene_image,
                 dirs["base"],
@@ -158,6 +185,32 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 chapter.scene_prompt,
                 chapter.number
             )
+
+            # Send progress updates while waiting (flux-dev ~8-12s, flux-schnell ~2-4s)
+            estimated_image_duration = 10.0 if cfg.image_model == "flux-dev" else 3.0
+            start_percent = 90
+            end_percent = 93
+            update_interval = 0.5
+
+            while not image_future.done():
+                elapsed = time.time() - image_start
+                progress_ratio = min(elapsed / estimated_image_duration, 1.0)
+                eased_progress = 1 - (1 - progress_ratio) ** 2
+                current_percent = int(start_percent + (end_percent - start_percent) * eased_progress)
+
+                await queue.put({
+                    "stage": "image",
+                    "percent": current_percent,
+                    "message": f"Generating scene image... ({elapsed:.0f}s)"
+                })
+
+                try:
+                    await asyncio.wait_for(asyncio.shield(image_future), timeout=update_interval)
+                    break
+                except asyncio.TimeoutError:
+                    continue
+
+            image_path = await image_future
             image_duration = time.time() - image_start
             print(f"[TIMING] Image generation: {image_duration:.2f}s", flush=True)
 
@@ -310,9 +363,9 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             "message": "Calling OpenAI API for chapter text..."
         })
 
-        # Generate new chapter text
+        # Generate new chapter text with smooth progress
         text_start = time.time()
-        chapter = await loop.run_in_executor(
+        text_future = loop.run_in_executor(
             executor,
             generate_chapter,
             dirs["base"],
@@ -320,8 +373,33 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             state,
             request.focus,
             request.no_images,  # Respect the no_images flag from request
-            request.preset
         )
+
+        # Send progress updates while waiting
+        estimated_duration = 30.0
+        start_percent = 10
+        end_percent = 85
+        update_interval = 0.5
+
+        while not text_future.done():
+            elapsed = time.time() - text_start
+            progress_ratio = min(elapsed / estimated_duration, 1.0)
+            eased_progress = 1 - (1 - progress_ratio) ** 2
+            current_percent = int(start_percent + (end_percent - start_percent) * eased_progress)
+
+            await queue.put({
+                "stage": "text",
+                "percent": current_percent,
+                "message": f"Generating chapter text... ({elapsed:.0f}s)"
+            })
+
+            try:
+                await asyncio.wait_for(asyncio.shield(text_future), timeout=update_interval)
+                break
+            except asyncio.TimeoutError:
+                continue
+
+        chapter = await text_future
         text_duration = time.time() - text_start
         print(f"[TIMING] Text generation (reroll): {text_duration:.2f}s", flush=True)
 
@@ -344,8 +422,9 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
                 "message": f"Calling Replicate API ({cfg.image_model})..."
             })
 
+            # Start image generation with smooth progress
             image_start = time.time()
-            image_path = await loop.run_in_executor(
+            image_future = loop.run_in_executor(
                 executor,
                 generate_scene_image,
                 dirs["base"],
@@ -354,6 +433,32 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
                 chapter.scene_prompt,
                 chapter.number
             )
+
+            # Send progress updates while waiting
+            estimated_image_duration = 10.0 if cfg.image_model == "flux-dev" else 3.0
+            start_percent = 90
+            end_percent = 93
+            update_interval = 0.5
+
+            while not image_future.done():
+                elapsed = time.time() - image_start
+                progress_ratio = min(elapsed / estimated_image_duration, 1.0)
+                eased_progress = 1 - (1 - progress_ratio) ** 2
+                current_percent = int(start_percent + (end_percent - start_percent) * eased_progress)
+
+                await queue.put({
+                    "stage": "image",
+                    "percent": current_percent,
+                    "message": f"Generating scene image... ({elapsed:.0f}s)"
+                })
+
+                try:
+                    await asyncio.wait_for(asyncio.shield(image_future), timeout=update_interval)
+                    break
+                except asyncio.TimeoutError:
+                    continue
+
+            image_path = await image_future
             image_duration = time.time() - image_start
             print(f"[TIMING] Image generation (reroll): {image_duration:.2f}s", flush=True)
 

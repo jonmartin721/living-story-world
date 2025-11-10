@@ -129,7 +129,8 @@ def generate_scene_image(
         Path to generated PNG image
     """
     style = STYLE_PACKS.get(style_pack, STYLE_PACKS["storybook-ink"])
-    full_prompt = f"{style}. Scene illustration: {prompt}"
+    # Emphasize style by putting it at beginning AND wrapping the prompt
+    full_prompt = f"{style} | {prompt}. Style: {style}"
 
     key = _cache_key("scene", style_pack, full_prompt, aspect_ratio, image_model)
     out = base_dir / "media" / "scenes" / (f"scene-{chapter_num:04d}-{key}.png" if chapter_num else f"scene-{key}.png")

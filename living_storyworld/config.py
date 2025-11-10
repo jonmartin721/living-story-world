@@ -10,36 +10,53 @@ from .storage import read_json, write_json
 
 STYLE_PACKS: Dict[str, str] = {
     "storybook-ink": (
-        "Storybook ink and wash, muted palette, soft vignette, gentle rim light, "
-        "film grain, 3:2 composition, evocative and cozy, illustrative linework"
+        "STYLE REQUIREMENT: Traditional storybook illustration with ink and wash technique. "
+        "MUST HAVE: Muted earthy palette, soft vignette edges, gentle rim lighting, visible film grain texture, "
+        "3:2 composition framing, illustrative pen linework over watercolor washes. Evocative, cozy, hand-drawn feel. "
+        "Think classic children's book illustrations like Beatrix Potter or Arthur Rackham."
     ),
     "pixel-rpg": (
-        "16-bit SNES pixel art, 256-color limited palette, crisp sprites, tile-based, "
-        "subtle dither, top-down scenes, nostalgic RPG manual illustration"
+        "CRITICAL STYLE REQUIREMENT: Pure 16-bit pixel art ONLY. "
+        "MUST HAVE: Hard pixel edges with NO anti-aliasing, limited 256-color palette, visible dithering patterns, "
+        "sharp blocky sprites. MUST look exactly like Final Fantasy VI, Chrono Trigger, or Dragon Quest SNES games. "
+        "Top-down or 3/4 isometric RPG view. Every single element MUST show clearly visible individual square pixels. "
+        "NO smooth gradients, NO photorealistic elements. Purely retro video game pixel art."
     ),
     "lowpoly-iso": (
-        "Low-poly isometric diorama, soft ambient occlusion, stylized color blocks, "
-        "minimal texture, cinematic lighting, clean edges"
+        "STYLE REQUIREMENT: 3D low-poly isometric diorama style. "
+        "MUST HAVE: Geometric shapes with minimal polygons, flat color blocks, soft ambient occlusion shadows, "
+        "NO detailed textures, clean hard edges, isometric 45-degree viewing angle. "
+        "Think Monument Valley or modern minimalist 3D illustration. Stylized and toylike."
     ),
     "watercolor-dream": (
-        "Delicate watercolor on textured paper, flowing pigments, soft wet-on-wet blending, "
-        "loose brush strokes, luminous washes, ethereal and dreamlike atmosphere"
+        "STYLE REQUIREMENT: Traditional watercolor painting on textured paper. "
+        "MUST HAVE: Flowing pigments with visible water blooms, soft wet-on-wet color bleeding, "
+        "loose expressive brush strokes, luminous transparent washes, paper grain texture visible. "
+        "Ethereal, dreamlike, with intentional color bleeds and organic edges. Hand-painted feel."
     ),
     "noir-sketch": (
-        "High-contrast charcoal sketch, dramatic shadows, cross-hatching, film noir aesthetic, "
-        "bold blacks and whites, expressive lines, moody atmospheric lighting"
+        "STYLE REQUIREMENT: High-contrast charcoal or ink sketch in film noir style. "
+        "MUST HAVE: Dramatic shadows with deep blacks, heavy cross-hatching technique, "
+        "bold ink lines, stark black and white ONLY (no color), expressive gestural marks. "
+        "Moody atmospheric lighting with harsh contrasts. Think Sin City or classic noir comics."
     ),
     "art-nouveau": (
-        "Art nouveau poster style, flowing organic lines, decorative borders, elegant typography, "
-        "muted earth tones with jewel accents, ornamental patterns, romantic elegance"
+        "STYLE REQUIREMENT: Art Nouveau poster illustration circa 1890-1910. "
+        "MUST HAVE: Flowing organic curved lines, decorative floral borders, elegant stylized typography integrated, "
+        "muted earth tones (ochre, sage, terracotta) with jewel tone accents, ornamental Celtic-inspired patterns. "
+        "Think Alphonse Mucha. Romantic, elegant, highly decorative."
     ),
     "comic-book": (
-        "Classic comic book illustration, bold ink lines, Ben-Day dots, dynamic angles, "
-        "saturated primary colors, action-oriented composition, vintage four-color printing"
+        "STYLE REQUIREMENT: Classic American comic book illustration style 1960s-80s. "
+        "MUST HAVE: Bold black ink outlines, Ben-Day dot patterns for shading, dynamic angular composition, "
+        "saturated primary colors (red, blue, yellow), vintage four-color printing halftone dots visible. "
+        "Think Jack Kirby or classic Marvel/DC. Action-oriented, dramatic angles."
     ),
     "oil-painting": (
-        "Classical oil painting, visible brush strokes, rich impasto texture, Renaissance lighting, "
-        "deep chiaroscuro, warm glazes, museum-quality fine art composition"
+        "STYLE REQUIREMENT: Classical oil painting in the style of Old Masters. "
+        "MUST HAVE: Visible thick brush strokes with impasto texture, rich layered glazes, "
+        "dramatic chiaroscuro lighting (strong light/shadow contrast), warm amber undertones. "
+        "Renaissance or Baroque composition. Think Rembrandt or Caravaggio. Museum-quality fine art."
     ),
 }
 
