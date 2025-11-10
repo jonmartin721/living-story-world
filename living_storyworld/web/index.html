@@ -100,14 +100,141 @@
                 </div>
 
                 <!-- Generation Progress -->
-                <div x-show="generating" class="bg-white border border-gray-200 rounded-lg p-4 mb-6" x-cloak>
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm text-gray-700" x-text="progress.message"></span>
-                        <span class="text-sm font-medium text-gray-500" x-text="progress.percent + '%'"></span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                             :style="`width: ${progress.percent}%`"></div>
+                <div x-show="generating" class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-8 mb-6 shadow-lg" x-cloak>
+                    <!-- Circular Progress Indicator -->
+                    <div class="flex flex-col items-center justify-center space-y-6">
+                        <!-- SVG Circle -->
+                        <div class="relative">
+                            <svg class="transform -rotate-90 w-40 h-40" viewBox="0 0 160 160">
+                                <!-- Background circle -->
+                                <circle cx="80" cy="80" r="70" stroke="#e5e7eb" stroke-width="12" fill="none" />
+                                <!-- Progress circle with gradient -->
+                                <defs>
+                                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+                                        <stop offset="50%" style="stop-color:#6366f1;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="80" cy="80" r="70"
+                                        stroke="url(#progressGradient)"
+                                        stroke-width="12"
+                                        fill="none"
+                                        stroke-linecap="round"
+                                        class="transition-all duration-500 ease-out"
+                                        :style="`stroke-dasharray: ${439.8 * progress.percent / 100} 439.8`" />
+                            </svg>
+                            <!-- Percentage in center -->
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent" x-text="progress.percent + '%'"></div>
+                                    <div class="text-xs text-gray-500 mt-1 font-medium">Complete</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Message -->
+                        <div class="text-center">
+                            <div class="flex items-center justify-center space-x-2 mb-3">
+                                <div class="flex space-x-1">
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                                    <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+                                </div>
+                            </div>
+                            <p class="text-base font-medium text-gray-700" x-text="progress.message"></p>
+                        </div>
+
+                        <!-- Stage Indicators -->
+                        <div class="flex items-center justify-center space-x-4 pt-4 border-t border-blue-100 w-full">
+                            <!-- Loading Stage -->
+                            <div class="flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300"
+                                 :class="{
+                                     'bg-blue-100 shadow-sm': progress.stage === 'init',
+                                     'bg-green-50': progress.percent > 8 && progress.stage !== 'init',
+                                     'bg-gray-50': progress.percent <= 8 && progress.stage !== 'init'
+                                 }">
+                                <div class="w-5 h-5 flex items-center justify-center">
+                                    <svg x-show="progress.percent > 8" class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    <div x-show="progress.stage === 'init'" class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    <div x-show="progress.percent <= 8 && progress.stage !== 'init'" class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                </div>
+                                <span class="text-xs font-medium"
+                                      :class="{
+                                          'text-blue-700': progress.stage === 'init',
+                                          'text-green-600': progress.percent > 8 && progress.stage !== 'init',
+                                          'text-gray-400': progress.percent <= 8 && progress.stage !== 'init'
+                                      }">Loading</span>
+                            </div>
+
+                            <!-- Writing Stage -->
+                            <div class="flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300"
+                                 :class="{
+                                     'bg-blue-100 shadow-sm': progress.stage === 'text',
+                                     'bg-green-50': progress.percent >= 90 && progress.stage !== 'text',
+                                     'bg-gray-50': progress.percent < 10 && progress.stage !== 'text'
+                                 }">
+                                <div class="w-5 h-5 flex items-center justify-center">
+                                    <svg x-show="progress.percent >= 90" class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    <div x-show="progress.stage === 'text'" class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    <div x-show="progress.percent < 10 && progress.stage !== 'text'" class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                </div>
+                                <span class="text-xs font-medium"
+                                      :class="{
+                                          'text-blue-700': progress.stage === 'text',
+                                          'text-green-600': progress.percent >= 90 && progress.stage !== 'text',
+                                          'text-gray-400': progress.percent < 10 && progress.stage !== 'text'
+                                      }">Writing</span>
+                            </div>
+
+                            <!-- Image Stage -->
+                            <div class="flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300"
+                                 :class="{
+                                     'bg-blue-100 shadow-sm': progress.stage === 'image',
+                                     'bg-green-50': progress.percent >= 95 && progress.stage !== 'image',
+                                     'bg-gray-50': progress.percent < 90 && progress.stage !== 'image'
+                                 }">
+                                <div class="w-5 h-5 flex items-center justify-center">
+                                    <svg x-show="progress.percent >= 95" class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    <div x-show="progress.stage === 'image'" class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    <div x-show="progress.percent < 90 && progress.stage !== 'image'" class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                </div>
+                                <span class="text-xs font-medium"
+                                      :class="{
+                                          'text-blue-700': progress.stage === 'image',
+                                          'text-green-600': progress.percent >= 95 && progress.stage !== 'image',
+                                          'text-gray-400': progress.percent < 90 && progress.stage !== 'image'
+                                      }">Image</span>
+                            </div>
+
+                            <!-- Saving Stage -->
+                            <div class="flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300"
+                                 :class="{
+                                     'bg-blue-100 shadow-sm': progress.stage === 'saving',
+                                     'bg-green-50': progress.percent === 100,
+                                     'bg-gray-50': progress.percent < 95 && progress.stage !== 'saving'
+                                 }">
+                                <div class="w-5 h-5 flex items-center justify-center">
+                                    <svg x-show="progress.percent === 100" class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    <div x-show="progress.stage === 'saving'" class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    <div x-show="progress.percent < 95 && progress.stage !== 'saving'" class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                </div>
+                                <span class="text-xs font-medium"
+                                      :class="{
+                                          'text-blue-700': progress.stage === 'saving',
+                                          'text-green-600': progress.percent === 100,
+                                          'text-gray-400': progress.percent < 95 && progress.stage !== 'saving'
+                                      }">Saving</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -195,8 +322,14 @@
                         @click="randomWorld()"
                         :disabled="generatingTheme"
                         class="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-md hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-md transition-all">
-                        <span x-show="!generatingTheme">🎲 Random World</span>
-                        <span x-show="generatingTheme">⏳ Generating...</span>
+                        <span x-show="!generatingTheme" class="flex items-center space-x-2">
+                            <span>🎲</span>
+                            <span>Random World</span>
+                        </span>
+                        <span x-show="generatingTheme" class="flex items-center space-x-2">
+                            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Generating...</span>
+                        </span>
                     </button>
                 </div>
                 <form @submit.prevent="createWorld()">

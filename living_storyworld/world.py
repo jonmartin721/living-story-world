@@ -5,7 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-from .models import WorldConfig, WorldState, Character, Location
+from .models import WorldConfig, WorldState, Character, Location, Chapter, Item
 from .storage import ensure_world_dirs, set_current_world, slugify, write_json, read_json
 
 
@@ -60,6 +60,42 @@ def init_world(
     return slug
 
 
+def _deserialize_world_state(data: dict) -> WorldState:
+    """Deserialize WorldState from dict, properly reconstructing nested dataclasses."""
+    # Deserialize chapters
+    chapters = []
+    if "chapters" in data:
+        for ch_data in data["chapters"]:
+            chapters.append(Chapter(**ch_data))
+
+    # Deserialize characters
+    characters = {}
+    if "characters" in data:
+        for name, char_data in data["characters"].items():
+            characters[name] = Character(**char_data)
+
+    # Deserialize locations
+    locations = {}
+    if "locations" in data:
+        for name, loc_data in data["locations"].items():
+            locations[name] = Location(**loc_data)
+
+    # Deserialize items
+    items = {}
+    if "items" in data:
+        for name, item_data in data["items"].items():
+            items[name] = Item(**item_data)
+
+    return WorldState(
+        tick=data.get("tick", 0),
+        next_chapter=data.get("next_chapter", 1),
+        characters=characters,
+        locations=locations,
+        items=items,
+        chapters=chapters
+    )
+
+
 def load_world(slug: str) -> tuple[WorldConfig, WorldState, dict]:
     """Load world configuration and state with validation.
 
@@ -85,7 +121,7 @@ def load_world(slug: str) -> tuple[WorldConfig, WorldState, dict]:
         raise RuntimeError(f"World '{slug}' world.json not found or corrupted")
 
     try:
-        state = WorldState(**state_data)
+        state = _deserialize_world_state(state_data)
     except (TypeError, ValueError) as e:
         logging.error(f"Failed to validate world state for '{slug}': {e}")
         raise RuntimeError(f"World '{slug}' has corrupted state: {e}")

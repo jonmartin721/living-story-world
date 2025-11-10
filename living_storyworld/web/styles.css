@@ -59,3 +59,11 @@
 img {
     background-color: #f3f4f6;
 }
+
+/* Prevent text selection on buttons */
+button {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}

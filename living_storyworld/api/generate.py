@@ -23,6 +23,7 @@ class WorldResponse(BaseModel):
     preset: str
     image_model: str
     maturity_level: str
+    memory: str
 
 
 def _generate_random_theme() -> str:
@@ -97,8 +98,9 @@ Return a JSON object with these fields:
 - preset: Choose one that matches the narrative tone
 - image_model: Choose based on desired quality vs speed tradeoff
 - maturity_level: Choose based on the world's content
+- memory: A short paragraph (2-4 sentences) of essential world lore/backstory that establishes the setting's unique rules, history, or atmosphere. This should provide context for storytelling.
 
-Make everything cohesive - the style, preset, image model, and maturity should all match the overall vibe."""
+Make everything cohesive - the style, preset, image model, maturity, and memory should all match the overall vibe."""
                 },
                 {
                     "role": "user",
@@ -120,6 +122,7 @@ Make everything cohesive - the style, preset, image model, and maturity should a
             "preset": data.get("preset", "cozy-adventure"),
             "image_model": data.get("image_model", "flux-schnell"),
             "maturity_level": data.get("maturity_level", "general"),
+            "memory": data.get("memory", ""),
         }
 
     except Exception as e:
@@ -132,7 +135,8 @@ Make everything cohesive - the style, preset, image model, and maturity should a
                 "style_pack": "watercolor-dream",
                 "preset": "cozy-adventure",
                 "image_model": "flux-dev",
-                "maturity_level": "general"
+                "maturity_level": "general",
+                "memory": "The gardens drift on currents of wind that never cease, their roots dangling into the mists below. Time moves strangely here—the sun neither rises nor sets, locked in an eternal golden hour. The gardeners speak of an ancient pact that keeps the city aloft, though none remember who made it or why."
             },
             {
                 "title": "Crystal Archives",
@@ -140,7 +144,8 @@ Make everything cohesive - the style, preset, image model, and maturity should a
                 "style_pack": "art-nouveau",
                 "preset": "noir-mystery",
                 "image_model": "flux-schnell",
-                "maturity_level": "teen"
+                "maturity_level": "teen",
+                "memory": "Deep beneath the surface, knowledge crystallizes into tangible form—thoughts become gems, stories take shape as glowing formations. The Archivists guard these treasures jealously, knowing that anyone who consumes a knowledge crystal gains its contents instantly. But some knowledge is dangerous, and certain sections are sealed behind unbreakable crystal walls."
             },
             {
                 "title": "Memory Market",
@@ -148,7 +153,8 @@ Make everything cohesive - the style, preset, image model, and maturity should a
                 "style_pack": "comic-book",
                 "preset": "cyberpunk-noir",
                 "image_model": "flux-dev",
-                "maturity_level": "mature"
+                "maturity_level": "mature",
+                "memory": "In the neon-lit bazaars, memories are extracted, packaged, and sold like any other commodity. The wealthy collect experiences they never lived; the desperate sell their pasts for survival. Identity is a construct, rebuilt daily from whatever memories one can afford. The Memory Brokers control it all, and they never forget a transaction."
             },
             {
                 "title": "Singing Forests",
@@ -156,7 +162,8 @@ Make everything cohesive - the style, preset, image model, and maturity should a
                 "style_pack": "storybook-ink",
                 "preset": "whimsical-fairy-tale",
                 "image_model": "flux-schnell",
-                "maturity_level": "general"
+                "maturity_level": "general",
+                "memory": "The ancient trees have witnessed countless ages, their songs carrying the wisdom of centuries. At dawn, their melodies guide lost travelers; at dusk, they warn of dangers in the deep woods. The night creatures are bound by an old magic—they can only speak in riddles, and those who solve their puzzles are granted safe passage."
             },
         ]
         return random.choice(fallbacks)

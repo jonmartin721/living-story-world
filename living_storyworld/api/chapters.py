@@ -287,8 +287,8 @@ async def get_chapter_content(slug: str, chapter_num: int):
     # Find chapter
     chapter_file = None
     for ch in state.chapters:
-        if ch.get("number") == chapter_num:
-            chapter_file = ch.get("filename")
+        if ch.number == chapter_num:
+            chapter_file = ch.filename
             break
 
     if not chapter_file:
@@ -347,7 +347,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
         chapter_index = None
         old_chapter_data = None
         for i, ch in enumerate(state.chapters):
-            if ch.get("number") == chapter_num:
+            if ch.number == chapter_num:
                 chapter_index = i
                 old_chapter_data = ch
                 break
@@ -536,7 +536,7 @@ async def delete_chapter(slug: str, chapter_num: int):
     chapter_index = None
     chapter_data = None
     for i, ch in enumerate(state.chapters):
-        if ch.get("number") == chapter_num:
+        if ch.number == chapter_num:
             chapter_index = i
             chapter_data = ch
             break
@@ -545,7 +545,7 @@ async def delete_chapter(slug: str, chapter_num: int):
         raise HTTPException(status_code=404, detail="Chapter not found")
 
     # Delete chapter file
-    chapter_filename = chapter_data.get("filename")
+    chapter_filename = chapter_data.filename
     if chapter_filename:
         chapter_path = dirs["base"] / "chapters" / chapter_filename
         if chapter_path.exists():

@@ -143,10 +143,10 @@ def cmd_build(args: argparse.Namespace) -> None:
 
     items = []
     for ch in state.chapters:
-        num = ch.get("number")
+        num = ch.number
         items.append({
-            "title": ch.get("title"),
-            "file": f"chapters/{ch.get('filename')}",
+            "title": ch.title,
+            "file": f"chapters/{ch.filename}",
             "scene": scene_for_chapter.get(num),
         })
 

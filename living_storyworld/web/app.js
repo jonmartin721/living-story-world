@@ -144,12 +144,14 @@ function app() {
                 style_pack: this.newWorld.style_pack,
                 preset: this.newWorld.preset,
                 image_model: this.newWorld.image_model,
-                maturity_level: this.newWorld.maturity_level
+                maturity_level: this.newWorld.maturity_level,
+                memory: this.newWorld.memory
             };
 
             // Show loading state
             this.newWorld.title = 'Generating...';
             this.newWorld.theme = 'Generating...';
+            this.newWorld.memory = 'Generating...';
 
             try {
                 const response = await fetch('/api/generate/world');
@@ -162,6 +164,7 @@ function app() {
                 this.newWorld.preset = data.preset;
                 this.newWorld.image_model = data.image_model;
                 this.newWorld.maturity_level = data.maturity_level;
+                this.newWorld.memory = data.memory || '';
             } catch (error) {
                 console.error('Failed to generate world:', error);
                 // Restore originals on failure

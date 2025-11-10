@@ -169,12 +169,12 @@ async def get_world(slug: str):
     chapters = []
     for ch in state.chapters:
         chapters.append({
-            "number": ch.get("number"),
-            "title": ch.get("title"),
-            "filename": ch.get("filename"),
-            "summary": ch.get("summary"),
-            "scene": scene_for_chapter.get(ch.get("number")),
-            "characters_in_scene": ch.get("characters_in_scene", [])
+            "number": ch.number,
+            "title": ch.title,
+            "filename": ch.filename,
+            "summary": ch.summary,
+            "scene": scene_for_chapter.get(ch.number),
+            "characters_in_scene": ch.characters_in_scene
         })
 
     return {

@@ -48,8 +48,8 @@ async def generate_image(slug: str, request: ImageGenerateRequest):
     if chapter_num is not None and not prompt:
         # Pull prompt from chapter record
         for ch in state.chapters:
-            if ch.get("number") == chapter_num:
-                prompt = ch.get("scene_prompt")
+            if ch.number == chapter_num:
+                prompt = ch.scene_prompt
                 break
 
     if not prompt:
