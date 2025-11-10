@@ -69,19 +69,34 @@ def _generate_random_theme() -> str:
 
 
 def _generate_random_world() -> dict:
-    """Generate a complete random world configuration using OpenAI"""
+    """Generate a complete random world configuration using configured text provider"""
     try:
-        from openai import OpenAI
-        import os
+        import random
+        import time
+        from ..settings import load_user_settings, get_api_key_for_provider
+        from ..providers import get_text_provider
 
-        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        # Add entropy to the prompt to force variation
+        random_seed = random.randint(1000, 9999)
+        timestamp = int(time.time())
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": """You are a wildly creative world-building AI that generates UNPREDICTABLE, DIVERSE, and BOLD concepts for interactive narratives.
+        # Use the configured text provider
+        settings = load_user_settings()
+        text_provider_name = settings.text_provider
+        api_key = get_api_key_for_provider(text_provider_name, settings)
+        provider = get_text_provider(text_provider_name, api_key=api_key)
+
+        # Use the default text model from settings
+        model = settings.default_text_model
+
+        messages = [
+            {
+                "role": "system",
+                "content": f"""You are a wildly creative world-building AI that generates UNPREDICTABLE, DIVERSE, and BOLD concepts for interactive narratives.
+
+CRITICAL: Generate something completely different from these recent concepts: puppet governments, fungal cities, memory trading, backwards time, drowning buildings, carnival horror. AVOID these themes entirely.
+
+Seed: {random_seed} | Timestamp: {timestamp}
 
 IMPORTANT: Be extremely varied! Don't default to cozy/wholesome vibes. Explore dark, strange, experimental, surreal, disturbing, thrilling, comedic, tragic, weird concepts. Mix genres. Break expectations. Be WILD.
 
@@ -110,21 +125,19 @@ Return a JSON object with these fields:
 - memory: A short paragraph (2-4 sentences) of essential world lore/backstory with SPECIFIC, CONCRETE details that establish unique rules, atmosphere, or conflicts
 
 Make everything cohesive but UNPREDICTABLE. Surprise me. Take creative risks."""
-                },
-                {
-                    "role": "user",
-                    "content": "Generate one unique, creative, UNPREDICTABLE world concept that breaks away from typical fantasy tropes. Return ONLY valid JSON, nothing else."
-                }
-            ],
-            temperature=1.5,
-            max_tokens=250,
-            response_format={"type": "json_object"}
-        )
+            },
+            {
+                "role": "user",
+                "content": f"Generate one unique, creative, UNPREDICTABLE world concept that breaks away from typical fantasy tropes AND from the concepts listed above. Variation seed: {random_seed}. Return ONLY valid JSON, nothing else."
+            }
+        ]
 
-        data = json.loads(response.choices[0].message.content)
+        # Generate using the provider
+        result = provider.generate(messages, temperature=1.8, model=model)
+        data = json.loads(result.content)
 
         # Ensure we have all required fields with defaults
-        return {
+        world_result = {
             "title": data.get("title", "Untitled World"),
             "theme": data.get("theme", "A world of mystery and wonder"),
             "style_pack": data.get("style_pack", "storybook-ink"),
@@ -134,7 +147,11 @@ Make everything cohesive but UNPREDICTABLE. Surprise me. Take creative risks."""
             "memory": data.get("memory", ""),
         }
 
+        print(f"[RANDOM WORLD] Generated via {text_provider_name}: {world_result['title']} - {world_result['theme'][:50]}...", flush=True)
+        return world_result
+
     except Exception as e:
+        print(f"[RANDOM WORLD] API failed, using fallback: {e}", flush=True)
         # Fallback worlds if API fails - diverse and unpredictable
         import random
         fallbacks = [

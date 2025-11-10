@@ -123,7 +123,7 @@
                         <button
                             @click="showGenerateChapter = true"
                             :disabled="generating"
-                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2">
+                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-green-800 disabled:text-green-200 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2">
                             <div x-show="!generating">+ Generate Chapter</div>
                             <div x-show="generating" class="flex items-center gap-2">
                                 <div class="relative w-4 h-4">
@@ -1003,7 +1003,7 @@
                         <button
                             @click="!generating && (viewingChapter?.number < currentWorld?.chapters?.length ? (viewChapter(currentWorld.chapters[currentWorld.chapters.length - 1], true)) : generateChapter())"
                             :disabled="generating"
-                            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 shadow-lg">
+                            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-800 disabled:text-blue-200 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 shadow-lg">
                             <!-- Show plus icon when generating -->
                             <svg x-show="!generating && viewingChapter?.number === currentWorld?.chapters?.length" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
