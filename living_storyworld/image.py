@@ -2,14 +2,86 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Optional
-import urllib.request
+from urllib.parse import urlparse
 
 from .config import STYLE_PACKS
 from .settings import load_user_settings, get_api_key_for_provider
 from .providers import get_image_provider
+
+
+def safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, timeout: int = 30) -> Path:
+    """Safely download an image with size and timeout limits.
+
+    Security: Validates URL scheme, content type, and enforces size limits
+    to prevent SSRF, DoS, and other attacks.
+
+    Args:
+        url: The URL to download from
+        output_path: Where to save the downloaded file
+        max_size_mb: Maximum file size in MB (default: 50)
+        timeout: Request timeout in seconds (default: 30)
+
+    Returns:
+        Path to the downloaded file
+
+    Raises:
+        ValueError: If URL scheme is invalid, content type is wrong, or file too large
+        RuntimeError: If download fails
+    """
+    try:
+        import requests
+    except ImportError:
+        raise RuntimeError("requests library required. Run: pip install requests")
+
+    # SECURITY: Validate URL scheme
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https'):
+        raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed.")
+
+    # Stream download with limits
+    try:
+        response = requests.get(url, stream=True, timeout=timeout)
+        response.raise_for_status()
+    except requests.exceptions.Timeout:
+        raise RuntimeError(f"Download timed out after {timeout} seconds")
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Download failed: {e}")
+
+    # SECURITY: Check content type
+    content_type = response.headers.get('Content-Type', '')
+    if not content_type.startswith('image/'):
+        logging.warning(f"Unexpected content type: {content_type} (expected image/*)")
+
+    # SECURITY: Check size
+    content_length = int(response.headers.get('Content-Length', 0))
+    max_bytes = max_size_mb * 1024 * 1024
+    if content_length > max_bytes:
+        raise ValueError(f"File too large: {content_length} bytes (max: {max_bytes})")
+
+    # Download in chunks
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    downloaded = 0
+
+    try:
+        with output_path.open('wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                downloaded += len(chunk)
+                if downloaded > max_bytes:
+                    # Clean up partial file
+                    output_path.unlink(missing_ok=True)
+                    raise ValueError(f"Download exceeded size limit ({max_size_mb} MB)")
+                f.write(chunk)
+    except Exception as e:
+        # Clean up partial file on any error
+        output_path.unlink(missing_ok=True)
+        raise
+
+    logging.info(f"Downloaded {downloaded} bytes to {output_path}")
+    return output_path
 
 
 def _get_replicate_client():
@@ -115,9 +187,8 @@ def generate_scene_image(
         else:
             image_url = str(output)
 
-        # Download and save the image
-        out.parent.mkdir(parents=True, exist_ok=True)
-        urllib.request.urlretrieve(image_url, out)
+        # Download and save the image (with security checks)
+        safe_download_image(image_url, out)
 
     _append_media_index(base_dir, {
         "type": "scene",

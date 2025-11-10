@@ -65,6 +65,14 @@ class TextProvider(ABC):
 class OpenAIProvider(TextProvider):
     """OpenAI text generation provider."""
 
+    ALLOWED_MODELS = {
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4-turbo",
+        "gpt-4",
+        "gpt-3.5-turbo",
+    }
+
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
@@ -76,6 +84,10 @@ class OpenAIProvider(TextProvider):
         temperature: float = 1.0,
         model: Optional[str] = None,
     ) -> TextGenerationResult:
+        # VALIDATION: Temperature bounds
+        if not 0.0 <= temperature <= 2.0:
+            raise ValueError(f"Temperature must be between 0.0 and 2.0, got {temperature}")
+
         try:
             from openai import OpenAI
         except ImportError as e:
@@ -83,6 +95,13 @@ class OpenAIProvider(TextProvider):
 
         client = OpenAI(api_key=self.api_key)
         model_name = model or self.get_default_model()
+
+        # VALIDATION: Model name
+        if model_name not in self.ALLOWED_MODELS:
+            raise ValueError(
+                f"Unknown OpenAI model: {model_name}. "
+                f"Allowed: {', '.join(sorted(self.ALLOWED_MODELS))}"
+            )
 
         resp = client.chat.completions.create(
             model=model_name,

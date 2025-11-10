@@ -82,9 +82,12 @@ CLAUDE.md
 Thumbs.db
 
 # Project-specific (generated content)
+# SECURITY: These contain potentially sensitive data
 .lsw_current
 worlds/
+.config/
 
 # Logs
 *.log
+living_storyworld.log
 

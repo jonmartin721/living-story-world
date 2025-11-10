@@ -36,10 +36,24 @@ def write_json(path: Path, data: Any) -> None:
 
 
 def read_json(path: Path, default: Optional[Any] = None) -> Any:
+    """Read JSON from file with error handling.
+
+    Returns default value if file doesn't exist or JSON is invalid.
+    """
+    import logging
+
     if not path.exists():
         return default
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        logging.error(f"Failed to parse JSON from {path}: {e}")
+        return default
+    except IOError as e:
+        logging.error(f"Failed to read file {path}: {e}")
+        return default
 
 
 def read_text(path: Path) -> str:
@@ -54,11 +68,55 @@ def write_text(path: Path, text: str) -> None:
 
 
 def slugify(value: str) -> str:
+    """Convert a string to a safe filesystem slug.
+
+    Security: Prevents path traversal attacks by rejecting dangerous characters.
+    """
     value = value.strip().lower()
     value = re.sub(r"[^a-z0-9\-\s]", "", value)
     value = re.sub(r"\s+", "-", value)
     value = re.sub(r"-+", "-", value)
-    return value or "world"
+    value = value.strip("-") or "world"
+
+    # SECURITY: Prevent path traversal attacks
+    if ".." in value or "/" in value or "\\" in value:
+        raise ValueError("Invalid slug: contains path traversal characters")
+    if value.startswith("."):
+        raise ValueError("Invalid slug: cannot start with dot")
+    if len(value) > 100:
+        raise ValueError("Invalid slug: too long (max 100 characters)")
+
+    return value
+
+
+def validate_slug(slug: str) -> str:
+    """Validate a slug parameter from API/URL to prevent path traversal attacks.
+
+    Security: Strictly validates slugs to ensure they can't escape the worlds directory.
+
+    Args:
+        slug: The slug to validate
+
+    Returns:
+        The validated slug
+
+    Raises:
+        ValueError: If slug is invalid or contains dangerous characters
+    """
+    if not slug:
+        raise ValueError("Slug cannot be empty")
+
+    # SECURITY: Prevent path traversal
+    if ".." in slug or "/" in slug or "\\" in slug:
+        raise ValueError("Invalid slug: contains path traversal characters")
+    if slug.startswith(".") or slug.startswith("-"):
+        raise ValueError("Invalid slug: cannot start with dot or dash")
+    if not re.match(r"^[a-z0-9][a-z0-9\-]*[a-z0-9]$|^[a-z0-9]$", slug):
+        raise ValueError("Invalid slug: must contain only lowercase letters, numbers, and hyphens")
+    if len(slug) > 100:
+        raise ValueError("Invalid slug: too long (max 100 characters)")
+
+    return slug
 
 
 def set_current_world(slug: str) -> None:

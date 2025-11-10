@@ -5,9 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 
-from ..storage import WORLDS_DIR
+from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world
 from ..image import generate_scene_image
 
@@ -18,13 +18,22 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 
 class ImageGenerateRequest(BaseModel):
-    chapter: Optional[int] = None
-    prompt: Optional[str] = None
+    chapter: Optional[int] = Field(None, ge=1, description="Chapter number")
+    prompt: Optional[str] = Field(None, max_length=2000, description="Image generation prompt")
+
+    @validator('prompt')
+    def strip_whitespace(cls, v):
+        return v.strip() if v else v
 
 
 @router.post("")
 async def generate_image(slug: str, request: ImageGenerateRequest):
     """Generate or regenerate a scene image"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 

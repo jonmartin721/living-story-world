@@ -150,21 +150,25 @@ def cmd_build(args: argparse.Namespace) -> None:
             "scene": scene_for_chapter.get(num),
         })
 
+    # SECURITY: Escape HTML to prevent XSS
+    import html as html_lib
+
     html = [
         "<!doctype html>",
-        "<html><head><meta charset='utf-8'><title>" + cfg.title + "</title>",
+        "<html><head><meta charset='utf-8'><title>" + html_lib.escape(cfg.title) + "</title>",
         "<style>body{font-family:system-ui, sans-serif;max-width:920px;margin:3rem auto;padding:0 1rem} img{max-width:100%;height:auto;border-radius:6px} .chapter{margin:2rem 0;padding:1rem;border:1px solid #eee;border-radius:8px} .title{margin:0 0 .5rem;font-size:1.1rem;font-weight:600} .meta{color:#666;font-size:.9rem}</style>",
         "</head><body>",
-        f"<h1>{cfg.title}</h1>",
+        f"<h1>{html_lib.escape(cfg.title)}</h1>",
     ]
     if not items:
         html.append("<p>No chapters yet. Use <code>story chapter</code> to create one.</p>")
     for it in items:
         html.append("<div class='chapter'>")
-        html.append(f"<div class='title'>{it['title']}</div>")
+        html.append(f"<div class='title'>{html_lib.escape(it['title'])}</div>")
         if it.get("scene"):
-            html.append(f"<img src='{it['scene']}' alt='scene image'>")
-        html.append(f"<div class='meta'><a href='{it['file']}'>Read markdown</a></div>")
+            # Scene path is from our own generation, but escape anyway
+            html.append(f"<img src='{html_lib.escape(it['scene'])}' alt='scene image'>")
+        html.append(f"<div class='meta'><a href='{html_lib.escape(it['file'])}'>Read markdown</a></div>")
         html.append("</div>")
     html.append("</body></html>")
 

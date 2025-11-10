@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -47,25 +48,42 @@ class UserSettings:
 
 
 def load_user_settings() -> UserSettings:
+    """Load user settings from config file.
+
+    Returns default settings if file doesn't exist or is corrupted.
+    """
     try:
         if CONFIG_PATH.exists():
             data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
             return UserSettings(**data)
-    except Exception:
-        pass
+    except json.JSONDecodeError as e:
+        logging.warning(f"Failed to parse settings file {CONFIG_PATH}: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error loading settings: {e}")
+
     return UserSettings()
 
 
 def save_user_settings(s: UserSettings) -> None:
+    """Save user settings to config file.
+
+    SECURITY WARNING: API keys stored in plain text. Attempts to set
+    file permissions to 0o600 (user read/write only) but logs warning if fails.
+    """
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    # best-effort permissions
+
+    # SECURITY: Try to set restrictive permissions
     try:
-        # create with 0o600 if not exists
+        # Create with 0o600 if not exists
         if not CONFIG_PATH.exists():
             CONFIG_PATH.touch(mode=0o600)
         CONFIG_PATH.chmod(0o600)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(
+            f"Failed to set restrictive permissions (0o600) on {CONFIG_PATH}: {e}. "
+            "API keys may be readable by other users on this system!"
+        )
+
     CONFIG_PATH.write_text(json.dumps(asdict(s), indent=2), encoding="utf-8")
 
 

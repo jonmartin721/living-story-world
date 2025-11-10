@@ -8,9 +8,9 @@ from typing import Optional, Dict
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 
-from ..storage import WORLDS_DIR
+from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world, save_world
 from ..generator import generate_chapter
 from ..image import generate_scene_image
@@ -25,14 +25,23 @@ active_jobs: Dict[str, asyncio.Queue] = {}
 
 
 class ChapterGenerateRequest(BaseModel):
-    preset: str = "cozy-adventure"
-    focus: Optional[str] = None
+    preset: str = Field(default="cozy-adventure", max_length=100)
+    focus: Optional[str] = Field(None, max_length=1000, description="Focus/direction for the chapter")
     no_images: bool = False
+
+    @validator('focus')
+    def strip_whitespace(cls, v):
+        return v.strip() if v else v
 
 
 @router.post("")
 async def start_chapter_generation(slug: str, request: ChapterGenerateRequest):
     """Start chapter generation and return job ID for SSE streaming"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
@@ -50,6 +59,11 @@ async def start_chapter_generation(slug: str, request: ChapterGenerateRequest):
 @router.get("/stream/{job_id}")
 async def stream_chapter_progress(slug: str, job_id: str):
     """SSE stream for chapter generation progress"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     queue = active_jobs.get(job_id)
     if not queue:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -186,19 +200,30 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
     except Exception as e:
         import logging
         logging.exception(f"Chapter generation failed for job {job_id}")
+
+        # SECURITY: Log full details server-side but send generic error to client
         error_msg = f"{type(e).__name__}: {str(e)}"
+        traceback_str = traceback.format_exc()
+        logging.error(f"Full traceback: {traceback_str}")
+
+        # Send sanitized error to client (no traceback)
         await queue.put({
             "stage": "error",
-            "error": error_msg,
-            "traceback": traceback.format_exc()
+            "error": "Chapter generation failed. Please check your settings and try again.",
+            "error_type": type(e).__name__,
+            "job_id": job_id  # For support reference
         })
         print(f"ERROR in chapter generation: {error_msg}")
-        print(traceback.format_exc())
 
 
 @router.get("/{chapter_num}/content")
 async def get_chapter_content(slug: str, chapter_num: int):
     """Get the markdown content of a specific chapter"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
@@ -225,6 +250,11 @@ async def get_chapter_content(slug: str, chapter_num: int):
 @router.put("/{chapter_num}/reroll")
 async def reroll_chapter(slug: str, chapter_num: int, request: Optional[ChapterGenerateRequest] = None):
     """Regenerate text for a specific chapter"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
@@ -365,11 +395,17 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
     except Exception as e:
         import logging
         logging.exception(f"Chapter reroll failed for job {job_id}")
+
+        # SECURITY: Log full details server-side but send generic error to client
         error_msg = f"{type(e).__name__}: {str(e)}"
+        traceback_str = traceback.format_exc()
+        logging.error(f"Full traceback: {traceback_str}")
+
+        # Send sanitized error to client (no traceback)
         await queue.put({
             "stage": "error",
-            "error": error_msg,
-            "traceback": traceback.format_exc()
+            "error": "Chapter regeneration failed. Please check your settings and try again.",
+            "error_type": type(e).__name__,
+            "job_id": job_id  # For support reference
         })
         print(f"ERROR in chapter reroll: {error_msg}")
-        print(traceback.format_exc())

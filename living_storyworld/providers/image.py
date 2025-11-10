@@ -3,12 +3,65 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
-import urllib.request
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
+
+
+def _safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, timeout: int = 30) -> Path:
+    """Safely download an image with size and timeout limits.
+
+    Security: Validates URL scheme, content type, and enforces size limits.
+    """
+    try:
+        import requests
+    except ImportError:
+        raise RuntimeError("requests library required. Run: pip install requests")
+
+    # SECURITY: Validate URL scheme
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https'):
+        raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed.")
+
+    # Stream download with limits
+    try:
+        response = requests.get(url, stream=True, timeout=timeout)
+        response.raise_for_status()
+    except Exception as e:
+        raise RuntimeError(f"Download failed: {e}")
+
+    # SECURITY: Check content type
+    content_type = response.headers.get('Content-Type', '')
+    if not content_type.startswith('image/'):
+        logging.warning(f"Unexpected content type: {content_type}")
+
+    # SECURITY: Check size
+    content_length = int(response.headers.get('Content-Length', 0))
+    max_bytes = max_size_mb * 1024 * 1024
+    if content_length > max_bytes:
+        raise ValueError(f"File too large: {content_length} bytes (max: {max_bytes})")
+
+    # Download in chunks
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    downloaded = 0
+
+    try:
+        with output_path.open('wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                downloaded += len(chunk)
+                if downloaded > max_bytes:
+                    output_path.unlink(missing_ok=True)
+                    raise ValueError(f"Download exceeded size limit ({max_size_mb} MB)")
+                f.write(chunk)
+    except Exception as e:
+        output_path.unlink(missing_ok=True)
+        raise
+
+    return output_path
 
 
 @dataclass
@@ -71,6 +124,9 @@ class ImageProvider(ABC):
 class ReplicateProvider(ImageProvider):
     """Replicate image generation provider (Flux models)."""
 
+    ALLOWED_MODELS = {"flux-dev", "flux-schnell"}
+    ALLOWED_ASPECT_RATIOS = {"1:1", "16:9", "21:9", "4:3", "3:4", "9:16"}
+
     def __init__(self, api_token: Optional[str] = None):
         self.api_token = api_token or os.environ.get("REPLICATE_API_TOKEN")
         if not self.api_token:
@@ -83,6 +139,13 @@ class ReplicateProvider(ImageProvider):
         aspect_ratio: str = "16:9",
         model: Optional[str] = None,
     ) -> ImageGenerationResult:
+        # VALIDATION: Aspect ratio
+        if aspect_ratio not in self.ALLOWED_ASPECT_RATIOS:
+            raise ValueError(
+                f"Invalid aspect ratio: {aspect_ratio}. "
+                f"Allowed: {', '.join(sorted(self.ALLOWED_ASPECT_RATIOS))}"
+            )
+
         try:
             import replicate
         except ImportError as e:
@@ -90,6 +153,13 @@ class ReplicateProvider(ImageProvider):
 
         client = replicate.Client(api_token=self.api_token)
         model_name = model or self.get_default_model()
+
+        # VALIDATION: Model name
+        if model_name not in self.ALLOWED_MODELS:
+            raise ValueError(
+                f"Unknown Replicate model: {model_name}. "
+                f"Allowed: {', '.join(sorted(self.ALLOWED_MODELS))}"
+            )
 
         # Map friendly names to Replicate model IDs
         model_map = {
@@ -120,8 +190,8 @@ class ReplicateProvider(ImageProvider):
         else:
             image_url = str(output)
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        urllib.request.urlretrieve(image_url, output_path)
+        # Download with security checks
+        _safe_download_image(image_url, output_path)
 
         cost = self.estimate_cost(model_name)
 
@@ -321,8 +391,8 @@ class FalAIProvider(ImageProvider):
         image_url = result["images"][0]["url"]
 
         # Download the image
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        urllib.request.urlretrieve(image_url, output_path)
+        # Download with security checks
+        _safe_download_image(image_url, output_path)
 
         cost = self.estimate_cost(model_name)
 

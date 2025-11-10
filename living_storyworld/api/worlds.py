@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 
-from ..storage import WORLDS_DIR, get_current_world, set_current_world
+from ..storage import WORLDS_DIR, get_current_world, set_current_world, validate_slug
 from ..world import init_world, load_world
 from ..models import WorldConfig, WorldState
 
@@ -12,24 +12,32 @@ router = APIRouter(prefix="/api/worlds", tags=["worlds"])
 
 
 class WorldCreateRequest(BaseModel):
-    title: str
-    theme: str
-    style_pack: str = "storybook-ink"
-    image_model: str = "flux-dev"
-    slug: Optional[str] = None
-    memory: Optional[str] = None
-    authors_note: Optional[str] = None
-    world_instructions: Optional[str] = None
+    title: str = Field(..., min_length=1, max_length=200, description="World title")
+    theme: str = Field(..., min_length=1, max_length=1000, description="World theme/description")
+    style_pack: str = Field(default="storybook-ink", max_length=100)
+    image_model: str = Field(default="flux-dev", max_length=100)
+    slug: Optional[str] = Field(None, max_length=100)
+    memory: Optional[str] = Field(None, max_length=10000, description="Persistent world memory")
+    authors_note: Optional[str] = Field(None, max_length=5000, description="Author's notes/instructions")
+    world_instructions: Optional[str] = Field(None, max_length=5000, description="World-specific instructions")
+
+    @validator('title', 'theme', 'memory', 'authors_note', 'world_instructions')
+    def strip_whitespace(cls, v):
+        return v.strip() if v else v
 
 
 class WorldUpdateRequest(BaseModel):
-    title: Optional[str] = None
-    theme: Optional[str] = None
-    style_pack: Optional[str] = None
-    image_model: Optional[str] = None
-    memory: Optional[str] = None
-    authors_note: Optional[str] = None
-    world_instructions: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    theme: Optional[str] = Field(None, min_length=1, max_length=1000)
+    style_pack: Optional[str] = Field(None, max_length=100)
+    image_model: Optional[str] = Field(None, max_length=100)
+    memory: Optional[str] = Field(None, max_length=10000)
+    authors_note: Optional[str] = Field(None, max_length=5000)
+    world_instructions: Optional[str] = Field(None, max_length=5000)
+
+    @validator('title', 'theme', 'memory', 'authors_note', 'world_instructions')
+    def strip_whitespace(cls, v):
+        return v.strip() if v else v
 
 
 class WorldResponse(BaseModel):
@@ -81,6 +89,34 @@ async def list_worlds():
 @router.post("", response_model=WorldResponse)
 async def create_world(request: WorldCreateRequest):
     """Create a new world"""
+    import os
+    import shutil
+
+    # SECURITY: Check world count limit to prevent resource exhaustion
+    existing_worlds = len(list(WORLDS_DIR.glob("*/"))) if WORLDS_DIR.exists() else 0
+    max_worlds = int(os.environ.get("MAX_WORLDS_PER_INSTANCE", "100"))
+
+    if existing_worlds >= max_worlds:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Maximum number of worlds ({max_worlds}) reached. Delete some worlds before creating new ones."
+        )
+
+    # SECURITY: Check available disk space
+    try:
+        stat = shutil.disk_usage(WORLDS_DIR.parent if WORLDS_DIR.exists() else Path.home())
+        min_free_mb = 100
+        free_mb = stat.free / (1024 * 1024)
+        if free_mb < min_free_mb:
+            raise HTTPException(
+                status_code=507,
+                detail=f"Insufficient disk space ({free_mb:.0f}MB free, need {min_free_mb}MB minimum)"
+            )
+    except Exception as e:
+        # Log but don't block on disk check failure
+        import logging
+        logging.warning(f"Failed to check disk space: {e}")
+
     slug = init_world(
         title=request.title,
         theme=request.theme,
@@ -112,6 +148,11 @@ async def create_world(request: WorldCreateRequest):
 @router.get("/{slug}", response_model=dict)
 async def get_world(slug: str):
     """Get detailed world information including chapters"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
@@ -162,6 +203,11 @@ async def get_world(slug: str):
 @router.put("/{slug}/current")
 async def set_current(slug: str):
     """Set the current world"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
@@ -172,6 +218,11 @@ async def set_current(slug: str):
 @router.put("/{slug}")
 async def update_world(slug: str, request: WorldUpdateRequest):
     """Update world configuration"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
@@ -214,6 +265,11 @@ async def update_world(slug: str, request: WorldUpdateRequest):
 @router.delete("/{slug}")
 async def delete_world(slug: str):
     """Delete a world"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 

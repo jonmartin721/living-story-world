@@ -1,13 +1,55 @@
 from __future__ import annotations
 
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
 from ..settings import load_user_settings, save_user_settings, UserSettings
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+
+def validate_api_key(key: str, provider: str, prefix: Optional[str] = None, min_length: int = 20, max_length: int = 200) -> str:
+    """Validate API key format.
+
+    Args:
+        key: The API key to validate
+        provider: Provider name (for error messages)
+        prefix: Expected key prefix (e.g., "sk-" for OpenAI)
+        min_length: Minimum acceptable key length
+        max_length: Maximum acceptable key length
+
+    Returns:
+        The validated key (stripped of whitespace)
+
+    Raises:
+        HTTPException: If key format is invalid
+    """
+    key = key.strip()
+
+    if not key:
+        raise HTTPException(status_code=400, detail=f"{provider} API key cannot be empty")
+
+    if len(key) < min_length:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{provider} API key too short (minimum {min_length} characters)"
+        )
+
+    if len(key) > max_length:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{provider} API key too long (maximum {max_length} characters)"
+        )
+
+    if prefix and not key.startswith(prefix):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{provider} API key must start with '{prefix}'"
+        )
+
+    return key
 
 
 class SettingsResponse(BaseModel):
@@ -33,23 +75,23 @@ class SettingsResponse(BaseModel):
 
 class SettingsUpdateRequest(BaseModel):
     # Provider selections
-    text_provider: Optional[str] = None
-    image_provider: Optional[str] = None
+    text_provider: Optional[str] = Field(None, max_length=50)
+    image_provider: Optional[str] = Field(None, max_length=50)
 
     # API keys
-    openai_api_key: Optional[str] = None
-    together_api_key: Optional[str] = None
-    huggingface_api_key: Optional[str] = None
-    groq_api_key: Optional[str] = None
-    replicate_api_token: Optional[str] = None
-    fal_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = Field(None, max_length=200)
+    together_api_key: Optional[str] = Field(None, max_length=200)
+    huggingface_api_key: Optional[str] = Field(None, max_length=200)
+    groq_api_key: Optional[str] = Field(None, max_length=200)
+    replicate_api_token: Optional[str] = Field(None, max_length=200)
+    fal_api_key: Optional[str] = Field(None, max_length=200)
 
     # Global instructions and defaults
-    global_instructions: Optional[str] = None
-    default_style_pack: Optional[str] = None
-    default_preset: Optional[str] = None
-    default_text_model: Optional[str] = None
-    default_image_model: Optional[str] = None
+    global_instructions: Optional[str] = Field(None, max_length=10000)
+    default_style_pack: Optional[str] = Field(None, max_length=100)
+    default_preset: Optional[str] = Field(None, max_length=100)
+    default_text_model: Optional[str] = Field(None, max_length=100)
+    default_image_model: Optional[str] = Field(None, max_length=100)
 
 
 @router.get("", response_model=SettingsResponse)
@@ -94,30 +136,36 @@ async def update_settings(request: SettingsUpdateRequest):
     if request.image_provider is not None:
         settings.image_provider = request.image_provider
 
-    # Update API keys
+    # Update API keys (with validation)
     if request.openai_api_key is not None:
-        settings.openai_api_key = request.openai_api_key
-        os.environ["OPENAI_API_KEY"] = request.openai_api_key
+        validated_key = validate_api_key(request.openai_api_key, "OpenAI", prefix="sk-")
+        settings.openai_api_key = validated_key
+        os.environ["OPENAI_API_KEY"] = validated_key
 
     if request.together_api_key is not None:
-        settings.together_api_key = request.together_api_key
-        os.environ["TOGETHER_API_KEY"] = request.together_api_key
+        validated_key = validate_api_key(request.together_api_key, "Together AI")
+        settings.together_api_key = validated_key
+        os.environ["TOGETHER_API_KEY"] = validated_key
 
     if request.huggingface_api_key is not None:
-        settings.huggingface_api_key = request.huggingface_api_key
-        os.environ["HUGGINGFACE_API_KEY"] = request.huggingface_api_key
+        validated_key = validate_api_key(request.huggingface_api_key, "HuggingFace", prefix="hf_")
+        settings.huggingface_api_key = validated_key
+        os.environ["HUGGINGFACE_API_KEY"] = validated_key
 
     if request.groq_api_key is not None:
-        settings.groq_api_key = request.groq_api_key
-        os.environ["GROQ_API_KEY"] = request.groq_api_key
+        validated_key = validate_api_key(request.groq_api_key, "Groq", prefix="gsk_")
+        settings.groq_api_key = validated_key
+        os.environ["GROQ_API_KEY"] = validated_key
 
     if request.replicate_api_token is not None:
-        settings.replicate_api_token = request.replicate_api_token
-        os.environ["REPLICATE_API_TOKEN"] = request.replicate_api_token
+        validated_key = validate_api_key(request.replicate_api_token, "Replicate", prefix="r8_")
+        settings.replicate_api_token = validated_key
+        os.environ["REPLICATE_API_TOKEN"] = validated_key
 
     if request.fal_api_key is not None:
-        settings.fal_api_key = request.fal_api_key
-        os.environ["FAL_KEY"] = request.fal_api_key
+        validated_key = validate_api_key(request.fal_api_key, "FAL")
+        settings.fal_api_key = validated_key
+        os.environ["FAL_KEY"] = validated_key
 
     # Update global instructions
     if request.global_instructions is not None:
