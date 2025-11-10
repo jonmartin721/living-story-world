@@ -76,6 +76,64 @@ function app() {
             chapter_length: 'medium'
         },
 
+        // Confirmation dialog state
+        confirmDialog: {
+            show: false,
+            message: '',
+            resolve: null,
+            reject: null
+        },
+
+        // Toast notifications
+        toasts: [],
+        nextToastId: 0,
+
+        // Helper: Show confirmation dialog
+        async confirm(message) {
+            return new Promise((resolve) => {
+                this.confirmDialog = {
+                    show: true,
+                    message,
+                    resolve: () => {
+                        this.confirmDialog.show = false;
+                        resolve(true);
+                    },
+                    reject: () => {
+                        this.confirmDialog.show = false;
+                        resolve(false);
+                    }
+                };
+            });
+        },
+
+        // Helper: Show toast notification
+        showToast(message, type = 'error') {
+            const id = this.nextToastId++;
+            const toast = {
+                id,
+                message,
+                type,
+                show: true
+            };
+            this.toasts.push(toast);
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                toast.show = false;
+                // Remove from array after animation
+                setTimeout(() => {
+                    const index = this.toasts.findIndex(t => t.id === id);
+                    if (index !== -1) this.toasts.splice(index, 1);
+                }, 300);
+            }, 5000);
+        },
+
+        // Helper: Strip "Chapter X: " prefix from titles
+        stripChapterPrefix(title) {
+            if (!title) return '';
+            return title.replace(/^Chapter\s+\d+:\s*/, '');
+        },
+
         async randomWorld() {
             this.generatingTheme = true;
 
@@ -108,7 +166,7 @@ function app() {
                 console.error('Failed to generate world:', error);
                 // Restore originals on failure
                 Object.assign(this.newWorld, originals);
-                alert('Failed to generate world. Please try again.');
+                this.showToast('Failed to generate world. Please try again.');
             } finally {
                 this.generatingTheme = false;
             }
@@ -223,10 +281,10 @@ function app() {
 
                 this.showSettings = false;
                 await this.loadSettings();
-                alert('Settings saved successfully!');
+                this.showToast('Settings saved successfully!', 'success');
             } catch (error) {
                 console.error('Failed to save settings:', error);
-                alert('Failed to save settings. Check console for details.');
+                this.showToast('Failed to save settings. Check console for details.');
             }
         },
 
@@ -236,7 +294,7 @@ function app() {
                 this.worlds = await response.json();
             } catch (error) {
                 console.error('Failed to load worlds:', error);
-                alert('Failed to load worlds. Check console for details.');
+                this.showToast('Failed to load worlds. Check console for details.');
             }
         },
 
@@ -251,7 +309,7 @@ function app() {
                 this.currentWorld = await response.json();
             } catch (error) {
                 console.error('Failed to load world:', error);
-                alert('Failed to load world. Check console for details.');
+                this.showToast('Failed to load world. Check console for details.');
             }
         },
 
@@ -301,10 +359,10 @@ function app() {
                 await this.loadWorld();
                 await this.loadWorlds();
 
-                alert('World updated successfully!');
+                this.showToast('World updated successfully!', 'success');
             } catch (error) {
                 console.error('Failed to update world:', error);
-                alert('Failed to update world. Check console for details.');
+                this.showToast('Failed to update world. Check console for details.');
             }
         },
 
@@ -312,7 +370,7 @@ function app() {
             if (!this.currentWorldSlug) return;
 
             const worldTitle = this.currentWorld?.config?.title || this.currentWorldSlug;
-            if (!confirm(`Are you sure you want to delete "${worldTitle}"? This action cannot be undone.`)) {
+            if (!await this.confirm(`Are you sure you want to delete "${worldTitle}"? This action cannot be undone.`)) {
                 return;
             }
 
@@ -332,10 +390,10 @@ function app() {
                 // Reload worlds list
                 await this.loadWorlds();
 
-                alert('World deleted successfully!');
+                this.showToast('World deleted successfully!', 'success');
             } catch (error) {
                 console.error('Failed to delete world:', error);
-                alert('Failed to delete world. Check console for details.');
+                this.showToast('Failed to delete world. Check console for details.');
             }
         },
 
@@ -369,7 +427,7 @@ function app() {
                 await this.loadWorld();
             } catch (error) {
                 console.error('Failed to create world:', error);
-                alert('Failed to create world. Check console for details.');
+                this.showToast('Failed to create world. Check console for details.');
             }
         },
 
@@ -412,14 +470,14 @@ function app() {
 
                 evtSource.addEventListener('error', (e) => {
                     console.error('Generation error:', e);
-                    alert('Chapter generation failed. Check console for details.');
+                    this.showToast('Chapter generation failed. Check console for details.');
                     this.generating = false;
                     evtSource.close();
                 });
 
             } catch (error) {
                 console.error('Failed to generate chapter:', error);
-                alert('Failed to generate chapter. Check console for details.');
+                this.showToast('Failed to generate chapter. Check console for details.');
                 this.generating = false;
             }
         },
@@ -440,7 +498,7 @@ function app() {
         },
 
         async rerollChapter(chapterNum) {
-            if (!confirm('Regenerate this chapter completely? Both text and image will be replaced.')) return;
+            if (!await this.confirm('Regenerate this chapter completely? Both text and image will be replaced.')) return;
 
             this.generating = true;
             this.progress = { percent: 0, message: 'Starting full regeneration...' };
@@ -482,20 +540,20 @@ function app() {
 
                 evtSource.addEventListener('error', (e) => {
                     console.error('Reroll error:', e);
-                    alert('Chapter regeneration failed, check console.');
+                    this.showToast('Chapter regeneration failed, check console.');
                     this.generating = false;
                     evtSource.close();
                 });
 
             } catch (error) {
                 console.error('Failed to reroll chapter:', error);
-                alert('Failed to regenerate chapter. Check console for details.');
+                this.showToast('Failed to regenerate chapter. Check console for details.');
                 this.generating = false;
             }
         },
 
         async deleteChapter(chapterNum) {
-            if (!confirm('Delete this chapter permanently? This cannot be undone.')) return;
+            if (!await this.confirm('Delete this chapter permanently? This cannot be undone.')) return;
 
             try {
                 const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters/${chapterNum}`, {
@@ -518,12 +576,12 @@ function app() {
 
             } catch (error) {
                 console.error('Failed to delete chapter:', error);
-                alert('Failed to delete chapter. Check console for details.');
+                this.showToast('Failed to delete chapter. Check console for details.');
             }
         },
 
         async regenerateImage(chapterNum) {
-            if (!confirm('Regenerate the scene image for this chapter?')) return;
+            if (!await this.confirm('Regenerate the scene image for this chapter?')) return;
 
             this.generating = true;
             this.progress = { percent: 10, message: 'Regenerating image...' };
@@ -557,7 +615,7 @@ function app() {
                 }, 1000);
             } catch (error) {
                 console.error('Failed to regenerate image:', error);
-                alert('Failed to regenerate image: ' + error.message);
+                this.showToast('Failed to regenerate image: ' + error.message);
                 this.generating = false;
             }
         },
