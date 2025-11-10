@@ -388,6 +388,16 @@
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Varies naturally with each chapter</p>
                         </div>
                         <div>
+                            <label class="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    x-model="newWorld.enable_choices"
+                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Enable Interactive Choices</span>
+                            </label>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Each chapter will offer 3 narrative choices that affect the story</p>
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Memory/Lore (Optional)</label>
                             <textarea
                                 x-model="newWorld.memory"
@@ -584,6 +594,16 @@
                                 <option value="long">Long (~2000 words)</option>
                             </select>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Varies naturally with each chapter</p>
+                        </div>
+                        <div>
+                            <label class="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    x-model="editWorld.enable_choices"
+                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Enable Interactive Choices</span>
+                            </label>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Each chapter will offer 3 narrative choices that affect the story</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Memory/Lore (Optional)</label>
@@ -906,7 +926,7 @@
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95"
-                 class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200">
+                 class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200">
                 <div class="sticky top-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-lg font-bold text-gray-800 dark:text-white" x-text="viewingChapter?.title"></h3>
                     <button
@@ -925,6 +945,38 @@
                     <div
                         x-html="chapterContent"
                         class="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
+                    </div>
+
+                    <!-- Chapter Choices Section -->
+                    <div x-show="viewingChapter?.choices && viewingChapter.choices.length > 0" class="mt-8 border-t dark:border-gray-700 pt-8">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">What happens next?</h3>
+
+                        <!-- Choice pending state -->
+                        <div x-show="!viewingChapter.selected_choice_id">
+                            <div class="grid gap-4">
+                                <template x-for="choice in viewingChapter.choices" :key="choice.id">
+                                    <button @click="selectChoice(viewingChapter.number, choice.id)"
+                                            :disabled="selectingChoice"
+                                            class="w-full p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-all text-left border-2 border-transparent hover:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <div class="font-semibold text-white" x-text="choice.text"></div>
+                                        <div class="text-sm text-gray-400 mt-1" x-text="choice.description"></div>
+                                    </button>
+                                </template>
+                            </div>
+                            <button @click="selectChoice(viewingChapter.number, 'auto')"
+                                    :disabled="selectingChoice"
+                                    class="mt-4 w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span x-show="!selectingChoice">✨ Let the Story Decide</span>
+                                <span x-show="selectingChoice">Selecting...</span>
+                            </button>
+                        </div>
+
+                        <!-- Choice selected state -->
+                        <div x-show="viewingChapter.selected_choice_id" class="p-4 bg-green-900/20 border border-green-600 rounded-lg">
+                            <div class="font-semibold text-green-400 mb-2">Your Choice:</div>
+                            <div class="text-white" x-text="getSelectedChoiceText(viewingChapter)"></div>
+                            <div x-show="viewingChapter.choice_reasoning" class="text-sm text-gray-400 mt-2" x-text="viewingChapter.choice_reasoning"></div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -5,7 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-from .models import WorldConfig, WorldState, Character, Location, Chapter, Item
+from .models import WorldConfig, WorldState, Character, Location, Chapter, Item, Choice
 from .storage import ensure_world_dirs, set_current_world, slugify, write_json, read_json
 
 
@@ -17,6 +17,7 @@ def init_world(
     image_model: str = "flux-dev",
     maturity_level: str = "general",
     preset: str = "cozy-adventure",
+    enable_choices: bool = False,
     memory: Optional[str] = None,
     authors_note: Optional[str] = None,
     world_instructions: Optional[str] = None
@@ -31,6 +32,7 @@ def init_world(
         image_model=image_model,
         maturity_level=maturity_level,
         preset=preset,
+        enable_choices=enable_choices,
         memory=memory,
         authors_note=authors_note,
         world_instructions=world_instructions
@@ -66,6 +68,9 @@ def _deserialize_world_state(data: dict) -> WorldState:
     chapters = []
     if "chapters" in data:
         for ch_data in data["chapters"]:
+            # Deserialize choices if present
+            if "choices" in ch_data and ch_data["choices"]:
+                ch_data["choices"] = [Choice(**choice) for choice in ch_data["choices"]]
             chapters.append(Chapter(**ch_data))
 
     # Deserialize characters

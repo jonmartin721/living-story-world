@@ -16,6 +16,7 @@ function app() {
         settingsTab: 'api',
         viewingChapter: null,
         chapterContent: '',
+        selectingChoice: false,
         consoleLogs: [],
         darkMode: false,
 
@@ -58,6 +59,8 @@ function app() {
             image_model: 'flux-schnell',
             preset: 'cozy-adventure',
             maturity_level: 'general',
+            chapter_length: 'medium',
+            enable_choices: false,
             memory: '',
             authors_note: '',
             world_instructions: ''
@@ -70,6 +73,8 @@ function app() {
             image_model: '',
             preset: '',
             maturity_level: '',
+            chapter_length: '',
+            enable_choices: false,
             memory: '',
             authors_note: '',
             world_instructions: ''
@@ -379,6 +384,8 @@ function app() {
                 image_model: this.currentWorld.config.image_model,
                 preset: this.currentWorld.config.preset || 'cozy-adventure',
                 maturity_level: this.currentWorld.config.maturity_level || 'general',
+                chapter_length: this.currentWorld.config.chapter_length || 'medium',
+                enable_choices: this.currentWorld.config.enable_choices || false,
                 memory: this.currentWorld.config.memory || '',
                 authors_note: this.currentWorld.config.authors_note || '',
                 world_instructions: this.currentWorld.config.world_instructions || ''
@@ -548,6 +555,56 @@ function app() {
                 console.error('Failed to load chapter content:', error);
                 this.chapterContent = '<p>Failed to load chapter content.</p>';
             }
+        },
+
+        async selectChoice(chapterNum, choiceId) {
+            this.selectingChoice = true;
+            try {
+                const response = await fetch(
+                    `/api/worlds/${this.currentWorldSlug}/chapters/${chapterNum}/select-choice`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ choice_id: choiceId })
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Failed to select choice');
+                }
+
+                const data = await response.json();
+
+                // Update chapter in current world state
+                const chapter = this.currentWorld.chapters.find(ch => ch.number === chapterNum);
+                if (chapter) {
+                    chapter.selected_choice_id = data.choice.id;
+                    chapter.choice_reasoning = data.reasoning;
+                }
+
+                // Update viewing chapter if it's the one being displayed
+                if (this.viewingChapter && this.viewingChapter.number === chapterNum) {
+                    this.viewingChapter.selected_choice_id = data.choice.id;
+                    this.viewingChapter.choice_reasoning = data.reasoning;
+                }
+
+                this.addConsoleLog(`Choice selected for chapter ${chapterNum}: ${data.choice.text}`, 'success');
+                this.showToast('Choice recorded! Ready to generate next chapter.', 'success');
+            } catch (error) {
+                console.error('Failed to select choice:', error);
+                this.addConsoleLog(`Error selecting choice: ${error.message}`, 'error');
+                this.showToast('Failed to record choice. Please try again.', 'error');
+            } finally {
+                this.selectingChoice = false;
+            }
+        },
+
+        getSelectedChoiceText(chapter) {
+            if (!chapter || !chapter.choices || !chapter.selected_choice_id) {
+                return '';
+            }
+            const choice = chapter.choices.find(c => c.id === chapter.selected_choice_id);
+            return choice ? choice.text : '';
         },
 
         showRegenerateDialog(chapterNum) {

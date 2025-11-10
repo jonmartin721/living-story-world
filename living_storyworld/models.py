@@ -31,6 +31,13 @@ class Item:
 
 
 @dataclass
+class Choice:
+    id: str
+    text: str
+    description: Optional[str] = None
+
+
+@dataclass
 class Chapter:
     number: int
     title: str
@@ -38,6 +45,9 @@ class Chapter:
     summary: Optional[str] = None
     scene_prompt: Optional[str] = None
     characters_in_scene: List[str] = field(default_factory=list)
+    choices: List[Choice] = field(default_factory=list)
+    selected_choice_id: Optional[str] = None
+    choice_reasoning: Optional[str] = None
 
 
 @dataclass
@@ -50,6 +60,7 @@ class WorldConfig:
     image_model: str = "flux-schnell"
     maturity_level: str = "general"  # general, teen, mature, explicit
     preset: str = "cozy-adventure"  # Narrative preset defines the vibe/tone
+    enable_choices: bool = False  # Interactive chapter choices
 
     # NAI-style memory system
     memory: Optional[str] = None  # Always included in context (lore, background, key facts)

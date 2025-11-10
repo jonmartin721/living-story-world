@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, validator
 
 from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world, save_world
-from ..generator import generate_chapter
+from ..generator import generate_chapter, infer_choice_reasoning
 from ..image import generate_scene_image
 
 router = APIRouter(prefix="/api/worlds/{slug}/chapters", tags=["chapters"])
@@ -32,6 +32,10 @@ class ChapterGenerateRequest(BaseModel):
     @validator('focus')
     def strip_whitespace(cls, v):
         return v.strip() if v else v
+
+
+class ChoiceSelectionRequest(BaseModel):
+    choice_id: str = Field(..., description="ID of the selected choice, or 'auto' for AI selection")
 
 
 @router.post("")
@@ -235,6 +239,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
 
         # Build response
+        from dataclasses import asdict
         chapter_data = {
             "number": chapter.number,
             "title": chapter.title,
@@ -242,6 +247,9 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             "summary": chapter.summary,
             "scene_prompt": chapter.scene_prompt,
             "characters_in_scene": chapter.characters_in_scene,
+            "choices": [asdict(c) for c in chapter.choices] if chapter.choices else [],
+            "selected_choice_id": chapter.selected_choice_id,
+            "choice_reasoning": chapter.choice_reasoning,
             "scene": f"/worlds/{slug}/media/scenes/{image_path.name}" if image_path else None
         }
 
@@ -300,6 +308,76 @@ async def get_chapter_content(slug: str, chapter_num: int):
 
     content = chapter_path.read_text(encoding="utf-8")
     return {"content": content}
+
+
+@router.post("/{chapter_num}/select-choice")
+async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionRequest):
+    """Record user's choice selection and infer reasoning"""
+    try:
+        slug = validate_slug(slug)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not (WORLDS_DIR / slug).exists():
+        raise HTTPException(status_code=404, detail="World not found")
+
+    loop = asyncio.get_event_loop()
+    cfg, state, dirs = await loop.run_in_executor(executor, load_world, slug)
+
+    # Find the chapter
+    chapter_index = None
+    chapter_data = None
+    for i, ch in enumerate(state.chapters):
+        if ch.number == chapter_num:
+            chapter_index = i
+            chapter_data = ch
+            break
+
+    if chapter_index is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+
+    # Verify chapter has choices
+    choices = chapter_data.get("choices", [])
+    if not choices:
+        raise HTTPException(status_code=400, detail="Chapter has no choices")
+
+    # Handle auto-selection
+    choice_id = request.choice_id
+    if choice_id == "auto":
+        import random
+        choice_id = random.choice(choices)["id"]
+
+    # Find the selected choice
+    selected_choice = None
+    for choice in choices:
+        if choice["id"] == choice_id:
+            selected_choice = choice
+            break
+
+    if selected_choice is None:
+        raise HTTPException(status_code=400, detail="Invalid choice ID")
+
+    # Infer reasoning using LLM
+    reasoning = await infer_choice_reasoning(
+        choice_text=selected_choice["text"],
+        chapter_summary=chapter_data.get("summary", ""),
+        world_theme=cfg.theme,
+        cfg=cfg
+    )
+
+    # Update chapter with selection
+    chapter_data["selected_choice_id"] = choice_id
+    chapter_data["choice_reasoning"] = reasoning
+    state.chapters[chapter_index] = chapter_data
+
+    # Save world state
+    await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
+
+    return {
+        "success": True,
+        "choice": selected_choice,
+        "reasoning": reasoning
+    }
 
 
 @router.put("/{chapter_num}/reroll")
@@ -482,6 +560,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
         # Save world state
         await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
 
+        from dataclasses import asdict
         chapter_data = {
             "number": chapter.number,
             "title": chapter.title,
@@ -489,6 +568,9 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             "summary": chapter.summary,
             "scene_prompt": chapter.scene_prompt,
             "characters_in_scene": chapter.characters_in_scene,
+            "choices": [asdict(c) for c in chapter.choices] if chapter.choices else [],
+            "selected_choice_id": chapter.selected_choice_id,
+            "choice_reasoning": chapter.choice_reasoning,
             "scene": f"/worlds/{slug}/media/scenes/{image_path.name}" if image_path else old_chapter_data.get("scene")
         }
 

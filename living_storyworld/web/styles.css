@@ -11,31 +11,41 @@
     -webkit-line-clamp: 3;
 }
 
-/* Prose styles for chapter content */
+/* Prose styles for chapter content - Enhanced reading experience */
+.prose {
+    font-size: 18px;
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height: 1.9;
+}
+
 .prose h1 {
-    font-size: 2em;
+    font-size: 2.25em;
     font-weight: bold;
     margin-top: 0.5em;
-    margin-bottom: 0.5em;
+    margin-bottom: 0.75em;
+    font-family: system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.025em;
 }
 
 .prose h2 {
-    font-size: 1.5em;
+    font-size: 1.75em;
     font-weight: bold;
-    margin-top: 1em;
-    margin-bottom: 0.5em;
+    margin-top: 1.25em;
+    margin-bottom: 0.75em;
+    font-family: system-ui, -apple-system, sans-serif;
 }
 
 .prose h3 {
-    font-size: 1.25em;
+    font-size: 1.375em;
     font-weight: bold;
-    margin-top: 0.75em;
+    margin-top: 1em;
     margin-bottom: 0.5em;
+    font-family: system-ui, -apple-system, sans-serif;
 }
 
 .prose p {
-    margin-bottom: 1em;
-    line-height: 1.75;
+    margin-bottom: 1.5em;
+    line-height: 1.9;
     color: #374151;
 }
 
@@ -93,6 +103,13 @@ button {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+}
+
+/* Chapter viewer improvements */
+.prose {
+    max-width: 65ch;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* Dark themed scrollbars for chapter content */
