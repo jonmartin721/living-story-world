@@ -44,6 +44,33 @@
     color: #111827;
 }
 
+/* Always use dark mode prose styles */
+.prose p {
+    color: #f3f4f6 !important;
+}
+
+.prose strong {
+    color: #ffffff !important;
+}
+
+.prose em {
+    color: #e5e7eb !important;
+}
+
+/* Additional dark mode prose styles */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+    color: #ffffff !important;
+}
+
+.prose {
+    color: #f3f4f6 !important;
+}
+
 .prose em {
     font-style: italic;
 }

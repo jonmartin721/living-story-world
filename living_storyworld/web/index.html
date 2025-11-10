@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Living Storyworld</title>
     <script>
         window.tailwindConfig = {
@@ -12,15 +15,66 @@
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        /* Always use dark mode styles */
+        .prose-sm,
+        .prose-sm > *,
+        .prose-sm p,
+        .prose-sm li,
+        .prose-sm strong,
+        .prose-sm em,
+        .prose-sm span,
+        .prose-sm a {
+            color: #f3f4f6 !important; /* gray-100 - much lighter */
+        }
+        .prose-sm h1,
+        .prose-sm h2,
+        .prose-sm h3,
+        .prose-sm h4,
+        .prose-sm h5,
+        .prose-sm h6 {
+            color: #ffffff !important; /* white */
+        }
+        /* Override prose-invert defaults */
+        .prose-invert {
+            --tw-prose-body: #f3f4f6 !important;
+            --tw-prose-headings: #ffffff !important;
+            --tw-prose-bold: #f3f4f6 !important;
+            --tw-prose-links: #f3f4f6 !important;
+        }
+        /* Additional overrides for chapter content */
+        .prose,
+        .prose > *,
+        .prose p,
+        .prose li,
+        .prose strong,
+        .prose em,
+        .prose span,
+        .prose a {
+            color: #f3f4f6 !important;
+        }
+        .prose h1,
+        .prose h2,
+        .prose h3,
+        .prose h4,
+        .prose h5,
+        .prose h6 {
+            color: #ffffff !important;
+        }
+        /* Hide the H1 title in chapter content since it's in the header */
+        .prose h1:first-child {
+            display: none;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+<body class="bg-gray-900 dark:bg-gray-900 transition-colors duration-200">
     <div x-data="app()" x-init="init()" class="min-h-screen">
         <!-- Header -->
         <header class="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 transition-colors duration-200">
             <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Living Storyworld</h1>
+                        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Living Storyworld</h1>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Interactive narrative universe</p>
                     </div>
 
@@ -37,21 +91,7 @@
                             <span x-show="consoleLogs.length > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" x-text="consoleLogs.length"></span>
                         </button>
 
-                        <!-- Dark Mode Toggle -->
-                        <button
-                            @click="toggleDarkMode()"
-                            class="p-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:hover:bg-gray-600"
-                            title="Toggle Dark Mode">
-                            <!-- Sun Icon (shown in dark mode) -->
-                            <svg x-show="darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            <!-- Moon Icon (shown in light mode) -->
-                            <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                            </svg>
-                        </button>
-
+                        
                         <!-- Settings Button -->
                         <button
                             @click="openSettings()"
@@ -114,7 +154,7 @@
             <!-- World Details Card -->
             <div x-show="currentWorld" x-cloak class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6 transition-colors duration-200">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2" x-text="currentWorld?.config?.title"></h2>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2" x-text="currentWorld?.config?.title"></h2>
                     <p class="text-base text-gray-600 dark:text-gray-300 mb-4" x-text="currentWorld?.config?.theme"></p>
                     <div class="flex gap-6 text-sm text-gray-500 dark:text-gray-400 mb-6">
                         <span>Chapters: <span class="font-semibold text-gray-700 dark:text-gray-200" x-text="currentWorld?.chapters?.length || 0"></span></span>
@@ -125,8 +165,8 @@
                         <button
                             @click="showGenerateChapter = true"
                             :disabled="generating"
-                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500">
-                            + Generate Chapter
+                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-green-500"
+                            x-text="generating ? 'Generating...' : '+ Generate Chapter'">
                         </button>
                         <!-- Inline Generation Progress -->
                         <div x-show="generating" x-cloak class="flex items-center space-x-2">
@@ -142,7 +182,7 @@
                 <svg class="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
-                <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">No world selected</h3>
+                <h3 class="mt-4 text-lg font-medium text-gray-800 dark:text-white">No world selected</h3>
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Select a world from the dropdown above or create a new one to get started.</p>
             </div>
 
@@ -154,7 +194,7 @@
                     <template x-for="chapter in currentWorld?.chapters" :key="chapter.number">
                         <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200">
                             <!-- Chapter Image -->
-                            <div x-show="chapter.scene" class="aspect-video bg-gray-200 dark:bg-gray-700 relative">
+                            <div x-show="chapter.scene" @click="viewChapter(chapter)" class="aspect-video bg-gray-200 dark:bg-gray-700 relative cursor-pointer hover:opacity-95 transition-opacity">
                                 <img
                                     :src="chapter.scene"
                                     :alt="chapter.title"
@@ -167,7 +207,7 @@
                                 <div class="flex items-start justify-between mb-2">
                                     <span class="text-xs font-semibold text-gray-500 dark:text-gray-400" x-text="'Chapter ' + chapter.number"></span>
                                 </div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2" x-text="stripChapterPrefix(chapter.title)"></h3>
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2" x-text="stripChapterPrefix(chapter.title)"></h3>
                                 <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-4" x-text="chapter.summary"></p>
 
                                 <div class="flex gap-2">
@@ -201,7 +241,7 @@
                     <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No chapters yet</h3>
+                    <h3 class="mt-2 text-sm font-medium text-gray-800 dark:text-white">No chapters yet</h3>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by generating your first chapter.</p>
                     <button
                         @click="showGenerateChapter = true"
@@ -219,7 +259,7 @@
              @click.self="showCreateWorld = false">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 transition-colors duration-200">
                 <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Create New World</h3>
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">Create New World</h3>
                     <button
                         type="button"
                         @click="randomWorld()"
@@ -373,7 +413,7 @@
              class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50"
              @click.self="showGenerateChapter = false">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 transition-colors duration-200">
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Generate Chapter</h3>
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Generate Chapter</h3>
                 <form @submit.prevent="generateChapter()">
                     <div class="space-y-4">
                         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-2">
@@ -424,7 +464,7 @@
              class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50"
              @click.self="showEditWorld = false">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 transition-colors duration-200">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Edit World</h3>
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Edit World</h3>
                 <form @submit.prevent="updateWorld()">
                     <div class="space-y-4">
                         <div>
@@ -573,7 +613,7 @@
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200">
                 <div class="sticky top-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Settings</h3>
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white">Settings</h3>
                         <button
                             @click="showSettings = false"
                             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -641,7 +681,7 @@
 
                             <!-- API Keys -->
                             <div class="space-y-4">
-                                <h4 class="font-semibold text-gray-900 dark:text-white">API Keys</h4>
+                                <h4 class="font-semibold text-gray-800 dark:text-white">API Keys</h4>
 
                                 <div>
                                     <div class="flex justify-between items-center mb-1">
@@ -826,11 +866,24 @@
         <!-- Chapter Viewer Modal -->
         <div x-show="viewingChapter"
              x-cloak
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
              class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 flex items-center justify-center z-50 p-4"
              @click.self="viewingChapter = null">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200">
+            <div x-show="viewingChapter"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200">
                 <div class="sticky top-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white" x-text="viewingChapter?.title"></h3>
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white" x-text="viewingChapter?.title"></h3>
                     <button
                         @click="viewingChapter = null"
                         class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -839,14 +892,14 @@
                         </svg>
                     </button>
                 </div>
-                <div class="p-6 bg-white dark:bg-gray-800 transition-colors duration-200">
+                <div class="p-8 bg-white dark:bg-gray-800 transition-colors duration-200">
                     <img
                         x-show="viewingChapter?.scene"
                         :src="viewingChapter?.scene"
-                        class="w-full rounded-lg mb-6">
+                        class="max-w-md mx-auto rounded-lg mb-6 shadow-md">
                     <div
                         x-html="chapterContent"
-                        class="prose dark:prose-invert max-w-none">
+                        class="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
                     </div>
                 </div>
             </div>
@@ -868,7 +921,7 @@
                                 </svg>
                             </div>
                             <div class="ml-4 flex-1">
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-white" x-text="confirmDialog.message"></h3>
+                                <h3 class="text-lg font-medium text-gray-800 dark:text-white" x-text="confirmDialog.message"></h3>
                             </div>
                         </div>
                     </div>
@@ -895,7 +948,7 @@
              @click.self="showConsole = false">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col transition-colors duration-200">
                 <div class="sticky top-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Console Logs</h3>
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-white">Console Logs</h3>
                     <div class="flex items-center gap-3">
                         <button
                             @click="copyConsoleLogs()"
@@ -945,7 +998,7 @@
              @click.self="showRegenerateOptions = false">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full transition-colors duration-200">
                 <div class="px-6 py-4 border-b dark:border-gray-700">
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">What would you like to regenerate?</h3>
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-white">What would you like to regenerate?</h3>
                 </div>
                 <div class="p-6 space-y-3">
                     <button
@@ -999,7 +1052,7 @@
                                 </svg>
                             </div>
                             <div class="ml-3 w-0 flex-1">
-                                <p class="text-sm font-medium text-gray-900 dark:text-white" x-text="toast.message"></p>
+                                <p class="text-sm font-medium text-gray-800 dark:text-white" x-text="toast.message"></p>
                             </div>
                             <div class="ml-4 flex-shrink-0 flex">
                                 <button @click="toast.show = false" class="inline-flex text-gray-400 hover:text-gray-500 focus:outline-none">
@@ -1015,6 +1068,6 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=4"></script>
+    <script src="/static/app.js?v=10"></script>
 </body>
 </html>

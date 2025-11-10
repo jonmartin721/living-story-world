@@ -99,6 +99,9 @@ async def validate_configuration():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
+    # Suppress httpx INFO logs to reduce noise during API calls
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     settings = load_user_settings()
 
     # Warn about missing API keys

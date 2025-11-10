@@ -246,16 +246,8 @@ function app() {
         },
 
         async init() {
-            // Load dark mode preference - default to system preference
-            const savedMode = localStorage.getItem('darkMode');
-            if (savedMode === null) {
-                // No saved preference, use system preference
-                this.darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            } else {
-                this.darkMode = savedMode === 'true';
-            }
-
-            // Apply dark mode to document
+            // Force dark mode always
+            this.darkMode = true;
             this.applyDarkMode();
 
             await this.loadSettings();
@@ -268,27 +260,9 @@ function app() {
             }
         },
 
-        toggleDarkMode() {
-            this.darkMode = !this.darkMode;
-            localStorage.setItem('darkMode', String(this.darkMode));
-            console.log('Dark mode toggled to:', this.darkMode);
-            this.applyDarkMode();
-        },
-
         applyDarkMode() {
             const html = document.documentElement;
-            // Force remove first to ensure clean state
-            html.classList.remove('dark');
-
-            if (this.darkMode) {
-                html.classList.add('dark');
-                console.log('Applied dark mode class');
-            } else {
-                console.log('Removed dark mode class');
-            }
-
-            // Force a style recalculation
-            void html.offsetHeight;
+            html.classList.add('dark');
         },
 
         async loadSettings() {

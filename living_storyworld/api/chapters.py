@@ -148,7 +148,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             await queue.put({
                 "stage": "text",
                 "percent": current_percent,
-                "message": f"Generating chapter text... ({elapsed:.0f}s)"
+                "message": f"Chapter text... ({elapsed:.0f}s)"
             })
 
             try:
@@ -203,7 +203,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 await queue.put({
                     "stage": "image",
                     "percent": current_percent,
-                    "message": f"Generating scene image... ({elapsed:.0f}s)"
+                    "message": f"Scene image... ({elapsed:.0f}s)"
                 })
 
                 try:
@@ -392,7 +392,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             await queue.put({
                 "stage": "text",
                 "percent": current_percent,
-                "message": f"Generating chapter text... ({elapsed:.0f}s)"
+                "message": f"Chapter text... ({elapsed:.0f}s)"
             })
 
             try:
@@ -451,7 +451,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
                 await queue.put({
                     "stage": "image",
                     "percent": current_percent,
-                    "message": f"Generating scene image... ({elapsed:.0f}s)"
+                    "message": f"Scene image... ({elapsed:.0f}s)"
                 })
 
                 try:
