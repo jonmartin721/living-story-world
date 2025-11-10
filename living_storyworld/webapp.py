@@ -88,6 +88,46 @@ async def index():
     return {"message": "Living Storyworld API", "docs": "/docs"}
 
 
+@app.on_event("startup")
+async def validate_configuration():
+    """Validate configuration on startup."""
+    import logging
+    from .settings import load_user_settings
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    settings = load_user_settings()
+
+    # Warn about missing API keys
+    warnings = []
+    if not settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
+        warnings.append("OpenAI API key not configured")
+    if not settings.replicate_api_token and not os.environ.get("REPLICATE_API_TOKEN"):
+        warnings.append("Replicate API token not configured")
+
+    if warnings:
+        for warning in warnings:
+            logging.warning(f"CONFIG: {warning}")
+        logging.info("Some API keys are missing. Configure them via /api/settings or environment variables.")
+
+    # Check writable directories
+    try:
+        WORLDS_DIR.mkdir(parents=True, exist_ok=True)
+        test_file = WORLDS_DIR / ".write_test"
+        test_file.write_text("test")
+        test_file.unlink()
+        logging.info(f"WORLDS_DIR is writable: {WORLDS_DIR}")
+    except Exception as e:
+        logging.error(f"WORLDS_DIR not writable: {e}")
+        raise RuntimeError(f"Cannot write to worlds directory: {e}")
+
+    logging.info("Configuration validation complete")
+    logging.info(f"Allowed CORS origins: {', '.join(allowed_origins)}")
+
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""

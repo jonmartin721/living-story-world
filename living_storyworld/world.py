@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
@@ -56,10 +57,36 @@ def init_world(
 
 
 def load_world(slug: str) -> tuple[WorldConfig, WorldState, dict]:
+    """Load world configuration and state with validation.
+
+    Raises:
+        RuntimeError: If world data is missing or corrupted
+    """
     dirs = ensure_world_dirs(slug)
-    cfg = read_json(dirs["base"] / "config.json")
-    state = read_json(dirs["base"] / "world.json")
-    return WorldConfig(**cfg), WorldState(**state), dirs
+
+    # Load and validate config
+    cfg_data = read_json(dirs["base"] / "config.json")
+    if cfg_data is None:
+        raise RuntimeError(f"World '{slug}' config.json not found or corrupted")
+
+    try:
+        cfg = WorldConfig(**cfg_data)
+    except (TypeError, ValueError) as e:
+        logging.error(f"Failed to validate world config for '{slug}': {e}")
+        raise RuntimeError(f"World '{slug}' has corrupted configuration: {e}")
+
+    # Load and validate state
+    state_data = read_json(dirs["base"] / "world.json")
+    if state_data is None:
+        raise RuntimeError(f"World '{slug}' world.json not found or corrupted")
+
+    try:
+        state = WorldState(**state_data)
+    except (TypeError, ValueError) as e:
+        logging.error(f"Failed to validate world state for '{slug}': {e}")
+        raise RuntimeError(f"World '{slug}' has corrupted state: {e}")
+
+    return cfg, state, dirs
 
 
 def save_world(slug: str, cfg: WorldConfig, state: WorldState, dirs: Optional[dict] = None) -> None:
