@@ -33,7 +33,9 @@ function app() {
             default_style_pack: 'storybook-ink',
             default_preset: 'cozy-adventure',
             default_text_model: 'gpt-4o-mini',
-            default_image_model: 'flux-dev'
+            default_image_model: 'flux-dev',
+            reader_font_family: 'Georgia',
+            reader_font_size: 'medium'
         },
 
         settingsForm: {
@@ -49,7 +51,9 @@ function app() {
             default_style_pack: '',
             default_preset: '',
             default_text_model: '',
-            default_image_model: ''
+            default_image_model: '',
+            reader_font_family: '',
+            reader_font_size: ''
         },
 
         newWorld: {
@@ -303,6 +307,8 @@ function app() {
             try {
                 const response = await fetch('/api/settings');
                 this.settings = await response.json();
+                // Apply reader styles immediately after loading
+                this.applyReaderStyles();
             } catch (error) {
                 console.error('Failed to load settings:', error);
             }
@@ -323,7 +329,9 @@ function app() {
                 default_style_pack: this.settings.default_style_pack,
                 default_preset: this.settings.default_preset,
                 default_text_model: this.settings.default_text_model,
-                default_image_model: this.settings.default_image_model
+                default_image_model: this.settings.default_image_model,
+                reader_font_family: this.settings.reader_font_family,
+                reader_font_size: this.settings.reader_font_size
             };
             this.settingsTab = 'api';
             this.showSettings = true;
@@ -331,6 +339,11 @@ function app() {
 
         async saveSettings() {
             try {
+                console.log('Saving reader settings:', {
+                    font_family: this.settingsForm.reader_font_family,
+                    font_size: this.settingsForm.reader_font_size
+                });
+
                 // Build request with only non-empty API keys
                 const payload = {
                     text_provider: this.settingsForm.text_provider,
@@ -339,7 +352,9 @@ function app() {
                     default_style_pack: this.settingsForm.default_style_pack,
                     default_preset: this.settingsForm.default_preset,
                     default_text_model: this.settingsForm.default_text_model,
-                    default_image_model: this.settingsForm.default_image_model
+                    default_image_model: this.settingsForm.default_image_model,
+                    reader_font_family: this.settingsForm.reader_font_family,
+                    reader_font_size: this.settingsForm.reader_font_size
                 };
 
                 // Only include API keys if they're not empty (user entered them)
@@ -362,11 +377,54 @@ function app() {
 
                 this.showSettings = false;
                 await this.loadSettings();
+                console.log('Settings reloaded:', {
+                    font_family: this.settings.reader_font_family,
+                    font_size: this.settings.reader_font_size
+                });
+                this.applyReaderStyles();
                 this.showToast('Settings saved successfully!', 'success');
             } catch (error) {
                 console.error('Failed to save settings:', error);
                 this.showToast('Failed to save settings. Check console for details.');
             }
+        },
+
+        applyReaderStyles() {
+            // Target the chapter content prose element specifically
+            const chapterViewer = document.getElementById('chapter-viewer-modal');
+            if (!chapterViewer) {
+                console.log('Chapter viewer modal not found');
+                return;
+            }
+
+            const prose = chapterViewer.querySelector('.prose');
+            if (!prose) {
+                console.log('Prose element not found in chapter viewer');
+                return;
+            }
+
+            console.log('Applying reader styles:', {
+                font_family: this.settings.reader_font_family,
+                font_size: this.settings.reader_font_size
+            });
+
+            // Apply font family
+            const fontMap = {
+                'Georgia': 'Georgia, "Times New Roman", serif',
+                'serif': 'Georgia, "Times New Roman", serif',
+                'sans-serif': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                'monospace': '"Courier New", Courier, monospace'
+            };
+            prose.style.fontFamily = fontMap[this.settings.reader_font_family] || fontMap['Georgia'];
+
+            // Apply font size
+            const sizeMap = {
+                'small': 'clamp(1rem, 1rem + 0.5vw, 1.125rem)',        // 16-18px
+                'medium': 'clamp(1.125rem, 1.25rem + 0.5vw, 1.375rem)',  // 18-22px
+                'large': 'clamp(1.25rem, 1.5rem + 0.5vw, 1.625rem)',    // 20-26px
+                'xl': 'clamp(1.5rem, 1.75rem + 0.5vw, 2rem)'            // 24-32px
+            };
+            prose.style.fontSize = sizeMap[this.settings.reader_font_size] || sizeMap['medium'];
         },
 
         async loadWorlds() {
@@ -587,16 +645,20 @@ function app() {
                 // Simple markdown to HTML conversion
                 this.chapterContent = this.markdownToHtml(data.content);
 
-                // Scroll to top if requested
-                if (scrollToTop) {
-                    // Use nextTick to ensure DOM is updated before scrolling
-                    this.$nextTick(() => {
+                // Apply reader styles and scroll after DOM update
+                // Use a slight delay to ensure x-html has rendered
+                this.$nextTick(() => {
+                    setTimeout(() => {
+                        this.applyReaderStyles();
+                    }, 50);
+
+                    if (scrollToTop) {
                         const modalContent = document.getElementById('chapter-viewer-modal');
                         if (modalContent) {
                             modalContent.scrollTop = 0;
                         }
-                    });
-                }
+                    }
+                });
             } catch (error) {
                 console.error('Failed to load chapter content:', error);
                 this.chapterContent = '<p>Failed to load chapter content.</p>';

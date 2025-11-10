@@ -48,6 +48,10 @@ class UserSettings:
     default_image_model: str = "flux"  # Pollinations default
     default_maturity_level: str = "general"
 
+    # Reader preferences
+    reader_font_family: str = "Georgia"  # serif, sans-serif, or Georgia
+    reader_font_size: str = "medium"  # small, medium, large, xl
+
 
 def load_user_settings() -> UserSettings:
     """Load user settings from config file.

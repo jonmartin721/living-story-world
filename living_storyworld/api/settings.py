@@ -72,6 +72,10 @@ class SettingsResponse(BaseModel):
     default_text_model: str
     default_image_model: str
 
+    # Reader preferences
+    reader_font_family: str
+    reader_font_size: str
+
 
 class SettingsUpdateRequest(BaseModel):
     # Provider selections
@@ -92,6 +96,10 @@ class SettingsUpdateRequest(BaseModel):
     default_preset: Optional[str] = Field(None, max_length=100)
     default_text_model: Optional[str] = Field(None, max_length=100)
     default_image_model: Optional[str] = Field(None, max_length=100)
+
+    # Reader preferences
+    reader_font_family: Optional[str] = Field(None, max_length=50)
+    reader_font_size: Optional[str] = Field(None, max_length=20)
 
 
 @router.get("", response_model=SettingsResponse)
@@ -120,7 +128,9 @@ async def get_settings():
         default_style_pack=settings.default_style_pack,
         default_preset=settings.default_preset,
         default_text_model=settings.default_text_model,
-        default_image_model=settings.default_image_model
+        default_image_model=settings.default_image_model,
+        reader_font_family=settings.reader_font_family,
+        reader_font_size=settings.reader_font_size
     )
 
 
@@ -183,6 +193,13 @@ async def update_settings(request: SettingsUpdateRequest):
 
     if request.default_image_model is not None:
         settings.default_image_model = request.default_image_model
+
+    # Update reader preferences
+    if request.reader_font_family is not None:
+        settings.reader_font_family = request.reader_font_family
+
+    if request.reader_font_size is not None:
+        settings.reader_font_size = request.reader_font_size
 
     save_user_settings(settings)
 
