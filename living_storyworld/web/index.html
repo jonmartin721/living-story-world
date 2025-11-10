@@ -65,6 +65,31 @@
         .prose h1:first-child {
             display: none;
         }
+
+        /* Dark themed scrollbar for chapter viewer modal */
+        .max-w-2xl::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .max-w-2xl::-webkit-scrollbar-track {
+            background: #374151;
+            border-radius: 4px;
+        }
+
+        .max-w-2xl::-webkit-scrollbar-thumb {
+            background: #6b7280;
+            border-radius: 4px;
+        }
+
+        .max-w-2xl::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* Firefox scrollbar styling for chapter modal */
+        .max-w-2xl {
+            scrollbar-width: thin;
+            scrollbar-color: #6b7280 #374151;
+        }
     </style>
 </head>
 <body class="bg-gray-900 dark:bg-gray-900 transition-colors duration-200">

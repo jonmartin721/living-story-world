@@ -94,3 +94,48 @@ button {
     -moz-user-select: none;
     -ms-user-select: none;
 }
+
+/* Dark themed scrollbars for chapter content */
+.prose::-webkit-scrollbar {
+    width: 8px;
+}
+
+.prose::-webkit-scrollbar-track {
+    background: #374151; /* gray-700 */
+    border-radius: 4px;
+}
+
+.prose::-webkit-scrollbar-thumb {
+    background: #6b7280; /* gray-500 */
+    border-radius: 4px;
+}
+
+.prose::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af; /* gray-400 */
+}
+
+/* Dark themed scrollbars for all modal content */
+.bg-white.dark\\:bg-gray-800::-webkit-scrollbar {
+    width: 8px;
+}
+
+.bg-white.dark\\:bg-gray-800::-webkit-scrollbar-track {
+    background: #374151; /* gray-700 */
+    border-radius: 4px;
+}
+
+.bg-white.dark\\:bg-gray-800::-webkit-scrollbar-thumb {
+    background: #6b7280; /* gray-500 */
+    border-radius: 4px;
+}
+
+.bg-white.dark\\:bg-gray-800::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af; /* gray-400 */
+}
+
+/* Firefox scrollbar styling */
+.prose,
+.bg-white.dark\:bg-gray-800 {
+    scrollbar-width: thin;
+    scrollbar-color: #6b7280 #374151;
+}
