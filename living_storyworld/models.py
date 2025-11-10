@@ -50,7 +50,6 @@ class WorldConfig:
     image_model: str = "flux-schnell"
     maturity_level: str = "general"  # general, teen, mature, explicit
     preset: str = "cozy-adventure"  # Narrative preset defines the vibe/tone
-    chapter_length: str = "medium"  # short, medium (2x short), long (4x short)
 
     # NAI-style memory system
     memory: Optional[str] = None  # Always included in context (lore, background, key facts)

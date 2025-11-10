@@ -53,7 +53,6 @@ function app() {
             image_model: 'flux-schnell',
             preset: 'cozy-adventure',
             maturity_level: 'general',
-            chapter_length: 'medium',
             memory: '',
             authors_note: '',
             world_instructions: ''
@@ -66,7 +65,6 @@ function app() {
             image_model: '',
             preset: '',
             maturity_level: '',
-            chapter_length: '',
             memory: '',
             authors_note: '',
             world_instructions: ''
@@ -74,7 +72,8 @@ function app() {
 
         generateOptions: {
             focus: '',
-            no_images: false
+            no_images: false,
+            chapter_length: 'medium'
         },
 
         async randomWorld() {
@@ -105,7 +104,6 @@ function app() {
                 this.newWorld.preset = data.preset;
                 this.newWorld.image_model = data.image_model;
                 this.newWorld.maturity_level = data.maturity_level;
-                this.newWorld.chapter_length = data.chapter_length || 'medium';
             } catch (error) {
                 console.error('Failed to generate world:', error);
                 // Restore originals on failure
@@ -276,7 +274,6 @@ function app() {
                 image_model: this.currentWorld.config.image_model,
                 preset: this.currentWorld.config.preset || 'cozy-adventure',
                 maturity_level: this.currentWorld.config.maturity_level || 'general',
-                chapter_length: this.currentWorld.config.chapter_length || 'medium',
                 memory: this.currentWorld.config.memory || '',
                 authors_note: this.currentWorld.config.authors_note || '',
                 world_instructions: this.currentWorld.config.world_instructions || ''

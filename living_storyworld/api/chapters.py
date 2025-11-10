@@ -27,6 +27,7 @@ active_jobs: Dict[str, asyncio.Queue] = {}
 class ChapterGenerateRequest(BaseModel):
     focus: Optional[str] = Field(None, max_length=1000, description="Focus/direction for the chapter")
     no_images: bool = False
+    chapter_length: str = Field("medium", description="Chapter length: short, medium, or long")
 
     @validator('focus')
     def strip_whitespace(cls, v):
@@ -127,7 +128,8 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             cfg,
             state,
             request.focus,
-            request.no_images,
+            not request.no_images,  # make_scene_image
+            request.chapter_length,
         )
 
         # Send progress updates while waiting (estimated ~25-35 seconds for text generation)

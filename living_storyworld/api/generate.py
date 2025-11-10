@@ -23,7 +23,6 @@ class WorldResponse(BaseModel):
     preset: str
     image_model: str
     maturity_level: str
-    chapter_length: str
 
 
 def _generate_random_theme() -> str:
@@ -91,8 +90,6 @@ Available image models: flux-dev (higher quality, slower), flux-schnell (faster,
 
 Available maturity levels: general, teen, mature, explicit
 
-Available chapter lengths: short (~500 words), medium (~1000 words), long (~2000 words)
-
 Return a JSON object with these fields:
 - title: A compelling, evocative title (2-5 words)
 - theme: One vivid sentence describing the world's core concept
@@ -100,9 +97,8 @@ Return a JSON object with these fields:
 - preset: Choose one that matches the narrative tone
 - image_model: Choose based on desired quality vs speed tradeoff
 - maturity_level: Choose based on the world's content
-- chapter_length: Choose based on the world's pacing needs
 
-Make everything cohesive - the style, preset, image model, maturity, and chapter length should all match the overall vibe."""
+Make everything cohesive - the style, preset, image model, and maturity should all match the overall vibe."""
                 },
                 {
                     "role": "user",
@@ -124,7 +120,6 @@ Make everything cohesive - the style, preset, image model, maturity, and chapter
             "preset": data.get("preset", "cozy-adventure"),
             "image_model": data.get("image_model", "flux-schnell"),
             "maturity_level": data.get("maturity_level", "general"),
-            "chapter_length": data.get("chapter_length", "medium"),
         }
 
     except Exception as e:
@@ -137,8 +132,7 @@ Make everything cohesive - the style, preset, image model, maturity, and chapter
                 "style_pack": "watercolor-dream",
                 "preset": "cozy-adventure",
                 "image_model": "flux-dev",
-                "maturity_level": "general",
-                "chapter_length": "medium"
+                "maturity_level": "general"
             },
             {
                 "title": "Crystal Archives",
@@ -146,8 +140,7 @@ Make everything cohesive - the style, preset, image model, maturity, and chapter
                 "style_pack": "art-nouveau",
                 "preset": "noir-mystery",
                 "image_model": "flux-schnell",
-                "maturity_level": "teen",
-                "chapter_length": "short"
+                "maturity_level": "teen"
             },
             {
                 "title": "Memory Market",
@@ -155,8 +148,7 @@ Make everything cohesive - the style, preset, image model, maturity, and chapter
                 "style_pack": "comic-book",
                 "preset": "cyberpunk-noir",
                 "image_model": "flux-dev",
-                "maturity_level": "mature",
-                "chapter_length": "long"
+                "maturity_level": "mature"
             },
             {
                 "title": "Singing Forests",
@@ -164,8 +156,7 @@ Make everything cohesive - the style, preset, image model, maturity, and chapter
                 "style_pack": "storybook-ink",
                 "preset": "whimsical-fairy-tale",
                 "image_model": "flux-schnell",
-                "maturity_level": "general",
-                "chapter_length": "medium"
+                "maturity_level": "general"
             },
         ]
         return random.choice(fallbacks)

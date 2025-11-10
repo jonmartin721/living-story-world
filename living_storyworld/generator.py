@@ -22,7 +22,7 @@ def _get_client():
     return OpenAI()
 
 
-def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[str]) -> Tuple[str, list[dict], float]:
+def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[str], chapter_length: str = "medium") -> Tuple[str, list[dict], float]:
     style = STYLE_PACKS.get(cfg.style_pack, STYLE_PACKS["storybook-ink"])  # textual art bible for images
     preset = PRESETS.get(cfg.preset, DEFAULT_PRESET)
 
@@ -61,6 +61,15 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
 
     sys = "".join(sys_parts)
 
+    # Build story summary from previous chapters for continuity
+    story_so_far = []
+    if state.chapters:
+        # Include summaries from recent chapters (last 3) for better continuity
+        recent_chapters = state.chapters[-3:]
+        for ch in recent_chapters:
+            if ch.summary:
+                story_so_far.append(f"Chapter {ch.number}: {ch.summary}")
+
     world_brief = {
         "title": cfg.title,
         "theme": cfg.theme,
@@ -79,6 +88,10 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
 
     user_parts.append("World brief: " + json.dumps(world_brief) + "\n\n")
 
+    # Add story summary for continuity
+    if story_so_far:
+        user_parts.append("Story so far:\n" + "\n".join(story_so_far) + "\n\n")
+
     # Add author's note (strategic placement for style guidance)
     if cfg.authors_note:
         user_parts.append(f"Author's Note: {cfg.authors_note}\n\n")
@@ -93,7 +106,7 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         "medium": (800, 1200),  # 2x short
         "long": (1600, 2400)    # 4x short
     }
-    min_words, max_words = length_config.get(cfg.chapter_length, length_config["medium"])
+    min_words, max_words = length_config.get(chapter_length, length_config["medium"])
     # Add ±10% random variation for natural feel
     variation = random.uniform(0.9, 1.1)
     min_words = int(min_words * variation)
@@ -135,6 +148,7 @@ def generate_chapter(
     state: WorldState,
     focus: Optional[str] = None,
     make_scene_image: bool = True,
+    chapter_length: str = "medium",
 ) -> Chapter:
     # Load settings to determine which provider to use
     settings = load_user_settings()
@@ -148,7 +162,7 @@ def generate_chapter(
         # Fallback to legacy OpenAI client if provider setup fails
         print(f"[WARN] Provider {text_provider_name} failed, falling back to OpenAI: {e}", flush=True)
         client = _get_client()
-        style, messages, temp = _build_chapter_prompt(cfg, state, focus)
+        style, messages, temp = _build_chapter_prompt(cfg, state, focus, chapter_length)
         resp = client.chat.completions.create(
             model=cfg.text_model,
             messages=messages,
@@ -157,7 +171,7 @@ def generate_chapter(
         md = resp.choices[0].message.content or ""
     else:
         # Use the provider abstraction
-        style, messages, temp = _build_chapter_prompt(cfg, state, focus)
+        style, messages, temp = _build_chapter_prompt(cfg, state, focus, chapter_length)
         result = provider.generate(messages, temperature=temp, model=cfg.text_model)
         md = result.content
         print(f"[INFO] Generated chapter using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
