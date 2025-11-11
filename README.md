@@ -1,158 +1,320 @@
 # Living Storyworld
 
-A persistent narrative universe you can explore via a simple CLI. It generates chapters (Markdown) using Groq (Llama 3.3) and scene illustrations using Flux via Replicate, then builds a lightweight HTML index for viewing.
+> A persistent narrative universe generator that creates illustrated story chapters using AI-powered text and image generation.
 
-## Prerequisites
+Create evolving fictional worlds where each chapter builds on the last. Living Storyworld combines multiple LLM providers with AI image generation to produce coherent, ongoing narratives with custom scene illustrations—all from a simple CLI or modern web interface.
 
-- **Python 3.8+** (developed with 3.10+)
-- **Groq API key** for text generation ([get one here](https://console.groq.com/keys)) - Free tier available!
-- **Replicate API token** for image generation ([get one here](https://replicate.com/account/api-tokens))
-- **Note**: This tool makes API calls to Groq (text) and Replicate (images). Each chapter generation uses `llama-3.3-70b-versatile` (text, ~$0.001) and `flux-dev` (images, ~$0.025), typical cost per chapter: ~$0.026 USD.
+---
 
-## Quickstart
+## Features
 
-1. Install dependencies:
-   ```bash
-   python3 -m pip install -r requirements.txt
-   ```
+- **Persistent World State** — Characters, locations, and narrative continuity maintained across chapters
+- **Multi-Provider Support** — Choose from OpenAI, Groq, Together AI, HuggingFace, OpenRouter for text; Replicate, Fal.ai, Pollinations for images
+- **Visual Styles** — Multiple art direction presets (storybook-ink, pixel-rpg, lowpoly-iso, watercolor-dream, and more)
+- **Narrative Presets** — 12+ genre/tone templates from cozy-adventure to cyberpunk-noir
+- **Web Interface** — Modern GUI with real-time generation progress and chapter management
+- **Smart Caching** — Avoids duplicate API calls by hashing image prompts
+- **Flexible Output** — Generate static HTML viewers or use the interactive web app
 
-2. Configure your API key (choose one):
-   ```bash
-   # Option A: Use the setup wizard (recommended - stores key securely with 600 perms)
-   python3 -m living_storyworld.cli setup
+---
 
-   # Option B: Create a .env file (convenient for local development)
-   cp .env.example .env
-   # Edit .env and add your API key: OPENAI_API_KEY=sk-...
+## Quick Start
 
-   # Option C: Set environment variable
-   export OPENAI_API_KEY=sk-...
-   ```
+### Installation
 
-3. Create your first world:
-   ```bash
-   python3 -m living_storyworld.cli init \
-     --title "The Flooded Stacks" \
-     --theme "A city of drowned archives" \
-     --style storybook-ink \
-     --image-model flux-dev
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/living-storyworld.git
+cd living-storyworld
 
-   **Image model options:**
-   - `flux-dev` — Higher quality, ~$0.025 per image (default)
-   - `flux-schnell` — Faster/cheaper, ~$0.003 per image
+# Set up virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate
 
-4. Generate a chapter:
-   ```bash
-   python3 -m living_storyworld.cli chapter \
-     --world the-flooded-stacks \
-     --preset cozy-adventure
-   ```
+# Install dependencies
+pip install -r requirements.txt
+```
 
-5. View your story:
+### Configuration
 
-   **Option A: Web Interface (Recommended)**
-   ```bash
-   python3 -m living_storyworld.cli web
-   ```
-   Opens at `http://localhost:8001` with full GUI for browsing, generating, and viewing chapters.
+Configure your API keys using the setup wizard:
 
-   > **Security Note:** The web server is designed for single-user, localhost-only use. It binds to `127.0.0.1` and has no authentication. Do not expose it to the internet or local network without implementing proper authentication and access controls.
+```bash
+python3 -m living_storyworld.cli setup
+```
 
-   **Option B: Static HTML viewer**
-   ```bash
-   python3 -m living_storyworld.cli build --world the-flooded-stacks
-   # Then open worlds/the-flooded-stacks/web/index.html in your browser
-   ```
+The wizard securely stores your keys in `~/.config/living-storyworld/settings.json` with `600` permissions.
+
+<details>
+<summary>Alternative: Environment Variables</summary>
+
+```bash
+# Copy example env file
+cp .env.example .env
+
+# Edit .env and add your keys
+export GROQ_API_KEY=gsk_...
+export REPLICATE_API_TOKEN=r8_...
+```
+</details>
+
+### Create Your First World
+
+```bash
+python3 -m living_storyworld.cli init \
+  --title "The Flooded Stacks" \
+  --theme "A city of drowned archives where knowledge flows like water" \
+  --style storybook-ink \
+  --preset cozy-adventure
+```
+
+### Generate a Chapter
+
+```bash
+python3 -m living_storyworld.cli chapter \
+  --world the-flooded-stacks \
+  --focus "The Archivist discovers a sealed section"
+```
+
+### View Your Story
+
+**Option 1: Web Interface (Recommended)**
+
+```bash
+python3 -m living_storyworld.cli web
+```
+
+Visit `http://localhost:8001` for a modern GUI with:
+- Browse multiple worlds
+- Generate chapters with real-time progress
+- View illustrated chapters in card layout
+- Regenerate images on demand
+
+**Option 2: Static HTML Viewer**
+
+```bash
+python3 -m living_storyworld.cli build --world the-flooded-stacks
+# Open worlds/the-flooded-stacks/web/index.html in your browser
+```
+
+---
 
 ## Usage
 
-- Initialize a world:
-  - `python3 -m living_storyworld.cli init --title "The Flooded Stacks" --theme "A city of drowned archives" --style storybook-ink --slug flooded-stacks`
-- Generate a chapter (with scene image):
-  - `python3 -m living_storyworld.cli chapter --world flooded-stacks --preset cozy-adventure --focus "The Archivist investigates a sealed aisle"`
-- Generate or re-generate a scene image explicitly:
-  - `python3 -m living_storyworld.cli image scene --world flooded-stacks --chapter 1`
-- Build a simple web index:
-  - `python3 -m living_storyworld.cli build --world flooded-stacks`
-  - Open `worlds/flooded-stacks/web/index.html`
+### World Management
 
-## Guided UX
+| Command | Description |
+|---------|-------------|
+| `init` | Create a new narrative world |
+| `chapter` | Generate a new chapter with scene illustration |
+| `image scene` | Regenerate a specific chapter's scene image |
+| `build` | Build static HTML viewer for a world |
+| `web` | Launch interactive web interface |
+| `play` | Interactive terminal UI |
 
-- **Web Interface** (Recommended):
-  ```bash
-  python3 -m living_storyworld.cli web
-  ```
-  Modern web-based GUI with:
-  - Browse and manage multiple worlds
-  - Generate chapters with real-time progress
-  - View chapters with scene images in card layout
-  - Regenerate images on demand
-  - Runs locally at `http://localhost:8001`
+### Available Interfaces
 
-- Setup wizard (saves API key locally with 600 perms):
-  - `python3 -m living_storyworld.cli setup --style storybook-ink --preset cozy-adventure`
+**Web Interface** (Primary)
+```bash
+python3 -m living_storyworld.cli web [--port 8001] [--no-browser]
+```
 
-- Interactive TUI (Terminal UI):
-  - `python3 -m living_storyworld.cli play`
-  - Colorful terminal interface with buttons to generate chapters and build the viewer.
+**Terminal UI**
+```bash
+python3 -m living_storyworld.cli play
+```
 
-## Style Packs
+**Command Line**
+```bash
+# Full chapter generation example
+python3 -m living_storyworld.cli chapter \
+  --world my-world \
+  --preset noir-mystery \
+  --focus "Detective follows a lead to the docks" \
+  --length 2000
+```
 
-Visual art styles for scene illustrations:
+---
 
-- `storybook-ink`: Storybook ink and wash; muted palette, cozy, illustrative.
-- `pixel-rpg`: 16-bit SNES pixel art; crisp sprites; nostalgic.
-- `lowpoly-iso`: Low-poly isometric diorama; clean and stylized.
+## Visual Styles
+
+Choose from multiple art direction presets for scene illustrations:
+
+| Style | Description |
+|-------|-------------|
+| `storybook-ink` | Ink and wash illustration with muted palette |
+| `pixel-rpg` | 16-bit SNES-style pixel art |
+| `lowpoly-iso` | Low-poly isometric diorama |
+| `watercolor-dream` | Soft watercolor with dreamy atmosphere |
+| `noir-sketch` | High-contrast ink sketch, noir aesthetic |
+| `vaporwave-glitch` | Vaporwave aesthetic with digital artifacts |
+
+Configure in world settings or via `worlds/<slug>/config.json`
+
+---
 
 ## Narrative Presets
 
-Story tone and pacing options (use with `--preset` flag):
+12 genre and tone templates to shape your story:
 
-- `cozy-adventure`: Wholesome explorations, wonder, gentle stakes, warm tone. (default)
-- `noir-mystery`: Moody, wry, metaphor-rich, moral gray zones.
-- `epic-fantasy`: Grand vistas, mythic stakes, lyrical cadence.
-- `solarpunk-explorer`: Inventive systems, hopepunk tone, practical wonder.
-- `gothic-horror`: Atmospheric dread, psychological tension, haunting beauty.
-- `space-opera`: Galactic scale, diverse cultures, political intrigue among the stars.
-- `slice-of-life`: Quiet moments, everyday magic, character-focused intimacy.
-- `cosmic-horror`: Existential dread, incomprehensible forces, sanity fraying.
-- `cyberpunk-noir`: High-tech low-life, neon-soaked streets, corporate shadows.
-- `whimsical-fairy-tale`: Playful enchantment, talking creatures, moral lessons with heart.
-- `post-apocalyptic`: Survival amid ruins, harsh beauty, rebuilding hope.
-- `historical-intrigue`: Period authenticity, courtly machinations, personal stakes in grand events.
+<table>
+<tr>
+<td width="50%">
 
-## Notes
+**Adventure & Wonder**
+- `cozy-adventure` — Wholesome exploration, gentle stakes
+- `epic-fantasy` — Grand vistas, mythic stakes
+- `solarpunk-explorer` — Hopepunk tone, inventive systems
+- `whimsical-fairy-tale` — Playful enchantment
 
-- **Text model**: `llama-3.3-70b-versatile` via Groq (configurable in `worlds/<slug>/config.json` or Settings UI)
-- **Image model**: `flux-dev` via Replicate (landscape 16:9 aspect ratio by default)
-  - Choose at world creation with `--image-model` flag
-  - Alternative: `flux-schnell` for faster/cheaper generation (~$0.003 per image)
-  - Change anytime by editing `worlds/<slug>/config.json` → `"image_model": "flux-schnell"`
-- **Image caching**: The CLI caches image prompts by hash to avoid duplicate API calls
-- **Error handling**: If an API call fails, the tool will exit with an error message. Check your API keys and account status.
+</td>
+<td width="50%">
 
-## Project Layout
+**Dark & Mysterious**
+- `noir-mystery` — Moody, metaphor-rich
+- `gothic-horror` — Atmospheric dread
+- `cosmic-horror` — Existential terror
+- `cyberpunk-noir` — High-tech low-life
 
-- `worlds/<slug>/chapters/` — Generated Markdown chapters
-- `worlds/<slug>/media/scenes/` — Generated scene art (PNG)
-- `worlds/<slug>/media/index.json` — Media metadata index
-- `worlds/<slug>/config.json` — World configuration
-- `worlds/<slug>/state.json` — World state (characters, locations, chapter history)
-- `worlds/<slug>/web/index.html` — Simple web viewer
+</td>
+</tr>
+<tr>
+<td>
+
+**Drama & Character**
+- `slice-of-life` — Quiet moments, intimacy
+- `historical-intrigue` — Period authenticity
+
+</td>
+<td>
+
+**Survival & Conflict**
+- `post-apocalyptic` — Harsh beauty, rebuilding
+- `space-opera` — Galactic scale, political intrigue
+
+</td>
+</tr>
+</table>
+
+---
+
+## Architecture
+
+### Project Structure
+
+```
+living-storyworld/
+├── living_storyworld/
+│   ├── cli.py              # CLI entry point
+│   ├── webapp.py           # FastAPI application
+│   ├── generator.py        # Chapter generation orchestrator
+│   ├── world.py            # World initialization and state
+│   ├── storage.py          # Filesystem abstraction
+│   ├── models.py           # Core data models
+│   ├── providers/          # Pluggable text/image providers
+│   ├── api/                # FastAPI routers
+│   └── web/                # Frontend assets
+└── worlds/
+    └── <slug>/
+        ├── config.json     # World configuration
+        ├── world.json      # Persistent state
+        ├── chapters/       # Generated markdown
+        └── media/
+            └── scenes/     # Scene illustrations
+```
+
+### Provider Architecture
+
+**Text Providers**: OpenAI, Groq, Together AI, HuggingFace, OpenRouter
+**Image Providers**: Replicate (Flux), Fal.ai, HuggingFace, Pollinations (free)
+
+All providers implement unified interfaces for easy swapping and cost estimation.
+
+### Data Models
+
+Core dataclasses define world structure:
+- `WorldConfig` — Title, theme, model settings, memory system
+- `WorldState` — Characters, locations, chapter history, tick count
+- `Chapter` — Markdown content, metadata, entity references
+- `Character`, `Location`, `Item` — Persistent entities
+
+---
+
+## Advanced Features
+
+### Memory System
+
+Inspired by NovelAI, each world includes three memory fields:
+
+- **Memory** — Always in context (lore, key facts)
+- **Author's Note** — Style guidance inserted at strategic points
+- **World Instructions** — Custom world-specific directives
+
+Configure via web settings or edit `worlds/<slug>/config.json`
+
+### Entity Tracking
+
+Chapters automatically extract and register:
+- New characters with descriptions
+- New locations and landmarks
+- Scene summaries for continuity
+
+All tracked in `world.json` for persistent world state.
+
+### Image Model Options
+
+| Model | Provider | Quality | Cost | Speed |
+|-------|----------|---------|------|-------|
+| `flux-dev` | Replicate | High | ~$0.025 | Moderate |
+| `flux-schnell` | Replicate | Good | ~$0.003 | Fast |
+| `fal-flux` | Fal.ai | High | ~$0.025 | Fast |
+| `pollinations` | Pollinations | Moderate | Free | Variable |
+
+---
+
+## API Keys & Pricing
+
+### Recommended Setup (Free Tier)
+
+- **Groq** — Free tier includes generous token limits ([get key](https://console.groq.com/keys))
+- **Pollinations** — Free image generation ([no key required](https://pollinations.ai/))
+
+Typical cost per chapter with paid tiers: ~$0.026 USD (text + image)
+
+### Security Notes
+
+- API keys stored locally with `600` permissions
+- Web server binds to `127.0.0.1` (localhost only)
+- No authentication — do not expose to internet
+- Slug validation prevents path traversal attacks
+- Image downloads enforce size limits and timeouts
+
+---
 
 ## Contributing
 
-Contributions are welcome! This is an early-stage project with plenty of room for expansion:
+Contributions welcome! Areas for expansion:
 
 - Additional style packs and narrative presets
-- Character/location/item image generation
+- Character/location portrait generation
 - Export formats (EPUB, PDF)
 - Advanced world simulation mechanics
-- Test coverage
+- Test coverage improvements
 
-Feel free to open issues or submit pull requests.
+Open an issue or submit a pull request.
+
+---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+## Acknowledgments
+
+Built with:
+- [FastAPI](https://fastapi.tiangolo.com/) — Modern web framework
+- [Groq](https://groq.com/) — Fast LLM inference
+- [Replicate](https://replicate.com/) — AI model hosting
+- [Flux](https://blackforestlabs.ai/) — State-of-the-art image generation
