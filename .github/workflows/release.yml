@@ -87,7 +87,7 @@ jobs:
             --hidden-import=uvicorn.lifespan.on \
             --collect-all textual \
             --collect-all rich \
-            living_storyworld/cli.py
+            living_storyworld/__main__.py
 
       - name: Build with PyInstaller (Windows)
         if: runner.os == 'Windows'
@@ -112,7 +112,7 @@ jobs:
             --hidden-import=uvicorn.lifespan.on `
             --collect-all textual `
             --collect-all rich `
-            living_storyworld/cli.py
+            living_storyworld/__main__.py
 
       - name: Make executable (Linux/macOS)
         if: runner.os != 'Windows'

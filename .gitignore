@@ -101,7 +101,6 @@ tauri-app/
 build/
 dist/
 *.spec
-run_app.py
 
 # Test coverage
 .coverage
