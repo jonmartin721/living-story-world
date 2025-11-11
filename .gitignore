@@ -91,3 +91,6 @@ worlds/
 *.log
 living_storyworld.log
 
+# pip install artifacts
+=*
+
