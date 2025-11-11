@@ -63,6 +63,12 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         "Introduce new characters or locations when they serve the story naturally. "
         + preset.system_directives,
         f"\n\nMaturity Level: {maturity_instruction}",
+        "\n\nCHARACTER DEPTH: Create complex, flawed, unpredictable characters with contradictory motivations. "
+        "AVOID: wholesome hand-holding, therapy-speak, everyone being kind/supportive, feelings circles, characters explaining their emotions. "
+        "EMBRACE: Moral ambiguity, selfishness, secrets, conflicting desires, manipulation, genuine antagonism, characters who lie, betray, make bad choices. "
+        "People should have edges - they can be cruel, calculating, desperate, broken, obsessed, or just deeply flawed. "
+        "Not everyone needs to be redeemed. Not every conflict needs resolution through communication. "
+        "Show character through ACTION and CONTRADICTION, not self-aware emotional monologues.",
         "\n\nSTORY HEALTH MONITORING: In the metadata, analyze if: "
         "(1) You're repeating beats/themes from recent chapters, "
         "(2) The story has reached a natural conclusion, "
@@ -190,6 +196,9 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         f"Then write {min_words}-{max_words} words of rich prose with light dialogue, tangible sensory detail, and a memorable closing beat.\n",
         f"At top, put: {metadata_format}",
         "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n",
+        "When creating new_characters, their descriptions should hint at complexity/flaws/contradictions, NOT just surface traits. "
+        "Examples: 'A merchant who smiles too much while calculating debts' not 'A friendly merchant'. "
+        "'A priest haunted by what she did to get here' not 'A devoted priest'. Give them EDGES.\n",
         f"Art direction (for scene_prompt only): {style}.\n",
         f"Preset instructions: {preset.text_instructions}"
     ])
