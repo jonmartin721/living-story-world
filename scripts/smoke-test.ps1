@@ -8,6 +8,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Resolve to absolute path before changing directories
+$Executable = Resolve-Path $Executable
+
 $TempDir = New-Item -ItemType Directory -Path (Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName()))
 
 Write-Host "Running smoke tests on: $Executable"
