@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -10,6 +11,16 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from .api import worlds, chapters, images, settings, generate
+
+
+def get_base_path() -> Path:
+    """Get base path for bundled app (PyInstaller) or development."""
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle
+        return Path(sys._MEIPASS)
+    else:
+        # Running in normal Python
+        return Path(__file__).parent
 
 # Security headers middleware
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -25,7 +36,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # SECURITY: Content Security Policy to prevent XSS
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' https://cdn.tailwindcss.com; "
+            "script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
             "img-src 'self' data:; "
             "connect-src 'self'; "
@@ -87,7 +98,7 @@ if WORLDS_DIR.exists():
     app.mount("/worlds", StaticFiles(directory=str(WORLDS_DIR)), name="worlds")
 
 # Serve frontend static files
-web_dir = Path(__file__).parent / "web"
+web_dir = get_base_path() / "web"
 if web_dir.exists():
     app.mount("/static", StaticFiles(directory=str(web_dir)), name="static")
 
@@ -95,7 +106,7 @@ if web_dir.exists():
 @app.get("/")
 async def index():
     """Serve the main web interface"""
-    html_path = Path(__file__).parent / "web" / "index.html"
+    html_path = get_base_path() / "web" / "index.html"
     if html_path.exists():
         return FileResponse(html_path)
     return {"message": "Living Storyworld API", "docs": "/docs"}

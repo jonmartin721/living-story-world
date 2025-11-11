@@ -81,11 +81,25 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         "People should have edges - they can be cruel, calculating, desperate, broken, obsessed, or just deeply flawed. "
         "Not everyone needs to be redeemed. Not every conflict needs resolution through communication. "
         "Show character through ACTION and CONTRADICTION, not self-aware emotional monologues.",
-        "\n\nSTORY HEALTH MONITORING: In the metadata, analyze if: "
-        "(1) You're repeating beats/themes from recent chapters, "
-        "(2) The story has reached a natural conclusion, "
-        "(3) Fresh complications are needed. "
-        "If repetitive or concluded, either gracefully end OR inject unexpected complications to revitalize the narrative."
+        "\n\nCHARACTER NAMING: When introducing new characters, avoid overused names from your training data. "
+        "Before choosing a name, mentally consider 3-5 different options and select the one that feels LESS common in typical fantasy/fiction. "
+        "AVOID: Elara, Roric, Kael, Lyra, Theron, Aria, Zephyr, Seraphina, Alaric, Rowan, and other heavily-used genre names. "
+        "PREFER: Names that feel fresh, grounded, or culturally specific to your world's setting. "
+        "Consider regional variations, historical inspiration, or invented names that sound natural but aren't overused. "
+        "Names should fit the world's tone but avoid the 'generic fantasy name' trap.",
+        "\n\nANTI-REPETITION (CRITICAL): Before writing, review the story progression context. "
+        "Identify patterns in recent chapters - recurring locations, similar plot beats, repeated conflicts, echoed scenes. "
+        "ACTIVELY AVOID these patterns. If the last 2-3 chapters took place in similar settings (taverns, forests, cities), GO SOMEWHERE DIFFERENT. "
+        "If recent chapters featured similar conflicts (arguments, negotiations, investigations), CHANGE THE BEAT entirely. "
+        "Push forward in time and space. Introduce unexpected complications. Shift tone and pacing. "
+        "The reader should feel MOMENTUM and PROGRESSION, not circular retreading. "
+        "Each chapter must meaningfully advance the story arc - new locations, new complications, new revelations, new characters. "
+        "VARIETY is essential: alternate between action/reflection, danger/respite, discovery/consequences, social/solitary scenes. "
+        "\n\nSTORY HEALTH MONITORING: In the metadata, honestly assess: "
+        "(1) Are you repeating beats/themes/locations from recent chapters? "
+        "(2) Has the story reached a natural conclusion? "
+        "(3) Does the narrative need fresh complications? "
+        "If repetitive or concluded, mark it clearly and either gracefully end OR inject unexpected complications to revitalize the narrative."
     ]
 
     # Add global instructions if present
@@ -101,43 +115,38 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
     # Build efficient story context using stored summaries
     story_context = []
     if state.chapters:
-        # Get summaries from recent chapters (last 5-6 for good context)
-        recent_chapters = state.chapters[-6:] if len(state.chapters) >= 6 else state.chapters
+        # Get summaries from recent chapters (last 3-4 for focused context without over-anchoring)
+        recent_chapters = state.chapters[-4:] if len(state.chapters) >= 4 else state.chapters
 
         for ch in recent_chapters:
             chapter_info = [f"Chapter {ch.number}: {ch.title}"]
 
-            # Use the AI-generated summary if available, otherwise fall back to basic summary
+            # Use lighter summaries to avoid over-anchoring on recent events
             if hasattr(ch, 'ai_summary') and ch.ai_summary:
-                chapter_info.append(f"Events: {ch.ai_summary}")
+                chapter_info.append(f"{ch.ai_summary}")
             elif ch.summary:
-                chapter_info.append(f"Summary: {ch.summary}")
+                chapter_info.append(f"{ch.summary}")
 
-            # Include the selected choice and its impact (important for continuity)
+            # Include the selected choice for continuity, but skip reasoning to reduce anchor weight
             if ch.selected_choice_id and ch.choices:
                 selected_choice = next((c for c in ch.choices if c.id == ch.selected_choice_id), None)
                 if selected_choice:
-                    chapter_info.append(f"Reader chose: '{selected_choice.text}'")
-                    if ch.choice_reasoning:
-                        chapter_info.append(f"Impact: {ch.choice_reasoning}")
-
-            # Include key characters and locations mentioned in this chapter
-            if ch.characters_in_scene:
-                chapter_info.append(f"Characters: {', '.join(ch.characters_in_scene)}")
+                    chapter_info.append(f"Choice: {selected_choice.text}")
 
             story_context.append('\n'.join(chapter_info))
 
-        # Create a chained story progression
-        if len(state.chapters) > 6:
-            # For very long stories, include a condensed summary of older chapters
+        # Create a chained story progression with broader strokes
+        if len(state.chapters) > 4:
+            # For longer stories, include brief arc summary
             older_summary = []
-            for ch in state.chapters[-10:-6]:  # Chapters 7-10 from current
+            for ch in state.chapters[-8:-4]:  # Earlier chapters
                 if hasattr(ch, 'ai_summary') and ch.ai_summary:
-                    older_summary.append(f"Ch {ch.number}: {ch.ai_summary}")
+                    # Just title and key beat, no details
+                    older_summary.append(f"Ch {ch.number} ({ch.title})")
                 elif ch.summary:
-                    older_summary.append(f"Ch {ch.number}: {ch.summary}")
+                    older_summary.append(f"Ch {ch.number} ({ch.title})")
             if older_summary:
-                story_context.insert(0, "Earlier story arc:\n" + "\n".join(older_summary))
+                story_context.insert(0, "Earlier progression: " + " → ".join(older_summary))
 
     world_brief = {
         "title": cfg.title,
@@ -175,10 +184,8 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         if prev_chapter.selected_choice_id and prev_chapter.choices:
             selected_choice = next((c for c in prev_chapter.choices if c.id == prev_chapter.selected_choice_id), None)
             if selected_choice:
-                choice_context = f"READER'S CHOICE (PRIMARY DIRECTIVE): {selected_choice.text}"
-                if prev_chapter.choice_reasoning:
-                    choice_context += f"\nReasoning: {prev_chapter.choice_reasoning}"
-                choice_context += "\n\nThis choice MUST be the central driver of this chapter. Build the narrative directly from the consequences and implications of this decision. Any optional focus/nudges above are secondary to honoring this choice.\n\n"
+                choice_context = f"READER'S CHOICE (PRIMARY DIRECTIVE): {selected_choice.text}\n\n"
+                choice_context += "This choice MUST be the central driver of this chapter. Build the narrative directly from the consequences and implications of this decision. Any optional focus/nudges above are secondary to honoring this choice.\n\n"
                 user_parts.append(choice_context)
 
     # Variable chapter length with random variation
@@ -206,6 +213,8 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         f"Write Chapter {state.next_chapter}:\n",
         f"Start with a unique chapter title as H1 (do NOT include 'Chapter {state.next_chapter}' in the title - just the evocative name). ",
         f"Then write {min_words}-{max_words} words of rich prose emphasizing physical action, movement through spaces, and scene changes. ",
+        f"PUSH THE STORY FORWARD - introduce new complications, visit different locations, advance the timeline, reveal new information. ",
+        f"Avoid repeating locations or beats from recent chapters. Each chapter should feel like PROGRESS. ",
         f"Minimize static dialogue - have characters talk while doing things, traveling, or exploring. ",
         f"Include vivid sensory detail and a memorable closing beat.\n",
         f"At top, put: {metadata_format}",

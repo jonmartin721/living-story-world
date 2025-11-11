@@ -11,12 +11,16 @@ function app() {
         showGenerateChapter: false,
         showSettings: false,
         showConsole: false,
+        showSetupWizard: false,
+        setupWizardStep: 1,
         showRegenerateOptions: false,
         regenerateChapterNum: null,
         settingsTab: 'api',
         viewingChapter: null,
         chapterContent: '',
         selectingChoice: false,
+        pendingChoiceId: null,
+        choiceConfirmStage: 0,
         consoleLogs: [],
         darkMode: false,
         expandedSections: {},
@@ -376,6 +380,12 @@ function app() {
             this.applyDarkMode();
 
             await this.loadSettings();
+
+            // Show setup wizard if no API keys configured
+            if (!this.hasAnyApiKey()) {
+                this.showSetupWizard = true;
+            }
+
             await this.loadWorlds();
             // Auto-select current world if any
             const currentWorld = this.worlds.find(w => w.is_current);
@@ -477,6 +487,28 @@ function app() {
             } catch (error) {
                 console.error('Failed to save settings:', error);
                 this.showToast('Failed to save settings. Check console for details.');
+            }
+        },
+
+        async clearAllApiKeys() {
+            if (!await this.confirm('Clear all API keys? This will remove all configured API keys and you will need to re-enter them.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/settings/clear-keys', {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to clear API keys');
+                }
+
+                await this.loadSettings();
+                this.showToast('All API keys cleared successfully!', 'success');
+            } catch (error) {
+                console.error('Failed to clear API keys:', error);
+                this.showToast('Failed to clear API keys. Check console for details.');
             }
         },
 
@@ -733,6 +765,7 @@ function app() {
 
         async viewChapter(chapter, scrollToTop = false) {
             this.viewingChapter = chapter;
+            this.resetChoiceSelection();
 
             try {
                 const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters/${chapter.number}/content`);
@@ -762,25 +795,6 @@ function app() {
         },
 
         async selectChoice(chapterNum, choiceId) {
-            // Find the choice text for confirmation
-            const chapter = this.viewingChapter;
-            let choiceText = 'this choice';
-            if (chapter && chapter.choices) {
-                const choice = chapter.choices.find(c => c.id === choiceId);
-                if (choice) {
-                    choiceText = `"${choice.text}"`;
-                }
-            }
-
-            // Show confirmation dialog
-            const confirmed = await this.confirm(
-                `You've chosen ${choiceText}. This decision is permanent and will influence the next chapter. Are you sure?`
-            );
-
-            if (!confirmed) {
-                return; // User cancelled
-            }
-
             this.selectingChoice = true;
             try {
                 const response = await fetch(
@@ -811,8 +825,8 @@ function app() {
                     this.viewingChapter.choice_reasoning = data.reasoning;
                 }
 
-                this.addConsoleLog(`Choice selected for chapter ${chapterNum}: ${data.choice.text}`, 'success');
-                this.showToast('Choice recorded! Ready to generate next chapter.', 'success');
+                this.addConsoleLog(`Choice locked in for chapter ${chapterNum}: ${data.choice.text}`, 'success');
+                this.showToast('Choice locked in! Ready to generate next chapter.', 'success');
             } catch (error) {
                 console.error('Failed to select choice:', error);
                 this.addConsoleLog(`Error selecting choice: ${error.message}`, 'error');
@@ -828,6 +842,72 @@ function app() {
             }
             const choice = chapter.choices.find(c => c.id === chapter.selected_choice_id);
             return choice ? choice.text : '';
+        },
+
+        selectPendingChoice(choiceId) {
+            this.pendingChoiceId = choiceId;
+            this.choiceConfirmStage = 1;
+        },
+
+        resetChoiceSelection() {
+            this.pendingChoiceId = null;
+            this.choiceConfirmStage = 0;
+        },
+
+        getGenerateButtonText() {
+            if (this.hasUnselectedChoice() && this.choiceConfirmStage === 0) {
+                return '👆 Make a Choice';
+            } else if (this.choiceConfirmStage === 1) {
+                return '✓ Confirm Choice';
+            } else if (this.choiceConfirmStage === 2) {
+                return '🔒 Lock in Choice';
+            } else if (this.viewingChapter?.number < this.currentWorld?.chapters?.length) {
+                return 'Next Chapter';
+            } else {
+                return '✨ Generate Next Chapter';
+            }
+        },
+
+        getGenerateButtonClass() {
+            const baseClass = "px-6 py-3 text-white rounded-lg disabled:bg-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 shadow-lg";
+
+            if (this.choiceConfirmStage === 1) {
+                // Confirm stage - yellow/orange
+                return baseClass + " bg-yellow-600 hover:bg-yellow-700";
+            } else if (this.choiceConfirmStage === 2) {
+                // Lock in stage - green
+                return baseClass + " bg-green-600 hover:bg-green-700";
+            } else {
+                // Default - blue
+                return baseClass + " bg-blue-500 hover:bg-blue-600";
+            }
+        },
+
+        isGenerateButtonDisabled() {
+            return this.generating || this.selectingChoice || (this.hasUnselectedChoice() && this.choiceConfirmStage === 0);
+        },
+
+        async handleGenerateOrConfirm() {
+            if (this.generating || this.selectingChoice) return;
+
+            // If there's a pending choice, advance through confirmation stages
+            if (this.hasUnselectedChoice()) {
+                if (this.choiceConfirmStage === 1) {
+                    this.choiceConfirmStage = 2;
+                } else if (this.choiceConfirmStage === 2 && this.pendingChoiceId) {
+                    // Lock in the choice
+                    await this.selectChoice(this.viewingChapter.number, this.pendingChoiceId);
+                    this.resetChoiceSelection();
+                }
+                return;
+            }
+
+            // Normal generation flow
+            if (this.viewingChapter?.number < this.currentWorld?.chapters?.length) {
+                this.viewChapter(this.currentWorld.chapters[this.currentWorld.chapters.length - 1], true);
+            } else {
+                this.generateChapter();
+            }
         },
 
         showRegenerateDialog(chapterNum) {
@@ -1132,6 +1212,57 @@ function app() {
                         { value: 'flux-schnell', label: 'Flux Schnell' }
                     ];
             }
+        },
+
+        // Setup Wizard
+        hasAnyApiKey() {
+            return this.settings.has_openai_key ||
+                   this.settings.has_gemini_key ||
+                   this.settings.has_groq_key ||
+                   this.settings.has_together_key ||
+                   this.settings.has_huggingface_key ||
+                   this.settings.has_openrouter_key;
+        },
+
+        async completeSetupWizard() {
+            // Set defaults to free providers
+            const updates = {
+                text_provider: 'gemini',
+                image_provider: 'pollinations',
+                default_text_model: 'gemini-2.5-flash',
+                default_image_model: 'flux'
+            };
+
+            // Add Gemini API key if provided
+            if (this.settingsForm.gemini_api_key && this.settingsForm.gemini_api_key.trim()) {
+                updates.gemini_api_key = this.settingsForm.gemini_api_key.trim();
+            }
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to save settings');
+                }
+
+                await this.loadSettings();
+                this.showSetupWizard = false;
+                this.toast('Setup complete! You can now create your first world.');
+            } catch (error) {
+                console.error('Failed to complete setup:', error);
+                this.toast('Failed to save settings: ' + error.message);
+            }
+        },
+
+        skipSetupWizard() {
+            // Just close wizard, use defaults
+            this.showSetupWizard = false;
+            this.toast('Using free providers (Pollinations for images). You can configure API keys anytime in Settings.');
         }
     }
 }

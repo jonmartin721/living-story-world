@@ -59,7 +59,8 @@ def launch_desktop(port: int = 8001):
         print(f"✓ Server started on http://127.0.0.1:{port}")
     except Exception as e:
         print(f"ERROR: Failed to start server: {e}")
-        input("Press Enter to exit...")
+        if sys.platform == 'win32':
+            input("Press Enter to exit...")
         sys.exit(1)
 
     url = f"http://127.0.0.1:{port}"
@@ -77,18 +78,23 @@ def launch_desktop(port: int = 8001):
         )
         print("Starting webview...")
 
-        # Use edge on Windows for better compatibility
+        # Use edge on Windows, auto-detect on other platforms
         gui = 'edgechromium' if sys.platform == 'win32' else None
         webview.start(gui=gui)
 
     except Exception as e:
         print(f"ERROR: Failed to start webview: {e}")
         print(f"Error type: {type(e).__name__}")
-        import traceback
-        traceback.print_exc()
+
+        if sys.platform == 'win32':
+            # On Windows, show full traceback for debugging
+            import traceback
+            traceback.print_exc()
 
         print("\n" + "="*50)
         print("Fallback: Opening in browser instead...")
+        if sys.platform == 'linux':
+            print("(Linux desktop mode requires GTK - using browser)")
         print("="*50)
 
         import webbrowser

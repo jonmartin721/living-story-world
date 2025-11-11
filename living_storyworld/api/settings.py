@@ -209,3 +209,20 @@ async def update_settings(request: SettingsUpdateRequest):
     save_user_settings(settings)
 
     return {"message": "Settings updated"}
+
+
+@router.post("/clear-keys")
+async def clear_api_keys():
+    """Clear all API keys from settings and environment"""
+    settings = load_user_settings()
+
+    # Clear all API keys from settings
+    for key_id, (settings_attr, env_var, _, _) in API_KEY_CONFIG.items():
+        setattr(settings, settings_attr, None)
+        # Also clear from environment if set
+        if env_var in os.environ:
+            del os.environ[env_var]
+
+    save_user_settings(settings)
+
+    return {"message": "All API keys cleared"}

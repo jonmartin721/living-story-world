@@ -1,8 +1,8 @@
 # Living Storyworld
 
-> A storybook created from your imagination, with infinite possibilities. Make decisions and steer the story, or sit back and enjoy a relaxing tale.
+A storybook created from your imagination, with infinite possibilities. Make decisions and steer the story, or sit back and enjoy a relaxing tale! Create evolving fictional worlds where each chapter builds on the last. Living Storyworld combines multiple LLM providers with AI image generation to produce coherent, ongoing narratives with custom scene illustrations. 
 
-Create evolving fictional worlds where each chapter builds on the last. Living Storyworld combines multiple LLM providers with AI image generation to produce coherent, ongoing narratives with custom scene illustrations. 
+This fun little project was inspired by text adventures, with a modern twist of simplified decision-making and creativity. I wanted to make something that could be both less and more than traditional text adventures, without the (powerful) burden that a service like NovelAI puts on you to be creative. 
 
 ---
 
@@ -18,6 +18,8 @@ Create evolving fictional worlds where each chapter builds on the last. Living S
 ---
 
 ## Quick Start
+
+Pre-built executables are available on the [Releases](https://github.com/jonmartin721/living-storyworld/releases) page. Alternatively, run from source:
 
 ### Installation
 
@@ -44,17 +46,12 @@ The web app will open automatically at `http://localhost:8001`.
 
 ### Get Started
 
-1. **Configure API Keys** — Click Settings to add your API keys. The app will guide you through provider options including free tiers
-2. **Create a World** — Use the "New World" button or try "Random World" for instant generation
-3. **Generate Chapters** — Select your world and click "Generate Chapter" to continue the story with real-time progress
-4. **Customize Settings** — Adjust narrative presets, visual styles, and memory fields for each world
+1. **Setup Wizard** — On first launch, a guided setup wizard helps you configure API keys and select providers (free options available)
+2. **Create a World** — Use "New World" to design your own, or try "Random World" for instant generation with pre-filled lore
+3. **Generate Chapters** — Click "Generate Next Chapter" to continue the story with real-time progress indicators
+4. **Make Choices** — When presented with story choices, select one and lock it in to influence the narrative direction
 
-The web interface provides:
-- Multi-world management and navigation
-- Real-time chapter generation with progress streaming
-- Illustrated chapter viewer in card layout
-- Image regeneration on demand
-- World configuration and API settings
+The web interface provides full world management, chapter generation with live progress, and comprehensive settings. Access the setup wizard anytime via Console → "Start Setup Wizard".
 
 ---
 
@@ -63,9 +60,11 @@ The web interface provides:
 - **storybook-ink** — Ink and wash illustration
 - **pixel-rpg** — 16-bit SNES-style pixel art
 - **lowpoly-iso** — Low-poly isometric diorama
-- **watercolor-dream** — Soft watercolor
+- **watercolor-dream** — Soft watercolor painting
 - **noir-sketch** — High-contrast ink sketch
-- **vaporwave-glitch** — Vaporwave with digital artifacts
+- **art-nouveau** — Art Nouveau poster illustration
+- **comic-book** — Classic American comic book style
+- **oil-painting** — Classical oil painting (Old Masters)
 
 ---
 
@@ -91,10 +90,10 @@ Worlds include Memory, Author's Note, and World Instructions fields for narrativ
 
 ### Recommended Setup (Free Tier)
 
-- **Groq** — Free tier includes generous token limits ([get key](https://console.groq.com/keys))
-- **Pollinations** — Free image generation ([no key required](https://pollinations.ai/))
+- **Gemini** — 2.5 Flash model with generous free tier ([get key](https://aistudio.google.com/apikey))
+- **Pollinations** — Free image generation (no key required)
 
-Typical cost per chapter with paid tiers: ~$0.026 USD (text + image)
+Using Gemini 2.5 Flash and Pollinations, everything is completely free. The setup wizard automatically recommends this configuration.
 
 ### Security Notes
 
@@ -115,8 +114,12 @@ Contributions welcome! Areas for expansion:
 - Export formats (EPUB, PDF)
 - Advanced world simulation mechanics
 - Test coverage improvements
+- World art shown for each world behind chapters.
+- Better visual transitions between chapters.
+- Themed reading mode for different worlds, or in Settings.
+- How can we end stories naturally or let readers do it in a way that isn't limiting or too abrupt?
 
-Open an issue or submit a pull request.
+I'd love to see new improvements, feel free to suggest and open a PR! Contributions are very welcome.
 
 ---
 
@@ -126,4 +129,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-Built with FastAPI, Groq, Replicate, and Flux.
+Built with FastAPI, multiple AI provider integrations, and modern web technologies.

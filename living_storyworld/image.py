@@ -84,19 +84,6 @@ def safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, time
     return output_path
 
 
-def _get_replicate_client():
-    try:
-        import replicate  # type: ignore
-    except Exception as e:
-        raise RuntimeError("Replicate SDK not installed. Run: pip install replicate>=1.0") from e
-
-    # Replicate uses REPLICATE_API_TOKEN env var by default
-    if not os.environ.get("REPLICATE_API_TOKEN"):
-        raise RuntimeError("REPLICATE_API_TOKEN environment variable not set. Get one at https://replicate.com/account/api-tokens")
-
-    return replicate.Client(api_token=os.environ["REPLICATE_API_TOKEN"])
-
-
 def _cache_key(kind: str, style: str, prompt: str, aspect_ratio: str, model: str) -> str:
     h = hashlib.sha256()
     h.update(kind.encode())
@@ -145,51 +132,15 @@ def generate_scene_image(
     image_provider_name = settings.image_provider
     api_key = get_api_key_for_provider(image_provider_name, settings)
 
-    # Get the image provider
-    try:
-        provider = get_image_provider(image_provider_name, api_key=api_key)
-        result = provider.generate(
-            prompt=full_prompt,
-            output_path=out,
-            aspect_ratio=aspect_ratio,
-            model=image_model
-        )
-        print(f"[INFO] Generated image using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
-    except Exception as e:
-        # Fallback to legacy Replicate client if provider setup fails
-        print(f"[WARN] Provider {image_provider_name} failed, falling back to Replicate: {e}", flush=True)
-        client = _get_replicate_client()
-
-        # Map friendly model names to Replicate model IDs
-        model_map = {
-            "flux-dev": "black-forest-labs/flux-dev",
-            "flux-schnell": "black-forest-labs/flux-schnell",
-        }
-        replicate_model = model_map.get(image_model, "black-forest-labs/flux-dev")
-
-        # Run Flux model via Replicate
-        input_params = {
-            "prompt": full_prompt,
-            "aspect_ratio": aspect_ratio,
-            "output_format": "png",
-            "output_quality": 90,
-        }
-
-        # Add model-specific parameters
-        if image_model == "flux-dev":
-            input_params["guidance"] = 3.5
-            input_params["num_inference_steps"] = 28
-
-        output = client.run(replicate_model, input=input_params)
-
-        # Download image from URL (Replicate returns a FileOutput or list)
-        if isinstance(output, list) and len(output) > 0:
-            image_url = str(output[0])
-        else:
-            image_url = str(output)
-
-        # Download and save the image (with security checks)
-        safe_download_image(image_url, out)
+    # Get the image provider and generate
+    provider = get_image_provider(image_provider_name, api_key=api_key)
+    result = provider.generate(
+        prompt=full_prompt,
+        output_path=out,
+        aspect_ratio=aspect_ratio,
+        model=image_model
+    )
+    print(f"[INFO] Generated image using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
 
     _append_media_index(base_dir, {
         "type": "scene",

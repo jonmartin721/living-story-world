@@ -10,6 +10,7 @@
       <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="/static/app.js"></script>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
 <body class="bg-gray-900">
@@ -122,30 +123,15 @@
                         <span>Maturity: <span class="font-semibold text-gray-200" x-text="currentWorld?.config?.maturity_level"></span></span>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <div class="flex items-center gap-4">
+                        <div x-show="currentWorld?.chapters?.length > 0" x-cloak>
                             <button
-                                @click="showGenerateChapter = true"
-                                :disabled="generating"
-                                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-400 flex items-center gap-2">
-                                <div x-show="!generating">+ Generate Chapter</div>
-                                <div x-show="generating" class="flex items-center gap-2">
-                                    <div class="relative w-4 h-4">
-                                        <svg class="w-4 h-4 transform -rotate-90" viewBox="0 0 16 16">
-                                            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none" class="text-gray-400"></circle>
-                                            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none"
-                                                    :stroke-dasharray="`${(2 * Math.PI * 6) * (progress.percent / 100)} ${2 * Math.PI * 6}`"
-                                                    class="text-white transition-all duration-300"></circle>
-                                        </svg>
-                                    </div>
-                                    <span x-text="getProgressText()"></span>
-                                </div>
+                                @click="viewChapter(currentWorld.chapters[currentWorld.chapters.length - 1], true)"
+                                class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors">
+                                📖 Read Latest Chapter
                             </button>
-                        </div>
-                        <div x-show="hasUnselectedChoice()" x-cloak class="flex items-start gap-2 text-sm text-yellow-400 bg-yellow-900/20 border border-yellow-600/30 rounded-md px-3 py-2">
-                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                            </svg>
-                            <span>Previous chapter has unselected choices. A random choice will be auto-selected when you generate the next chapter.</span>
+                            <div x-show="hasUnselectedChoice()" x-cloak class="mt-2 text-sm text-yellow-400 bg-yellow-900/20 border border-yellow-600/30 rounded-md px-3 py-2">
+                                <span>⚠️ Latest chapter needs a choice! Make your selection to continue the story.</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -184,7 +170,7 @@
                              x-collapse
                              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <template x-for="chapter in section.chapters" :key="chapter.number">
-                        <div class="bg-gray-800 shadow rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200">
+                        <div class="bg-gray-800 shadow rounded-lg overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer">
                             <!-- Chapter Image -->
                             <div x-show="chapter.scene" @click="viewChapter(chapter)" class="aspect-video bg-gray-700 relative cursor-pointer hover:opacity-95 transition-opacity">
                                 <img
@@ -241,37 +227,50 @@
                             </div>
                         </div>
                             </template>
+
+                            <!-- Shimmer Loader (shown during generation, in correct grid position) -->
+                            <div x-show="section.isRecent && generating" class="bg-gray-800 shadow rounded-lg overflow-hidden animate-pulse">
+                                <!-- Skeleton Image with Progress Indicator -->
+                                <div class="aspect-video bg-gray-700 relative">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-gray-600 to-transparent shimmer"></div>
+                                    <!-- Progress Indicator Overlay -->
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/60">
+                                        <div class="relative w-16 h-16 mb-3">
+                                            <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                                                <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none" class="text-gray-600"></circle>
+                                                <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none"
+                                                        :stroke-dasharray="`${(2 * Math.PI * 28) * (progress.percent / 100)} ${2 * Math.PI * 28}`"
+                                                        class="text-blue-400 transition-all duration-300"></circle>
+                                            </svg>
+                                            <div class="absolute inset-0 flex items-center justify-center">
+                                                <span class="text-white text-sm font-bold" x-text="Math.round(progress.percent) + '%'"></span>
+                                            </div>
+                                        </div>
+                                        <div class="text-blue-300 text-sm font-medium px-4 text-center" x-text="progress.stage || 'Generating...'"></div>
+                                        <div class="text-gray-400 text-xs mt-1 px-4 text-center max-w-xs" x-text="progress.message"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Skeleton Info -->
+                                <div class="p-4">
+                                    <div class="h-4 bg-gray-700 rounded w-20 mb-2"></div>
+                                    <div class="h-5 bg-gray-700 rounded w-3/4 mb-2"></div>
+                                    <div class="space-y-2 mb-4">
+                                        <div class="h-3 bg-gray-700 rounded w-full"></div>
+                                        <div class="h-3 bg-gray-700 rounded w-5/6"></div>
+                                        <div class="h-3 bg-gray-700 rounded w-4/6"></div>
+                                    </div>
+
+                                    <div class="flex gap-2">
+                                        <div class="flex-1 h-9 bg-gray-700 rounded"></div>
+                                        <div class="h-9 w-12 bg-gray-700 rounded"></div>
+                                        <div class="h-9 w-12 bg-gray-700 rounded"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </template>
-
-                <!-- Skeleton Loader Grid (shown during generation) -->
-                <div x-show="generating" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    <!-- Skeleton Loader for Generating Chapter -->
-                    <div x-show="generating" class="bg-gray-800 shadow rounded-lg overflow-hidden animate-pulse">
-                        <!-- Skeleton Image -->
-                        <div class="aspect-video bg-gray-700 relative">
-                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-gray-600 to-transparent shimmer"></div>
-                        </div>
-
-                        <!-- Skeleton Info -->
-                        <div class="p-4">
-                            <div class="h-4 bg-gray-700 rounded w-20 mb-2"></div>
-                            <div class="h-5 bg-gray-700 rounded w-3/4 mb-2"></div>
-                            <div class="space-y-2 mb-4">
-                                <div class="h-3 bg-gray-700 rounded w-full"></div>
-                                <div class="h-3 bg-gray-700 rounded w-5/6"></div>
-                                <div class="h-3 bg-gray-700 rounded w-4/6"></div>
-                            </div>
-
-                            <div class="flex gap-2">
-                                <div class="flex-1 h-9 bg-gray-700 rounded"></div>
-                                <div class="h-9 w-12 bg-gray-700 rounded"></div>
-                                <div class="h-9 w-12 bg-gray-700 rounded"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Empty State -->
                 <div x-show="currentWorld && currentWorld.chapters?.length === 0" class="text-center py-12 bg-gray-800 rounded-lg shadow transition-colors duration-200">
@@ -288,6 +287,91 @@
                 </div>
             </div>
         </main>
+
+        <!-- Setup Wizard Modal -->
+        <div x-show="showSetupWizard"
+             x-cloak
+             class="fixed inset-0 bg-gray-900 bg-opacity-95 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-8">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-white mb-2">Welcome to Living Storyworld!</h2>
+                    <p class="text-gray-300">Let's get you set up with free AI providers to start creating stories.</p>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Step 1: Text Generation -->
+                    <div class="bg-gray-700 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-white mb-3">📝 Text Generation</h3>
+                        <p class="text-gray-300 text-sm mb-4">
+                            We recommend <strong>Google Gemini 2.5 Flash</strong> - it's free, fast, and great for creative writing.
+                        </p>
+
+                        <div class="bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg p-4 mb-4">
+                            <p class="text-sm text-blue-200 mb-2">
+                                <strong>Get your free API key:</strong>
+                            </p>
+                            <ol class="text-sm text-blue-100 space-y-1 list-decimal list-inside">
+                                <li>Visit <a href="https://aistudio.google.com/apikey" target="_blank" class="underline hover:text-white">Google AI Studio</a></li>
+                                <li>Sign in with your Google account</li>
+                                <li>Click "Create API Key"</li>
+                                <li>Copy and paste it below</li>
+                            </ol>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Gemini API Key (optional - you can skip and add later)
+                            </label>
+                            <input
+                                type="password"
+                                x-model="settingsForm.gemini_api_key"
+                                placeholder="Paste your Gemini API key here..."
+                                class="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-900">
+                            <p class="text-xs text-gray-400 mt-1">
+                                Don't worry - you can add this anytime in Settings.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Image Generation -->
+                    <div class="bg-gray-700 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-white mb-3">🎨 Image Generation</h3>
+                        <p class="text-gray-300 text-sm mb-2">
+                            We'll use <strong>Pollinations AI</strong> - completely free, no API key needed!
+                        </p>
+                        <div class="flex items-center gap-2 text-green-400 text-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span>Ready to go!</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-3 pt-4">
+                        <button
+                            @click="completeSetupWizard()"
+                            class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                            Complete Setup
+                        </button>
+                        <button
+                            @click="skipSetupWizard()"
+                            class="px-6 py-3 text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-700">
+                            Skip for Now
+                        </button>
+                    </div>
+
+                    <div class="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                        <p class="text-sm text-gray-300 text-center mb-2">
+                            <strong>Want more options?</strong>
+                        </p>
+                        <p class="text-xs text-gray-400 text-center">
+                            You can configure other providers (OpenAI, Replicate, Groq, etc.), add image generation API keys, and select specific models anytime in <strong>Settings ⚙️</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Create World Modal -->
         <div x-show="showCreateWorld"
@@ -717,9 +801,9 @@
                                         x-model="settingsForm.text_provider"
                                         class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                         <option value="openai">OpenAI</option>
-                                        <option value="together">Together AI</option>
-                                        <option value="huggingface">Hugging Face</option>
-                                        <option value="groq">Groq</option>
+                                        <option value="together">Together AI (Free trial)</option>
+                                        <option value="huggingface">Hugging Face (Free tier)</option>
+                                        <option value="groq">Groq (Free)</option>
                                         <option value="gemini">Google Gemini (Free)</option>
                                     </select>
                                 </div>
@@ -729,16 +813,23 @@
                                         x-model="settingsForm.image_provider"
                                         class="w-full px-4 py-2.5 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                                         <option value="replicate">Replicate</option>
-                                        <option value="huggingface">Hugging Face</option>
+                                        <option value="huggingface">Hugging Face (Free tier)</option>
                                         <option value="pollinations">Pollinations.ai (Free)</option>
-                                        <option value="fal">Fal.ai</option>
+                                        <option value="fal">Fal.ai (Free credits)</option>
                                     </select>
                                 </div>
                             </div>
 
                             <!-- API Keys -->
                             <div class="space-y-4">
-                                <h4 class="font-semibold text-white">API Keys</h4>
+                                <div class="flex justify-between items-center">
+                                    <h4 class="font-semibold text-white">API Keys</h4>
+                                    <button
+                                        @click="clearAllApiKeys()"
+                                        class="px-3 py-1.5 bg-red-600 text-white text-xs rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                                        Clear All Keys
+                                    </button>
+                                </div>
 
                                 <div>
                                     <div class="flex justify-between items-center mb-1">
@@ -1042,18 +1133,20 @@
                         <div x-show="viewingChapter && !viewingChapter.selected_choice_id">
                             <div class="grid gap-4">
                                 <template x-for="choice in (viewingChapter?.choices || [])" :key="choice.id">
-                                    <button @click="selectChoice(viewingChapter.number, choice.id)"
+                                    <button @click="selectPendingChoice(choice.id)"
                                             :disabled="selectingChoice"
-                                            class="w-full p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-all text-left border-2 border-transparent hover:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            :class="pendingChoiceId === choice.id ? 'border-blue-500 ring-2 ring-blue-500 ring-opacity-50' : 'border-transparent hover:border-blue-500'"
+                                            class="w-full p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-all text-left border-2 disabled:opacity-50 disabled:cursor-not-allowed">
                                         <div class="font-semibold text-white" x-text="choice.text"></div>
                                         <div class="text-sm text-gray-400 mt-1" x-text="choice.description"></div>
                                     </button>
                                 </template>
                             </div>
-                            <button @click="selectChoice(viewingChapter.number, 'auto')"
+                            <button @click="selectPendingChoice('auto')"
                                     :disabled="selectingChoice"
-                                    class="mt-4 w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                <span x-show="!selectingChoice">✨ Let the Story Decide</span>
+                                    :class="pendingChoiceId === 'auto' ? 'ring-2 ring-purple-500 ring-opacity-50 bg-purple-700' : 'bg-purple-600 hover:bg-purple-700'"
+                                    class="mt-4 w-full px-4 py-3 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span x-show="!selectingChoice">✨ Let Fate Decide</span>
                                 <span x-show="selectingChoice">Selecting...</span>
                             </button>
                         </div>
@@ -1062,7 +1155,6 @@
                         <div x-show="viewingChapter && viewingChapter.selected_choice_id" class="p-4 bg-green-900/20 border border-green-600 rounded-lg">
                             <div class="font-semibold text-green-400 mb-2">Your Choice:</div>
                             <div class="text-white" x-text="getSelectedChoiceText(viewingChapter)"></div>
-                            <div x-show="viewingChapter?.choice_reasoning" class="text-sm text-gray-400 mt-2" x-text="viewingChapter?.choice_reasoning || ''"></div>
                         </div>
                     </div>
 
@@ -1070,18 +1162,25 @@
                     <div x-show="viewingChapter?.number >= currentWorld?.chapters?.length - 1"
                          class="mt-8 flex justify-end items-center gap-4">
                         <button
-                            @click="!generating && (viewingChapter?.number < currentWorld?.chapters?.length ? (viewChapter(currentWorld.chapters[currentWorld.chapters.length - 1], true)) : generateChapter())"
-                            :disabled="generating"
-                            class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 shadow-lg">
-                            <!-- Show plus icon when generating -->
-                            <svg x-show="!generating && viewingChapter?.number === currentWorld?.chapters?.length" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
+                            @click="handleGenerateOrConfirm()"
+                            :disabled="isGenerateButtonDisabled()"
+                            :class="getGenerateButtonClass()">
                             <!-- Show next arrow when new chapter is available -->
-                            <svg x-show="!generating && viewingChapter?.number < currentWorld?.chapters?.length" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg x-show="!generating && !selectingChoice && !hasUnselectedChoice() && viewingChapter?.number < currentWorld?.chapters?.length" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
-                            <span x-show="!generating" class="text-white" x-text="viewingChapter?.number < currentWorld?.chapters?.length ? 'Next Chapter' : 'Generate Next Chapter'"></span>
+                            <span x-show="!generating && !selectingChoice" class="text-white" x-text="getGenerateButtonText()"></span>
+
+                            <!-- Spinner for selecting choice -->
+                            <div x-show="selectingChoice" class="flex items-center gap-2">
+                                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Locking in choice...</span>
+                            </div>
+
+                            <!-- Spinner for generating chapter -->
                             <div x-show="generating" class="flex items-center gap-2">
                                 <div class="relative w-5 h-5">
                                     <svg class="w-5 h-5 transform -rotate-90" viewBox="0 0 20 20">
@@ -1144,6 +1243,11 @@
                 <div class="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white">Console Logs</h3>
                     <div class="flex items-center gap-3">
+                        <button
+                            @click="showConsole = false; showSetupWizard = true"
+                            class="px-4 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            Setup Wizard
+                        </button>
                         <button
                             @click="copyConsoleLogs()"
                             class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, validator
 
 from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world, save_world
-from ..generator import generate_chapter, infer_choice_reasoning
+from ..generator import generate_chapter
 from ..image import generate_scene_image
 from ..settings import load_user_settings
 
@@ -130,17 +130,9 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                     "message": f"Auto-selecting choice: '{selected_choice.text[:50]}...'"
                 })
 
-                # Infer reasoning for the auto-selected choice
-                reasoning = await infer_choice_reasoning(
-                    choice_text=selected_choice.text,
-                    chapter_summary=prev_chapter.summary or "",
-                    world_theme=cfg.theme,
-                    cfg=cfg
-                )
-
                 # Update previous chapter with the auto-selection
                 prev_chapter.selected_choice_id = selected_choice.id
-                prev_chapter.choice_reasoning = reasoning
+                prev_chapter.choice_reasoning = None
 
                 # Save the updated state
                 await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
@@ -355,7 +347,7 @@ async def get_chapter_content(slug: str, chapter_num: int):
 
 @router.post("/{chapter_num}/select-choice")
 async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionRequest):
-    """Record user's choice selection and infer reasoning"""
+    """Record user's choice selection"""
     try:
         slug = validate_slug(slug)
     except ValueError as e:
@@ -400,17 +392,9 @@ async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionReq
     if selected_choice is None:
         raise HTTPException(status_code=400, detail="Invalid choice ID")
 
-    # Infer reasoning using LLM
-    reasoning = await infer_choice_reasoning(
-        choice_text=selected_choice.text,
-        chapter_summary=chapter_data.summary or "",
-        world_theme=cfg.theme,
-        cfg=cfg
-    )
-
     # Update chapter with selection
     chapter_data.selected_choice_id = choice_id
-    chapter_data.choice_reasoning = reasoning
+    chapter_data.choice_reasoning = None
     state.chapters[chapter_index] = chapter_data
 
     # Save world state
@@ -422,8 +406,7 @@ async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionReq
             "id": selected_choice.id,
             "text": selected_choice.text,
             "description": selected_choice.description
-        },
-        "reasoning": reasoning
+        }
     }
 
 
