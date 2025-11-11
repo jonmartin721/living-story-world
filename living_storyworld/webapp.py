@@ -83,7 +83,8 @@ app.include_router(generate.router)
 # - Per-world access tokens
 # - Serving files through controlled endpoints instead of StaticFiles
 from .storage import WORLDS_DIR
-app.mount("/worlds", StaticFiles(directory=str(WORLDS_DIR)), name="worlds")
+if WORLDS_DIR.exists():
+    app.mount("/worlds", StaticFiles(directory=str(WORLDS_DIR)), name="worlds")
 
 # Serve frontend static files
 web_dir = Path(__file__).parent / "web"
