@@ -8,6 +8,29 @@ from dataclasses import dataclass
 from typing import Optional
 
 
+def _init_api_key(env_var: str, provider_name: str, api_key: Optional[str] = None) -> str:
+    """Initialize API key from parameter or environment.
+
+    Args:
+        env_var: Environment variable name to check
+        provider_name: Human-readable provider name for error messages
+        api_key: Optional API key passed directly
+
+    Returns:
+        The API key
+
+    Raises:
+        RuntimeError: If no API key is found
+    """
+    key = api_key or os.environ.get(env_var)
+    if not key:
+        raise RuntimeError(
+            f"{provider_name} API key not found. "
+            f"Set {env_var} environment variable or pass api_key parameter."
+        )
+    return key
+
+
 @dataclass
 class TextGenerationResult:
     """Result from text generation."""
@@ -62,6 +85,50 @@ class TextProvider(ABC):
         pass
 
 
+class OpenAICompatibleProvider(TextProvider):
+    """Base class for providers using the OpenAI SDK with custom base URLs."""
+
+    @abstractmethod
+    def get_base_url(self) -> Optional[str]:
+        """Get the base URL for this provider. None for native OpenAI."""
+        pass
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        temperature: float = 1.0,
+        model: Optional[str] = None,
+    ) -> TextGenerationResult:
+        try:
+            from openai import OpenAI
+        except ImportError as e:
+            raise RuntimeError("OpenAI SDK not installed. Run: pip install openai>=1.0") from e
+
+        base_url = self.get_base_url()
+        if base_url:
+            client = OpenAI(api_key=self.api_key, base_url=base_url)
+        else:
+            client = OpenAI(api_key=self.api_key)
+
+        model_name = model or self.get_default_model()
+
+        resp = client.chat.completions.create(
+            model=model_name,
+            messages=messages,  # type: ignore
+            temperature=temperature,
+        )
+
+        content = resp.choices[0].message.content or ""
+        cost = self.estimate_cost(messages, model_name)
+
+        return TextGenerationResult(
+            content=content,
+            provider=self.provider_name.lower(),
+            model=model_name,
+            estimated_cost=cost,
+        )
+
+
 class OpenAIProvider(TextProvider):
     """OpenAI text generation provider."""
 
@@ -78,9 +145,7 @@ class OpenAIProvider(TextProvider):
     }
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        if not self.api_key:
-            raise RuntimeError("OpenAI API key not found. Set OPENAI_API_KEY environment variable or pass api_key parameter.")
+        self.api_key = _init_api_key("OPENAI_API_KEY", "OpenAI", api_key)
 
     def generate(
         self,
@@ -147,47 +212,14 @@ class OpenAIProvider(TextProvider):
         return True
 
 
-class TogetherAIProvider(TextProvider):
+class TogetherAIProvider(OpenAICompatibleProvider):
     """Together AI text generation provider."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("TOGETHER_API_KEY")
-        if not self.api_key:
-            raise RuntimeError("Together AI API key not found. Set TOGETHER_API_KEY environment variable or pass api_key parameter.")
+        self.api_key = _init_api_key("TOGETHER_API_KEY", "Together AI", api_key)
 
-    def generate(
-        self,
-        messages: list[dict[str, str]],
-        temperature: float = 1.0,
-        model: Optional[str] = None,
-    ) -> TextGenerationResult:
-        try:
-            from openai import OpenAI  # Together AI uses OpenAI SDK
-        except ImportError as e:
-            raise RuntimeError("OpenAI SDK not installed. Run: pip install openai>=1.0") from e
-
-        # Together AI is OpenAI-compatible
-        client = OpenAI(
-            api_key=self.api_key,
-            base_url="https://api.together.xyz/v1",
-        )
-        model_name = model or self.get_default_model()
-
-        resp = client.chat.completions.create(
-            model=model_name,
-            messages=messages,  # type: ignore
-            temperature=temperature,
-        )
-
-        content = resp.choices[0].message.content or ""
-        cost = self.estimate_cost(messages, model_name)
-
-        return TextGenerationResult(
-            content=content,
-            provider="together",
-            model=model_name,
-            estimated_cost=cost,
-        )
+    def get_base_url(self) -> Optional[str]:
+        return "https://api.together.xyz/v1"
 
     def get_default_model(self) -> str:
         return "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
@@ -330,47 +362,14 @@ class HuggingFaceProvider(TextProvider):
         return False  # API key is optional - works on free tier without one
 
 
-class GroqProvider(TextProvider):
+class GroqProvider(OpenAICompatibleProvider):
     """Groq text generation provider."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("GROQ_API_KEY")
-        if not self.api_key:
-            raise RuntimeError("Groq API key not found. Set GROQ_API_KEY environment variable or pass api_key parameter.")
+        self.api_key = _init_api_key("GROQ_API_KEY", "Groq", api_key)
 
-    def generate(
-        self,
-        messages: list[dict[str, str]],
-        temperature: float = 1.0,
-        model: Optional[str] = None,
-    ) -> TextGenerationResult:
-        try:
-            from openai import OpenAI  # Groq uses OpenAI SDK
-        except ImportError as e:
-            raise RuntimeError("OpenAI SDK not installed. Run: pip install openai>=1.0") from e
-
-        # Groq is OpenAI-compatible
-        client = OpenAI(
-            api_key=self.api_key,
-            base_url="https://api.groq.com/openai/v1",
-        )
-        model_name = model or self.get_default_model()
-
-        resp = client.chat.completions.create(
-            model=model_name,
-            messages=messages,  # type: ignore
-            temperature=temperature,
-        )
-
-        content = resp.choices[0].message.content or ""
-        cost = self.estimate_cost(messages, model_name)
-
-        return TextGenerationResult(
-            content=content,
-            provider="groq",
-            model=model_name,
-            estimated_cost=cost,
-        )
+    def get_base_url(self) -> Optional[str]:
+        return "https://api.groq.com/openai/v1"
 
     def get_default_model(self) -> str:
         return "llama-3.3-70b-versatile"
@@ -393,47 +392,14 @@ class GroqProvider(TextProvider):
         return True
 
 
-class OpenRouterProvider(TextProvider):
+class OpenRouterProvider(OpenAICompatibleProvider):
     """OpenRouter text generation provider - supports GLM-4.6 and many other models."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
-        if not self.api_key:
-            raise RuntimeError("OpenRouter API key not found. Set OPENROUTER_API_KEY environment variable or pass api_key parameter.")
+        self.api_key = _init_api_key("OPENROUTER_API_KEY", "OpenRouter", api_key)
 
-    def generate(
-        self,
-        messages: list[dict[str, str]],
-        temperature: float = 1.0,
-        model: Optional[str] = None,
-    ) -> TextGenerationResult:
-        try:
-            from openai import OpenAI  # OpenRouter uses OpenAI SDK
-        except ImportError as e:
-            raise RuntimeError("OpenAI SDK not installed. Run: pip install openai>=1.0") from e
-
-        # OpenRouter is OpenAI-compatible
-        client = OpenAI(
-            api_key=self.api_key,
-            base_url="https://openrouter.ai/api/v1",
-        )
-        model_name = model or self.get_default_model()
-
-        resp = client.chat.completions.create(
-            model=model_name,
-            messages=messages,  # type: ignore
-            temperature=temperature,
-        )
-
-        content = resp.choices[0].message.content or ""
-        cost = self.estimate_cost(messages, model_name)
-
-        return TextGenerationResult(
-            content=content,
-            provider="openrouter",
-            model=model_name,
-            estimated_cost=cost,
-        )
+    def get_base_url(self) -> Optional[str]:
+        return "https://openrouter.ai/api/v1"
 
     def get_default_model(self) -> str:
         return "z-ai/glm-4.6"  # GLM-4.6 with 200K context, advanced reasoning and coding
@@ -472,9 +438,7 @@ class GeminiProvider(TextProvider):
     }
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
-        if not self.api_key:
-            raise RuntimeError("Gemini API key not found. Set GEMINI_API_KEY environment variable or pass api_key parameter.")
+        self.api_key = _init_api_key("GEMINI_API_KEY", "Gemini", api_key)
 
     def generate(
         self,

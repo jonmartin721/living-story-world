@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field, validator
 
 from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world
 from ..image import generate_scene_image
+from .dependencies import get_validated_world_slug, load_world_async
 
 router = APIRouter(prefix="/api/worlds/{slug}/images", tags=["images"])
 
@@ -27,19 +29,10 @@ class ImageGenerateRequest(BaseModel):
 
 
 @router.post("")
-async def generate_image(slug: str, request: ImageGenerateRequest):
+async def generate_image(request: ImageGenerateRequest, world_info: tuple[str, Path] = Depends(get_validated_world_slug)):
     """Generate or regenerate a scene image"""
-    try:
-        slug = validate_slug(slug)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if not (WORLDS_DIR / slug).exists():
-        raise HTTPException(status_code=404, detail="World not found")
-
-    cfg, state, dirs = await asyncio.get_event_loop().run_in_executor(
-        executor, load_world, slug
-    )
+    slug, world_path = world_info
+    cfg, state, dirs = await load_world_async(slug)
 
     # Determine prompt and chapter number
     prompt = request.prompt

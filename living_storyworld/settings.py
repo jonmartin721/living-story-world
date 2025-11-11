@@ -12,6 +12,18 @@ from dotenv import load_dotenv
 # Load environment variables from .env file if present
 load_dotenv()
 
+# Configuration mapping: settings_attr -> env_var
+ENV_VAR_MAPPING = {
+    'openai_api_key': 'OPENAI_API_KEY',
+    'together_api_key': 'TOGETHER_API_KEY',
+    'huggingface_api_key': 'HUGGINGFACE_API_KEY',
+    'groq_api_key': 'GROQ_API_KEY',
+    'gemini_api_key': 'GEMINI_API_KEY',
+    'openrouter_api_key': 'OPENROUTER_API_KEY',
+    'replicate_api_token': 'REPLICATE_API_TOKEN',
+    'fal_api_key': 'FAL_KEY',
+}
+
 
 def _config_dir() -> Path:
     xdg = os.environ.get("XDG_CONFIG_HOME")
@@ -112,29 +124,10 @@ def ensure_provider_api_keys(settings: Optional[UserSettings] = None) -> None:
     s = settings or load_user_settings()
 
     # Set API keys from settings if not already in environment
-    if s.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = s.openai_api_key
-
-    if s.together_api_key and not os.environ.get("TOGETHER_API_KEY"):
-        os.environ["TOGETHER_API_KEY"] = s.together_api_key
-
-    if s.huggingface_api_key and not os.environ.get("HUGGINGFACE_API_KEY"):
-        os.environ["HUGGINGFACE_API_KEY"] = s.huggingface_api_key
-
-    if s.groq_api_key and not os.environ.get("GROQ_API_KEY"):
-        os.environ["GROQ_API_KEY"] = s.groq_api_key
-
-    if s.gemini_api_key and not os.environ.get("GEMINI_API_KEY"):
-        os.environ["GEMINI_API_KEY"] = s.gemini_api_key
-
-    if s.openrouter_api_key and not os.environ.get("OPENROUTER_API_KEY"):
-        os.environ["OPENROUTER_API_KEY"] = s.openrouter_api_key
-
-    if s.replicate_api_token and not os.environ.get("REPLICATE_API_TOKEN"):
-        os.environ["REPLICATE_API_TOKEN"] = s.replicate_api_token
-
-    if s.fal_api_key and not os.environ.get("FAL_KEY"):
-        os.environ["FAL_KEY"] = s.fal_api_key
+    for settings_attr, env_var in ENV_VAR_MAPPING.items():
+        key_value = getattr(s, settings_attr, None)
+        if key_value and not os.environ.get(env_var):
+            os.environ[env_var] = key_value
 
 
 def get_api_key_for_provider(provider: str, settings: Optional[UserSettings] = None) -> Optional[str]:

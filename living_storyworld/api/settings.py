@@ -9,6 +9,18 @@ from ..settings import load_user_settings, save_user_settings, UserSettings
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
+# Configuration for API keys: (settings_attr, env_var, display_name, prefix)
+API_KEY_CONFIG = {
+    'openai': ('openai_api_key', 'OPENAI_API_KEY', 'OpenAI', 'sk-'),
+    'together': ('together_api_key', 'TOGETHER_API_KEY', 'Together AI', None),
+    'huggingface': ('huggingface_api_key', 'HUGGINGFACE_API_KEY', 'HuggingFace', 'hf_'),
+    'groq': ('groq_api_key', 'GROQ_API_KEY', 'Groq', 'gsk_'),
+    'openrouter': ('openrouter_api_key', 'OPENROUTER_API_KEY', 'OpenRouter', 'sk-or-'),
+    'gemini': ('gemini_api_key', 'GEMINI_API_KEY', 'Gemini', None),
+    'replicate': ('replicate_api_token', 'REPLICATE_API_TOKEN', 'Replicate', 'r8_'),
+    'fal': ('fal_api_key', 'FAL_KEY', 'FAL', None),
+}
+
 
 def validate_api_key(key: str, provider: str, prefix: Optional[str] = None, min_length: int = 20, max_length: int = 200) -> str:
     """Validate API key format.
@@ -50,6 +62,26 @@ def validate_api_key(key: str, provider: str, prefix: Optional[str] = None, min_
         )
 
     return key
+
+
+def check_api_key_exists(settings: UserSettings, settings_attr: str, env_var: str) -> bool:
+    """Check if an API key exists in settings or environment."""
+    return bool(getattr(settings, settings_attr, None) or os.environ.get(env_var))
+
+
+def update_api_key_if_provided(
+    settings: UserSettings,
+    request_value: Optional[str],
+    settings_attr: str,
+    env_var: str,
+    display_name: str,
+    prefix: Optional[str]
+) -> None:
+    """Update API key in settings and environment if value is provided."""
+    if request_value is not None and request_value.strip():
+        validated_key = validate_api_key(request_value, display_name, prefix=prefix)
+        setattr(settings, settings_attr, validated_key)
+        os.environ[env_var] = validated_key
 
 
 class SettingsResponse(BaseModel):
@@ -111,27 +143,18 @@ async def get_settings():
     """Get current settings (API keys are masked)"""
     settings = load_user_settings()
 
-    # Check environment variables and settings for API key status
-    has_openai = bool(settings.openai_api_key or os.environ.get("OPENAI_API_KEY"))
-    has_together = bool(settings.together_api_key or os.environ.get("TOGETHER_API_KEY"))
-    has_huggingface = bool(settings.huggingface_api_key or os.environ.get("HUGGINGFACE_API_KEY"))
-    has_groq = bool(settings.groq_api_key or os.environ.get("GROQ_API_KEY"))
-    has_openrouter = bool(settings.openrouter_api_key or os.environ.get("OPENROUTER_API_KEY"))
-    has_gemini = bool(settings.gemini_api_key or os.environ.get("GEMINI_API_KEY"))
-    has_replicate = bool(settings.replicate_api_token or os.environ.get("REPLICATE_API_TOKEN"))
-    has_fal = bool(settings.fal_api_key or os.environ.get("FAL_KEY"))
+    # Check API key availability using configuration
+    key_status = {}
+    for key_id, (settings_attr, env_var, _, _) in API_KEY_CONFIG.items():
+        has_key = check_api_key_exists(settings, settings_attr, env_var)
+        # Map key_id to response field name
+        field_name = f"has_{key_id}_key" if key_id != 'replicate' else "has_replicate_token"
+        key_status[field_name] = has_key
 
     return SettingsResponse(
         text_provider=settings.text_provider,
         image_provider=settings.image_provider,
-        has_openai_key=has_openai,
-        has_together_key=has_together,
-        has_huggingface_key=has_huggingface,
-        has_groq_key=has_groq,
-        has_openrouter_key=has_openrouter,
-        has_gemini_key=has_gemini,
-        has_replicate_token=has_replicate,
-        has_fal_key=has_fal,
+        **key_status,
         global_instructions=settings.global_instructions,
         default_style_pack=settings.default_style_pack,
         default_preset=settings.default_preset,
@@ -154,47 +177,10 @@ async def update_settings(request: SettingsUpdateRequest):
     if request.image_provider is not None:
         settings.image_provider = request.image_provider
 
-    # Update API keys (with validation)
-    # Skip empty strings (means "no update" from frontend)
-    if request.openai_api_key is not None and request.openai_api_key.strip():
-        validated_key = validate_api_key(request.openai_api_key, "OpenAI", prefix="sk-")
-        settings.openai_api_key = validated_key
-        os.environ["OPENAI_API_KEY"] = validated_key
-
-    if request.together_api_key is not None and request.together_api_key.strip():
-        validated_key = validate_api_key(request.together_api_key, "Together AI")
-        settings.together_api_key = validated_key
-        os.environ["TOGETHER_API_KEY"] = validated_key
-
-    if request.huggingface_api_key is not None and request.huggingface_api_key.strip():
-        validated_key = validate_api_key(request.huggingface_api_key, "HuggingFace", prefix="hf_")
-        settings.huggingface_api_key = validated_key
-        os.environ["HUGGINGFACE_API_KEY"] = validated_key
-
-    if request.groq_api_key is not None and request.groq_api_key.strip():
-        validated_key = validate_api_key(request.groq_api_key, "Groq", prefix="gsk_")
-        settings.groq_api_key = validated_key
-        os.environ["GROQ_API_KEY"] = validated_key
-
-    if request.openrouter_api_key is not None and request.openrouter_api_key.strip():
-        validated_key = validate_api_key(request.openrouter_api_key, "OpenRouter", prefix="sk-or-")
-        settings.openrouter_api_key = validated_key
-        os.environ["OPENROUTER_API_KEY"] = validated_key
-
-    if request.gemini_api_key is not None and request.gemini_api_key.strip():
-        validated_key = validate_api_key(request.gemini_api_key, "Gemini")
-        settings.gemini_api_key = validated_key
-        os.environ["GEMINI_API_KEY"] = validated_key
-
-    if request.replicate_api_token is not None and request.replicate_api_token.strip():
-        validated_key = validate_api_key(request.replicate_api_token, "Replicate", prefix="r8_")
-        settings.replicate_api_token = validated_key
-        os.environ["REPLICATE_API_TOKEN"] = validated_key
-
-    if request.fal_api_key is not None and request.fal_api_key.strip():
-        validated_key = validate_api_key(request.fal_api_key, "FAL")
-        settings.fal_api_key = validated_key
-        os.environ["FAL_KEY"] = validated_key
+    # Update API keys using configuration
+    for key_id, (settings_attr, env_var, display_name, prefix) in API_KEY_CONFIG.items():
+        request_value = getattr(request, settings_attr, None)
+        update_api_key_if_provided(settings, request_value, settings_attr, env_var, display_name, prefix)
 
     # Update global instructions
     if request.global_instructions is not None:

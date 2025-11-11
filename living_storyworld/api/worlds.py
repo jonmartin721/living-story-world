@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional
+from pathlib import Path
 
 from ..storage import WORLDS_DIR, get_current_world, set_current_world, validate_slug
 from ..world import init_world, load_world
 from ..models import WorldConfig, WorldState
+from .dependencies import get_validated_world_slug
 
 router = APIRouter(prefix="/api/worlds", tags=["worlds"])
 
@@ -158,16 +160,9 @@ async def create_world(request: WorldCreateRequest):
 
 
 @router.get("/{slug}", response_model=dict)
-async def get_world(slug: str):
+async def get_world(world_info: tuple[str, Path] = Depends(get_validated_world_slug)):
     """Get detailed world information including chapters"""
-    try:
-        slug = validate_slug(slug)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if not (WORLDS_DIR / slug).exists():
-        raise HTTPException(status_code=404, detail="World not found")
-
+    slug, world_path = world_info
     cfg, state, dirs = load_world(slug)
 
     # Load media index for scene images
@@ -229,30 +224,17 @@ async def get_world(slug: str):
 
 
 @router.put("/{slug}/current")
-async def set_current(slug: str):
+async def set_current(world_info: tuple[str, Path] = Depends(get_validated_world_slug)):
     """Set the current world"""
-    try:
-        slug = validate_slug(slug)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if not (WORLDS_DIR / slug).exists():
-        raise HTTPException(status_code=404, detail="World not found")
-
+    slug, world_path = world_info
     set_current_world(slug)
     return {"message": f"Current world set to {slug}"}
 
 
 @router.put("/{slug}")
-async def update_world(slug: str, request: WorldUpdateRequest):
+async def update_world(request: WorldUpdateRequest, world_info: tuple[str, Path] = Depends(get_validated_world_slug)):
     """Update world configuration"""
-    try:
-        slug = validate_slug(slug)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if not (WORLDS_DIR / slug).exists():
-        raise HTTPException(status_code=404, detail="World not found")
+    slug, world_path = world_info
 
     from ..world import save_world
     cfg, state, dirs = load_world(slug)
@@ -297,18 +279,12 @@ async def update_world(slug: str, request: WorldUpdateRequest):
 
 
 @router.delete("/{slug}")
-async def delete_world(slug: str):
+async def delete_world(world_info: tuple[str, Path] = Depends(get_validated_world_slug)):
     """Delete a world"""
-    try:
-        slug = validate_slug(slug)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if not (WORLDS_DIR / slug).exists():
-        raise HTTPException(status_code=404, detail="World not found")
+    slug, world_path = world_info
 
     import shutil
-    shutil.rmtree(WORLDS_DIR / slug)
+    shutil.rmtree(world_path)
 
     # If this was the current world, unset it
     if get_current_world() == slug:
