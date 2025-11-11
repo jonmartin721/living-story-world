@@ -8,7 +8,6 @@ function app() {
         progress: { percent: 0, message: '', stage: '' },
         showCreateWorld: false,
         showEditWorld: false,
-        showGenerateChapter: false,
         showSettings: false,
         showConsole: false,
         showSetupWizard: false,
@@ -89,12 +88,6 @@ function app() {
             memory: '',
             authors_note: '',
             world_instructions: ''
-        },
-
-        generateOptions: {
-            focus: '',
-            no_images: false,
-            chapter_length: 'medium'
         },
 
         // Confirmation dialog state
@@ -703,7 +696,6 @@ function app() {
         async generateChapter() {
             if (!this.currentWorldSlug) return;
 
-            this.showGenerateChapter = false;
             this.generating = true;
             this.progress = { percent: 0, message: 'Starting...', stage: 'init' };
             this._lastLoggedStage = null;
@@ -714,7 +706,7 @@ function app() {
                 const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(this.generateOptions)
+                    body: JSON.stringify({ no_images: false, chapter_length: 'medium' })
                 });
 
                 const { job_id } = await response.json();
@@ -741,10 +733,6 @@ function app() {
                     this._lastLoggedStage = null;
                     this.addConsoleLog(`Chapter ${chapter.number} generated successfully!`, 'success');
                     evtSource.close();
-
-                    // Reset form
-                    this.generateOptions.focus = '';
-                    this.generateOptions.no_images = false;
                 });
 
                 evtSource.addEventListener('error', (e) => {

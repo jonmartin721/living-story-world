@@ -26,13 +26,8 @@ active_jobs: Dict[str, asyncio.Queue] = {}
 
 
 class ChapterGenerateRequest(BaseModel):
-    focus: Optional[str] = Field(None, max_length=1000, description="Focus/direction for the chapter")
     no_images: bool = False
     chapter_length: str = Field("medium", description="Chapter length: short, medium, or long")
-
-    @validator('focus')
-    def strip_whitespace(cls, v):
-        return v.strip() if v else v
 
 
 class ChoiceSelectionRequest(BaseModel):
@@ -152,7 +147,6 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             dirs["base"],
             cfg,
             state,
-            request.focus,
             not request.no_images,  # make_scene_image
             request.chapter_length,
         )

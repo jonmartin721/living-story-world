@@ -22,7 +22,7 @@ def _get_client():
     return OpenAI()
 
 
-def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[str], chapter_length: str = "medium") -> Tuple[str, list[dict], float]:
+def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: str = "medium") -> Tuple[str, list[dict], float]:
     style = STYLE_PACKS.get(cfg.style_pack, STYLE_PACKS["storybook-ink"])  # textual art bible for images
     preset = PRESETS.get(cfg.preset, DEFAULT_PRESET)
 
@@ -170,10 +170,6 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
     if story_context:
         user_parts.append("Story progression:\n" + "\n\n".join(story_context) + "\n\n")
 
-    # Add optional focus nudge first (lighter weight)
-    if focus:
-        user_parts.append(f"Optional narrative nudge (use as inspiration, but prioritize the reader's choice if present): {focus}\n\n")
-
     # Add author's note (strategic placement for style guidance)
     if cfg.authors_note:
         user_parts.append(f"Author's Note: {cfg.authors_note}\n\n")
@@ -208,6 +204,21 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         metadata_format += ', "choices": [{"id": string, "text": string, "description": string}], '
         metadata_format += '"story_health": {"is_repetitive": bool, "natural_ending_reached": bool, "needs_fresh_direction": bool, "notes": string}'
     metadata_format += '} -->\n'
+
+    # Special instructions for first chapter
+    if state.next_chapter == 1:
+        user_parts.append(
+            "\n\nFIRST CHAPTER GUIDANCE:\n"
+            "Establish a compelling narrative seed that will grow into an engaging story arc. "
+            "Start with a focal character in a specific situation - NOT a generic introduction, but an active moment that reveals character through action. "
+            "This could be a protagonist, antagonist, or key figure depending on what best serves the theme and tone. "
+            "Introduce ONE clear dramatic question or tension point that will drive the next few chapters (a mystery, a goal, a problem, a choice, a threat). "
+            "Keep it focused: establish the character, their immediate situation, and one clear narrative hook. "
+            "Don't overwhelm with worldbuilding - let details emerge naturally through the scene. "
+            "End on a note of momentum: a decision made, a journey begun, a question raised, or a complication discovered. "
+            "The reader should feel intrigued about what happens next, not lost in exposition. "
+            "Think: 'opening scene of a good novel' not 'encyclopedia entry'.\n\n"
+        )
 
     user_parts.extend([
         f"Write Chapter {state.next_chapter}:\n",
@@ -250,7 +261,6 @@ def generate_chapter(
     base_dir: Path,
     cfg: WorldConfig,
     state: WorldState,
-    focus: Optional[str] = None,
     make_scene_image: bool = True,
     chapter_length: str = "medium",
 ) -> Chapter:
@@ -267,7 +277,7 @@ def generate_chapter(
         # Fallback to legacy OpenAI client if provider setup fails
         print(f"[WARN] Provider {text_provider_name} failed, falling back to OpenAI: {e}", flush=True)
         client = _get_client()
-        style, messages, temp = _build_chapter_prompt(cfg, state, focus, chapter_length)
+        style, messages, temp = _build_chapter_prompt(cfg, state, chapter_length)
         resp = client.chat.completions.create(
             model=text_model,
             messages=messages,
@@ -276,7 +286,7 @@ def generate_chapter(
         md = resp.choices[0].message.content or ""
     else:
         # Use the provider abstraction
-        style, messages, temp = _build_chapter_prompt(cfg, state, focus, chapter_length)
+        style, messages, temp = _build_chapter_prompt(cfg, state, chapter_length)
         result = provider.generate(messages, temperature=temp, model=text_model)
         md = result.content
         print(f"[INFO] Generated chapter using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
