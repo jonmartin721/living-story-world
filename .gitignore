@@ -94,8 +94,9 @@ living_storyworld.log
 # pip install artifacts
 =*
 
-# Tauri (experimental, not in use)
-tauri-app/
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/Cargo.lock
 
 # PyInstaller
 build/
