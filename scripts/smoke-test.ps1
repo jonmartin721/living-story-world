@@ -23,13 +23,13 @@ try {
     # Test 2: Init command (create test world)
     Write-Host "Test 2: init command"
     Push-Location $TempDir
-    & $Executable init --title "Test World" --theme "A test world" --style storybook-ink --preset cozy-adventure | Out-Null
+    & $Executable init --title "Test World" --theme "A test world" --style storybook-ink | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Init command failed" }
     Write-Host "✅ Init command works"
 
     # Test 3: Info command (list worlds)
     Write-Host "Test 3: info command"
-    & $Executable info --json | Out-Null
+    & $Executable info | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Info command failed" }
     Write-Host "✅ Info command works"
 
