@@ -63,6 +63,18 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
         "Introduce new characters or locations when they serve the story naturally. "
         + preset.system_directives,
         f"\n\nMaturity Level: {maturity_instruction}",
+        "\n\nACTION AND MOVEMENT: Prioritize physical action, exploration, and scene changes over static dialogue. "
+        "AVOID: Characters standing in one place talking for extended periods. Long conversations in single locations. Talking heads. "
+        "EMBRACE: Characters moving through spaces, traveling to new locations, discovering new areas, physical confrontations, chases, investigations, journeys. "
+        "Scene changes should happen frequently - shift locations at least 1-2 times per chapter unless there's a compelling dramatic reason to stay put. "
+        "Show characters DOING things - exploring ruins, navigating cities, climbing mountains, investigating mysteries, fleeing danger, searching for clues. "
+        "Dialogue should happen WHILE characters are in motion or engaged in activities. Use the environment actively.",
+        "\n\nSCOPE AND EXPLORATION: Think big. The world is vast and full of possibilities. "
+        "Characters should have freedom to travel, explore new regions, discover unexpected places, and encounter the wider world. "
+        "Don't confine stories to a single location unless the premise demands it. "
+        "Introduce new locations naturally - neighboring towns, distant lands, hidden places, dangerous territories. "
+        "Adventures should feel expansive, with room for geographical discovery and exploration. "
+        "Each chapter can venture into new territory, reveal new aspects of the world, or take characters somewhere unexpected.",
         "\n\nCHARACTER DEPTH: Create complex, flawed, unpredictable characters with contradictory motivations. "
         "AVOID: wholesome hand-holding, therapy-speak, everyone being kind/supportive, feelings circles, characters explaining their emotions. "
         "EMBRACE: Moral ambiguity, selfishness, secrets, conflicting desires, manipulation, genuine antagonism, characters who lie, betray, make bad choices. "
@@ -193,7 +205,9 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, focus: Optional[s
     user_parts.extend([
         f"Write Chapter {state.next_chapter}:\n",
         f"Start with a unique chapter title as H1 (do NOT include 'Chapter {state.next_chapter}' in the title - just the evocative name). ",
-        f"Then write {min_words}-{max_words} words of rich prose with light dialogue, tangible sensory detail, and a memorable closing beat.\n",
+        f"Then write {min_words}-{max_words} words of rich prose emphasizing physical action, movement through spaces, and scene changes. ",
+        f"Minimize static dialogue - have characters talk while doing things, traveling, or exploring. ",
+        f"Include vivid sensory detail and a memorable closing beat.\n",
         f"At top, put: {metadata_format}",
         "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n",
         "When creating new_characters, their descriptions should hint at complexity/flaws/contradictions, NOT just surface traits. "
@@ -235,6 +249,7 @@ def generate_chapter(
     settings = load_user_settings()
     text_provider_name = settings.text_provider
     api_key = get_api_key_for_provider(text_provider_name, settings)
+    text_model = settings.default_text_model
 
     # Get the text provider
     try:
@@ -245,7 +260,7 @@ def generate_chapter(
         client = _get_client()
         style, messages, temp = _build_chapter_prompt(cfg, state, focus, chapter_length)
         resp = client.chat.completions.create(
-            model=cfg.text_model,
+            model=text_model,
             messages=messages,
             temperature=temp,
         )
@@ -253,7 +268,7 @@ def generate_chapter(
     else:
         # Use the provider abstraction
         style, messages, temp = _build_chapter_prompt(cfg, state, focus, chapter_length)
-        result = provider.generate(messages, temperature=temp, model=cfg.text_model)
+        result = provider.generate(messages, temperature=temp, model=text_model)
         md = result.content
         print(f"[INFO] Generated chapter using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
 
@@ -303,6 +318,11 @@ def generate_chapter(
     chapter_path = base_dir / "chapters" / filename
     chapter_path.write_text(md, encoding="utf-8")
 
+    # Capture actual model used for text generation
+    actual_text_model = text_model  # Default to settings model
+    if 'result' in locals() and hasattr(result, 'model'):
+        actual_text_model = result.model
+
     # Create chapter object
     ch = Chapter(
         number=num,
@@ -313,6 +333,7 @@ def generate_chapter(
         scene_prompt=scene_prompt,
         characters_in_scene=[str(c) for c in characters_in_scene],
         choices=choices,
+        text_model_used=actual_text_model,
     )
 
     # Generate AI summary for continuity (async but we'll await it)
@@ -415,6 +436,7 @@ async def infer_choice_reasoning(
     settings = load_user_settings()
     text_provider_name = settings.text_provider
     api_key = get_api_key_for_provider(text_provider_name, settings)
+    text_model = settings.default_text_model
 
     try:
         provider = get_text_provider(text_provider_name, api_key=api_key)
@@ -436,7 +458,7 @@ Reasoning:"""
     ]
 
     try:
-        result = provider.generate(messages, temperature=0.7, model=cfg.text_model)
+        result = provider.generate(messages, temperature=0.7, model=text_model)
         reasoning = result.content.strip()
         # Limit to reasonable length
         if len(reasoning) > 200:
@@ -463,6 +485,7 @@ async def generate_chapter_summary(
     settings = load_user_settings()
     text_provider_name = settings.text_provider
     api_key = get_api_key_for_provider(text_provider_name, settings)
+    text_model = settings.default_text_model
 
     try:
         provider = get_text_provider(text_provider_name, api_key=api_key)
@@ -492,7 +515,7 @@ Summary:"""
     ]
 
     try:
-        result = provider.generate(messages, temperature=0.3, model=cfg.text_model)
+        result = provider.generate(messages, temperature=0.3, model=text_model)
         summary = result.content.strip()
         # Limit to reasonable length
         if len(summary) > 300:

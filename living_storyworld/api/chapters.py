@@ -117,6 +117,34 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             "message": "World loaded, preparing generation..."
         })
 
+        # Auto-select a choice if the previous chapter has unselected choices
+        if cfg.enable_choices and state.chapters:
+            prev_chapter = state.chapters[-1]
+            if prev_chapter.choices and not prev_chapter.selected_choice_id:
+                import random
+                selected_choice = random.choice(prev_chapter.choices)
+
+                await queue.put({
+                    "stage": "init",
+                    "percent": 9,
+                    "message": f"Auto-selecting choice: '{selected_choice.text[:50]}...'"
+                })
+
+                # Infer reasoning for the auto-selected choice
+                reasoning = await infer_choice_reasoning(
+                    choice_text=selected_choice.text,
+                    chapter_summary=prev_chapter.summary or "",
+                    world_theme=cfg.theme,
+                    cfg=cfg
+                )
+
+                # Update previous chapter with the auto-selection
+                prev_chapter.selected_choice_id = selected_choice.id
+                prev_chapter.choice_reasoning = reasoning
+
+                # Save the updated state
+                await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
+
         # Generate text with smooth progress updates
         await queue.put({
             "stage": "text",
@@ -174,11 +202,15 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
 
         # Generate image if needed
         image_path = None
+        actual_image_model = None
         if not request.no_images and chapter.scene_prompt:
+            settings = load_user_settings()
+            actual_image_model = settings.default_image_model
+
             await queue.put({
                 "stage": "image",
                 "percent": 90,
-                "message": f"Calling Replicate API (flux-dev)..."
+                "message": f"Generating image ({actual_image_model})..."
             })
 
             # Start image generation in background
@@ -187,7 +219,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 executor,
                 generate_scene_image,
                 dirs["base"],
-                "flux-dev",
+                actual_image_model,
                 cfg.style_pack,
                 chapter.scene_prompt,
                 chapter.number
@@ -227,6 +259,14 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 "message": f"Image generation complete ({image_duration:.1f}s)"
             })
 
+        # Add metadata to chapter
+        from datetime import datetime
+        chapter.generated_at = datetime.utcnow().isoformat() + 'Z'
+        # text_model_used is already set in generator.py, don't override it
+        # Set image model only if it was actually generated
+        if actual_image_model:
+            chapter.image_model_used = actual_image_model
+
         # Update state
         await queue.put({
             "stage": "saving",
@@ -251,7 +291,10 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             "choices": [asdict(c) for c in chapter.choices] if chapter.choices else [],
             "selected_choice_id": chapter.selected_choice_id,
             "choice_reasoning": chapter.choice_reasoning,
-            "scene": f"/worlds/{slug}/media/scenes/{image_path.name}" if image_path else None
+            "scene": f"/worlds/{slug}/media/scenes/{image_path.name}" if image_path else None,
+            "generated_at": chapter.generated_at,
+            "text_model_used": chapter.text_model_used,
+            "image_model_used": chapter.image_model_used
         }
 
         await queue.put({
@@ -500,11 +543,15 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
 
         # Generate image if needed
         image_path = None
+        regen_image_model = None
         if not request.no_images and chapter.scene_prompt:
+            settings = load_user_settings()
+            regen_image_model = settings.default_image_model
+
             await queue.put({
                 "stage": "image",
                 "percent": 90,
-                "message": f"Calling Replicate API (flux-dev)..."
+                "message": f"Generating image ({regen_image_model})..."
             })
 
             # Start image generation with smooth progress
@@ -513,7 +560,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
                 executor,
                 generate_scene_image,
                 dirs["base"],
-                "flux-dev",
+                regen_image_model,
                 cfg.style_pack,
                 chapter.scene_prompt,
                 chapter.number
@@ -552,6 +599,10 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
                 "percent": 94,
                 "message": f"Image generation complete ({image_duration:.1f}s)"
             })
+
+        # Update image model metadata if regenerated
+        if regen_image_model:
+            chapter.image_model_used = regen_image_model
 
         await queue.put({
             "stage": "saving",
@@ -638,17 +689,15 @@ async def delete_chapter(slug: str, chapter_num: int):
         if chapter_path.exists():
             chapter_path.unlink()
 
-    # Delete scene image if it exists
-    scene_path = chapter_data.scene
-    if scene_path:
-        # Extract filename from path like "/worlds/slug/media/scenes/filename.webp"
-        import re
-        match = re.search(r'/scenes/(.+)$', scene_path)
-        if match:
-            scene_filename = match.group(1)
-            scene_file = dirs["base"] / "media" / "scenes" / scene_filename
-            if scene_file.exists():
-                scene_file.unlink()
+    # Delete scene image(s) if they exist
+    # Scene images are named like: scene-0001-{hash}.png
+    scenes_dir = dirs["base"] / "media" / "scenes"
+    if scenes_dir.exists():
+        pattern = f"scene-{chapter_num:04d}-*.png"
+        import glob
+        for scene_file in scenes_dir.glob(pattern):
+            scene_file.unlink()
+            print(f"[INFO] Deleted scene image: {scene_file.name}", flush=True)
 
     # Remove chapter from state
     state.chapters.pop(chapter_index)

@@ -19,6 +19,7 @@ function app() {
         selectingChoice: false,
         consoleLogs: [],
         darkMode: false,
+        expandedSections: {},
 
         settings: {
             text_provider: 'openai',
@@ -27,6 +28,8 @@ function app() {
             has_together_key: false,
             has_huggingface_key: false,
             has_groq_key: false,
+            has_gemini_key: false,
+            has_openrouter_key: false,
             has_replicate_token: false,
             has_fal_key: false,
             global_instructions: '',
@@ -45,6 +48,8 @@ function app() {
             together_api_key: '',
             huggingface_api_key: '',
             groq_api_key: '',
+            gemini_api_key: '',
+            openrouter_api_key: '',
             replicate_api_token: '',
             fal_api_key: '',
             global_instructions: '',
@@ -60,7 +65,6 @@ function app() {
             title: '',
             theme: '',
             style_pack: 'storybook-ink',
-            image_model: 'flux-schnell',
             preset: 'cozy-adventure',
             maturity_level: 'general',
             chapter_length: 'medium',
@@ -74,7 +78,6 @@ function app() {
             title: '',
             theme: '',
             style_pack: '',
-            image_model: '',
             preset: '',
             maturity_level: '',
             chapter_length: '',
@@ -177,6 +180,76 @@ function app() {
             return `Generating... ${currentStep}/${totalSteps}`;
         },
 
+        // Helper: Check if the latest chapter has unselected choices
+        hasUnselectedChoice() {
+            if (!this.currentWorld || !this.currentWorld.chapters || this.currentWorld.chapters.length === 0) {
+                return false;
+            }
+            const lastChapter = this.currentWorld.chapters[this.currentWorld.chapters.length - 1];
+            return lastChapter.choices && lastChapter.choices.length > 0 && !lastChapter.selected_choice_id;
+        },
+
+        // Helper: Group chapters into sections for collapsible display
+        getChapterSections() {
+            if (!this.currentWorld || !this.currentWorld.chapters) {
+                return [];
+            }
+
+            const chapters = this.currentWorld.chapters;
+            const total = chapters.length;
+
+            // Always show last 6 chapters as "recent"
+            const recentCount = Math.min(6, total);
+            const sections = [];
+
+            // Recent chapters section (always expanded)
+            if (total > 0) {
+                sections.push({
+                    id: 'recent',
+                    title: total > 6 ? 'Recent Chapters' : 'Chapters',
+                    range: `${Math.max(1, total - recentCount + 1)}-${total}`,
+                    chapters: chapters.slice(-recentCount),
+                    isRecent: true,
+                    count: recentCount
+                });
+            }
+
+            // Older chapters grouped by 10s
+            if (total > 6) {
+                const older = chapters.slice(0, -recentCount);
+                const groupSize = 10;
+
+                for (let i = older.length - 1; i >= 0; i -= groupSize) {
+                    const start = Math.max(0, i - groupSize + 1);
+                    const end = i + 1;
+                    const sectionChapters = older.slice(start, end);
+                    const startNum = sectionChapters[0].number;
+                    const endNum = sectionChapters[sectionChapters.length - 1].number;
+
+                    sections.push({
+                        id: `section-${startNum}-${endNum}`,
+                        title: `Chapters ${startNum}-${endNum}`,
+                        range: `${startNum}-${endNum}`,
+                        chapters: sectionChapters,
+                        isRecent: false,
+                        count: sectionChapters.length
+                    });
+                }
+            }
+
+            return sections;
+        },
+
+        // Toggle section expansion
+        toggleSection(sectionId) {
+            this.expandedSections[sectionId] = !this.expandedSections[sectionId];
+        },
+
+        // Check if section is expanded
+        isSectionExpanded(sectionId) {
+            return this.expandedSections[sectionId] || false;
+        },
+
         // Console logging methods
         addConsoleLog(message, type = 'log') {
             const timestamp = new Date().toLocaleTimeString();
@@ -190,6 +263,10 @@ function app() {
                     }
                 }
             });
+        },
+
+        errorLogCount() {
+            return this.consoleLogs.filter(log => log.type === 'error').length;
         },
 
         clearConsoleLogs() {
@@ -217,7 +294,6 @@ function app() {
                 theme: this.newWorld.theme,
                 style_pack: this.newWorld.style_pack,
                 preset: this.newWorld.preset,
-                image_model: this.newWorld.image_model,
                 maturity_level: this.newWorld.maturity_level,
                 memory: this.newWorld.memory
             };
@@ -246,7 +322,6 @@ function app() {
                 this.newWorld.theme = data.theme;
                 this.newWorld.style_pack = data.style_pack;
                 this.newWorld.preset = data.preset;
-                this.newWorld.image_model = data.image_model;
                 this.newWorld.maturity_level = data.maturity_level;
                 this.newWorld.memory = data.memory || '';
             } catch (error) {
@@ -335,6 +410,8 @@ function app() {
                 together_api_key: '',
                 huggingface_api_key: '',
                 groq_api_key: '',
+                gemini_api_key: '',
+                openrouter_api_key: '',
                 replicate_api_token: '',
                 fal_api_key: '',
                 global_instructions: this.settings.global_instructions || '',
@@ -374,6 +451,8 @@ function app() {
                 if (this.settingsForm.together_api_key) payload.together_api_key = this.settingsForm.together_api_key;
                 if (this.settingsForm.huggingface_api_key) payload.huggingface_api_key = this.settingsForm.huggingface_api_key;
                 if (this.settingsForm.groq_api_key) payload.groq_api_key = this.settingsForm.groq_api_key;
+                if (this.settingsForm.gemini_api_key) payload.gemini_api_key = this.settingsForm.gemini_api_key;
+                if (this.settingsForm.openrouter_api_key) payload.openrouter_api_key = this.settingsForm.openrouter_api_key;
                 if (this.settingsForm.replicate_api_token) payload.replicate_api_token = this.settingsForm.replicate_api_token;
                 if (this.settingsForm.fal_api_key) payload.fal_api_key = this.settingsForm.fal_api_key;
 
@@ -480,7 +559,6 @@ function app() {
                 title: this.currentWorld.config.title,
                 theme: this.currentWorld.config.theme,
                 style_pack: this.currentWorld.config.style_pack,
-                image_model: this.currentWorld.config.image_model,
                 preset: this.currentWorld.config.preset || 'cozy-adventure',
                 maturity_level: this.currentWorld.config.maturity_level || 'general',
                 chapter_length: this.currentWorld.config.chapter_length || 'medium',
@@ -569,7 +647,13 @@ function app() {
                     title: '',
                     theme: '',
                     style_pack: 'storybook-ink',
-                    image_model: 'flux-dev'
+                    preset: 'cozy-adventure',
+                    maturity_level: 'general',
+                    chapter_length: 'medium',
+                    enable_choices: true,
+                    memory: '',
+                    authors_note: '',
+                    world_instructions: ''
                 };
 
                 this.showCreateWorld = false;

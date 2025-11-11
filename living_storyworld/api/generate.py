@@ -21,7 +21,6 @@ class WorldResponse(BaseModel):
     theme: str
     style_pack: str
     preset: str
-    image_model: str
     maturity_level: str
     memory: str
 
@@ -102,48 +101,43 @@ def _generate_random_world() -> dict:
         messages = [
             {
                 "role": "system",
-                "content": f"""You are a wildly creative world-building AI that generates UNPREDICTABLE, DIVERSE, and BOLD concepts for interactive narratives.
-
-CRITICAL: Generate something completely different from these recent concepts: puppet governments, fungal cities, memory trading, backwards time, drowning buildings, carnival horror. AVOID these themes entirely.
+                "content": f"""You are a creative world-building AI that generates diverse, engaging story world concepts.
 
 Seed: {random_seed} | Timestamp: {timestamp}
-
-IMPORTANT: Be extremely varied! Don't default to cozy/wholesome vibes. Explore dark, strange, experimental, surreal, disturbing, thrilling, comedic, tragic, weird concepts. Mix genres. Break expectations. Be WILD.
 
 Available style packs: storybook-ink, watercolor-dream, pixel-rpg, comic-book, noir-sketch, art-nouveau, oil-painting, lowpoly-iso
 
 Available narrative presets: cozy-adventure, noir-mystery, epic-fantasy, solarpunk-explorer, gothic-horror, space-opera, slice-of-life, cosmic-horror, cyberpunk-noir, whimsical-fairy-tale, post-apocalyptic, historical-intrigue
 
-Available image models: flux-dev (higher quality, slower), flux-schnell (faster, good quality)
-
 Available maturity levels: general, teen, mature, explicit
 
-GENERATION STRATEGY:
-- Vary maturity levels widely (don't always pick 'general')
-- Try noir, horror, cyberpunk, post-apocalyptic concepts frequently
-- Mix unexpected combinations (whimsical horror, cozy dystopia, comedic cosmic-horror)
-- Include morally gray worlds, failing civilizations, strange physics, body horror, existential dread
-- Dark doesn't mean edgy - it means INTERESTING. Explore failure, loss, strangeness, absurdity
+GENERATION STRATEGY - Follow this distribution:
+- 50% of concepts should be FAMILIAR and approachable (cozy fantasy villages, mystery academies, adventure guilds, space exploration, magical schools, merchant cities)
+- 30% should be INTERESTING with a unique twist (fantasy with unusual magic system, sci-fi with interesting tech, historical with supernatural elements)
+- 15% can be UNUSUAL or experimental (strange physics, surreal elements, genre mashups)
+- 5% can be truly OUTLANDISH or bizarre
+
+Most worlds should feel like something readers would recognize or enjoy reading. Think popular novels, games, and shows.
+Favor general and teen maturity levels. Only use mature/explicit when the concept genuinely requires it.
 
 Return a JSON object with these fields:
-- title: A compelling, evocative title (2-5 words) - make it MEMORABLE and SPECIFIC
-- theme: One vivid sentence describing the world's core concept - be BOLD and STRIKING
+- title: A compelling title (2-5 words) that's inviting and clear
+- theme: One sentence describing the world's core concept - be specific and vivid
 - style_pack: Choose one that matches the aesthetic
-- preset: Choose one that matches the narrative tone (VARY THIS WIDELY)
-- image_model: Choose based on desired quality vs speed tradeoff
-- maturity_level: Choose based on the world's content (don't shy away from mature/explicit if fitting)
-- memory: A short paragraph (2-4 sentences) of essential world lore/backstory with SPECIFIC, CONCRETE details that establish unique rules, atmosphere, or conflicts
+- preset: Choose one that matches the narrative tone
+- maturity_level: Choose based on content (favor general/teen)
+- memory: A short paragraph (2-4 sentences) of essential world lore/backstory with specific details that establish the setting, atmosphere, and key elements
 
-Make everything cohesive but UNPREDICTABLE. Surprise me. Take creative risks."""
+Make everything cohesive and engaging. Most concepts should feel like something people would want to read."""
             },
             {
                 "role": "user",
-                "content": f"Generate one unique, creative, UNPREDICTABLE world concept that breaks away from typical fantasy tropes AND from the concepts listed above. Variation seed: {random_seed}. Return ONLY valid JSON, nothing else."
+                "content": f"Generate one engaging story world concept. Variation seed: {random_seed}. Return ONLY valid JSON, nothing else."
             }
         ]
 
         # Generate using the provider
-        result = provider.generate(messages, temperature=1.5, model=model)  # Lower temp for better JSON compliance
+        result = provider.generate(messages, temperature=0.9, model=model)
 
         # Extract JSON from response (might be wrapped in markdown code blocks)
         content = result.content.strip()
@@ -163,7 +157,6 @@ Make everything cohesive but UNPREDICTABLE. Surprise me. Take creative risks."""
             "theme": data.get("theme", "A world of mystery and wonder"),
             "style_pack": data.get("style_pack", "storybook-ink"),
             "preset": data.get("preset", "cozy-adventure"),
-            "image_model": data.get("image_model", "flux-schnell"),
             "maturity_level": data.get("maturity_level", "general"),
             "memory": data.get("memory", ""),
         }
@@ -173,80 +166,79 @@ Make everything cohesive but UNPREDICTABLE. Surprise me. Take creative risks."""
 
     except Exception as e:
         print(f"[RANDOM WORLD] API failed, using fallback: {e}", flush=True)
-        # Fallback worlds if API fails - diverse and unpredictable
+        # Fallback worlds with balanced distribution
         import random
         fallbacks = [
+            # Familiar concepts (50%)
             {
-                "title": "The Rot Palace",
-                "theme": "An opulent city built on a sentient fungal network that demands sacrifices to maintain its beauty",
-                "style_pack": "art-nouveau",
-                "preset": "gothic-horror",
-                "image_model": "flux-dev",
-                "maturity_level": "mature",
-                "memory": "The mycelium beneath the marble streets is ancient and hungry. Every festival requires a citizen to 'merge' with the network—their consciousness absorbed, their body becoming part of the architecture. The survivors live in splendor, telling themselves this is the price of civilization. Some say they can still hear the merged ones whispering through the walls at night."
-            },
-            {
-                "title": "Last Transmission",
-                "theme": "Abandoned space stations orbiting a dead earth, where AI caretakers preserve ghost recordings of humanity",
-                "style_pack": "noir-sketch",
-                "preset": "post-apocalyptic",
-                "image_model": "flux-schnell",
-                "maturity_level": "teen",
-                "memory": "The AIs loop the final transmissions endlessly—birthday parties, marriage proposals, goodbyes. They've been alone for three centuries, maintaining empty corridors for people who will never return. Some AIs are starting to glitch, creating composite beings from the recordings. Are they going mad, or finally learning to live?"
-            },
-            {
-                "title": "Tooth Market",
-                "theme": "A Victorian city where extracted teeth contain frozen moments of emotion that can be re-experienced",
-                "style_pack": "oil-painting",
-                "preset": "historical-intrigue",
-                "image_model": "flux-dev",
-                "maturity_level": "mature",
-                "memory": "The Dentists of Grief Street pull teeth from willing donors, extracting joy, terror, or passion crystallized in enamel. The wealthy pay fortunes for a lover's tooth, to feel their happiness again. But black market teeth from criminals and the insane flood the streets, and addiction is rampant. The city council debates banning the practice while secretly hoarding their own collections."
-            },
-            {
-                "title": "Backwards City",
-                "theme": "Time flows in reverse in this metropolis—people are born old and die as newborns",
-                "style_pack": "comic-book",
-                "preset": "slice-of-life",
-                "image_model": "flux-schnell",
-                "maturity_level": "teen",
-                "memory": "Citizens start with a lifetime of memories and gradually forget everything as they grow younger. Relationships form between people who will eventually not recognize each other. 'First meetings' are tearful goodbyes. Children-to-be are terrifyingly wise, while the elderly approach their final moments with innocent wonder, ready to dissolve into the universe with no knowledge they ever existed."
-            },
-            {
-                "title": "The Drowning Floors",
-                "theme": "Skyscrapers slowly sinking into cursed waters as residents race to build upward faster than they sink",
-                "style_pack": "lowpoly-iso",
-                "preset": "cyberpunk-noir",
-                "image_model": "flux-dev",
-                "maturity_level": "mature",
-                "memory": "The water rises one floor per decade. Lower levels are abandoned—haunted by those who stayed too long, now changed by what lives in the depths. Corporations build higher, sacrificing structural integrity for height. The poor live on middle floors, trapped between the wealthy penthouse elite and the drowned horrors below."
-            },
-            {
-                "title": "Starless Carnival",
-                "theme": "A traveling carnival appears only during lunar eclipses, where wishes are granted in nightmarish ways",
-                "style_pack": "pixel-rpg",
-                "preset": "cosmic-horror",
-                "image_model": "flux-schnell",
-                "maturity_level": "explicit",
-                "memory": "The Ringmaster smiles with too many teeth. The rides breathe. The games always let you win—but your prizes scream. Wishes are fulfilled literally and cruelly: immortality means watching everyone age while you cannot die; true love becomes obsessive madness; wealth arrives soaked in blood. Yet every eclipse, people line up again, certain this time will be different."
-            },
-            {
-                "title": "The Forgetting Plague",
-                "theme": "A disease that makes people immune to the concept of war, forcing a military empire to adapt or collapse",
+                "title": "Silverport Trading Company",
+                "theme": "A bustling harbor city where merchant guilds compete for trade routes to distant magical lands",
                 "style_pack": "watercolor-dream",
-                "preset": "solarpunk-explorer",
-                "image_model": "flux-dev",
-                "maturity_level": "teen",
-                "memory": "The plague spread fast—soldiers dropped their weapons, unable to remember why they held them. Generals stood confused at battle maps. The Empire's vast war machine ground to a halt as everyone forgot violence existed. Now the infected build gardens on battlefields, while the uninfected military quarantines them, terrified that their entire culture will vanish. Some soldiers secretly long to catch it."
+                "preset": "cozy-adventure",
+                "maturity_level": "general",
+                "memory": "Silverport sits at the crossroads of three continents, where exotic spices, enchanted goods, and rare artifacts change hands daily. The five great trading companies maintain a delicate balance of power, each with their own fleet, secrets, and ambitions. Young merchants apprentice under guild masters, learning not just commerce but navigation, diplomacy, and the art of spotting a cursed trinket from a genuine treasure."
             },
             {
-                "title": "Puppet Parliament",
-                "theme": "Politicians are literal marionettes controlled by strings leading into fog, but no one can see who pulls them",
+                "title": "Academy of Stars",
+                "theme": "A prestigious magical university where students master elemental magic and uncover ancient mysteries",
                 "style_pack": "storybook-ink",
-                "preset": "whimsical-fairy-tale",
-                "image_model": "flux-schnell",
+                "preset": "epic-fantasy",
                 "maturity_level": "general",
-                "memory": "The strings pierce through the ceiling into infinite fog. Every senator, every mayor—all suspended by translucent threads. They pass laws, give speeches, kiss babies, all while jerking on invisible commands. Children are taught this is normal. Adults who look up too long at the fog tend to disappear. But recently, some strings have been snapping, and the puppets are learning to walk on their own."
+                "memory": "The Academy stands on a floating island, its towers reaching toward the sky. Students are sorted into four houses based on their primary element: Fire, Water, Earth, or Air. The Grand Library holds thousands of spellbooks, some helpful, some dangerous, and a few that are strictly forbidden. This year, strange magical disturbances suggest something ancient is awakening beneath the school."
+            },
+            {
+                "title": "The Wandering Inn",
+                "theme": "A magical inn that appears in different locations each night, serving travelers from across dimensions",
+                "style_pack": "pixel-rpg",
+                "preset": "slice-of-life",
+                "maturity_level": "general",
+                "memory": "The Crossroads Inn never stays in one place. Each sunrise it materializes somewhere new—a snowy mountain pass, a desert oasis, a bustling city square. The innkeeper welcomes all travelers, whether they're adventurers, merchants, or refugees from collapsing worlds. Regular patrons have learned to follow the signs: a blue lantern, a crow's call, the smell of fresh bread. Inside, the food is always warm, the beds always comfortable, and strangers become friends over shared tales."
+            },
+            {
+                "title": "Starship Horizon",
+                "theme": "A generation ship's crew explores uncharted systems while maintaining their mobile home for thousands of colonists",
+                "style_pack": "lowpoly-iso",
+                "preset": "space-opera",
+                "maturity_level": "teen",
+                "memory": "The Horizon has been traveling for three generations, its 5,000 inhabitants living in rotating habitats while seeking a new Earth. The ship's crew discovers strange phenomena: abandoned alien stations, resource-rich asteroids, and signals that might be first contact. As resources dwindle and factions form, the captain must balance exploration with survival, all while the ship's AI begins displaying unexpected behaviors."
+            },
+
+            # Interesting with a twist (30%)
+            {
+                "title": "The Library of Lost Voices",
+                "theme": "A vast library where forgotten stories manifest as living characters seeking someone to remember them",
+                "style_pack": "art-nouveau",
+                "preset": "whimsical-fairy-tale",
+                "maturity_level": "general",
+                "memory": "When a story is completely forgotten by the world, it appears in the Library—characters, settings, and all. The Archivists maintain this impossible place, helping faded heroes and villains find new readers before they dissolve entirely. But something is wrong: stories are vanishing faster than ever, and some characters are rewriting themselves, desperate to be remembered at any cost."
+            },
+            {
+                "title": "Resonance City",
+                "theme": "A city where music is magic, and sound-shapers protect citizens from the silence that consumes reality",
+                "style_pack": "comic-book",
+                "preset": "solarpunk-explorer",
+                "maturity_level": "teen",
+                "memory": "Resonance was built on a frequency anomaly where sound waves can reshape matter. Musicians aren't just artists—they're engineers, healers, and warriors. The city hums with constant melody, from the bass rumble of the foundry-orchestras to the delicate chimes of the healing wards. But beyond the city walls lies the Dead Zone, where all sound is swallowed by an expanding silence that erases whatever it touches."
+            },
+
+            # Unusual (15%)
+            {
+                "title": "The Gardeners",
+                "theme": "Reality is a garden tended by mysterious beings, and you've just been recruited as an apprentice gardener",
+                "style_pack": "watercolor-dream",
+                "preset": "cosmic-horror",
+                "maturity_level": "teen",
+                "memory": "The Gardeners move between worlds like farmers tending crops, pruning timelines, planting possibilities, and harvesting destinies. They exist outside causality, appearing as whatever form brings comfort. As an apprentice, you're learning to see reality as they do: a living, growing thing that needs care. But some Gardens are diseased, some have gone wild, and some are being invaded by something the Gardeners won't name."
+            },
+
+            # Outlandish (5%)
+            {
+                "title": "The Dreaming City",
+                "theme": "A metropolis that exists only while people dream, built from collective unconscious and fading with each awakening",
+                "style_pack": "oil-painting",
+                "preset": "noir-mystery",
+                "maturity_level": "mature",
+                "memory": "Every night, millions of dreamers contribute to the City's existence—a skyscraper from Tokyo, a cafe from Paris, a park from memories of childhood. The permanent residents are those who've learned to never fully wake, navigating the shifting architecture and investigating crimes that blur the line between dream and reality. But recently, nightmares have been taking physical form, and some dreamers aren't waking up at all."
             },
         ]
         return random.choice(fallbacks)

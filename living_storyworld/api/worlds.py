@@ -197,7 +197,10 @@ async def get_world(slug: str):
             "scene": scene_for_chapter.get(ch.number),
             "characters_in_scene": ch.characters_in_scene,
             "choices": choices_data,
-            "selected_choice_id": ch.selected_choice_id
+            "selected_choice_id": ch.selected_choice_id,
+            "generated_at": getattr(ch, 'generated_at', None),
+            "text_model_used": getattr(ch, 'text_model_used', None),
+            "image_model_used": getattr(ch, 'image_model_used', None)
         })
 
     return {

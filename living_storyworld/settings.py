@@ -26,7 +26,7 @@ CONFIG_PATH = _config_dir() / "config.json"
 @dataclass
 class UserSettings:
     # API provider selections (default to free providers)
-    text_provider: str = "huggingface"  # Free tier with API key
+    text_provider: str = "gemini"  # Free tier with API key (best quality/speed)
     image_provider: str = "pollinations"  # Completely free, no API key needed
 
     # API keys for various providers
@@ -35,6 +35,7 @@ class UserSettings:
     huggingface_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
     openrouter_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
     replicate_api_token: Optional[str] = None
     fal_api_key: Optional[str] = None
 
@@ -44,7 +45,7 @@ class UserSettings:
     # Default preferences
     default_style_pack: str = "storybook-ink"
     default_preset: str = "cozy-adventure"
-    default_text_model: str = "mistralai/Mistral-7B-Instruct-v0.3"  # Free HuggingFace model
+    default_text_model: str = "gemini-2.5-flash"  # Best free model for creative writing (2025)
     default_image_model: str = "flux"  # Pollinations default
     default_maturity_level: str = "general"
 
@@ -123,6 +124,9 @@ def ensure_provider_api_keys(settings: Optional[UserSettings] = None) -> None:
     if s.groq_api_key and not os.environ.get("GROQ_API_KEY"):
         os.environ["GROQ_API_KEY"] = s.groq_api_key
 
+    if s.gemini_api_key and not os.environ.get("GEMINI_API_KEY"):
+        os.environ["GEMINI_API_KEY"] = s.gemini_api_key
+
     if s.openrouter_api_key and not os.environ.get("OPENROUTER_API_KEY"):
         os.environ["OPENROUTER_API_KEY"] = s.openrouter_api_key
 
@@ -152,6 +156,7 @@ def get_api_key_for_provider(provider: str, settings: Optional[UserSettings] = N
         "huggingface": (os.environ.get("HUGGINGFACE_API_KEY"), s.huggingface_api_key),
         "groq": (os.environ.get("GROQ_API_KEY"), s.groq_api_key),
         "openrouter": (os.environ.get("OPENROUTER_API_KEY"), s.openrouter_api_key),
+        "gemini": (os.environ.get("GEMINI_API_KEY"), s.gemini_api_key),
         "replicate": (os.environ.get("REPLICATE_API_TOKEN"), s.replicate_api_token),
         "fal": (os.environ.get("FAL_KEY"), s.fal_api_key),
     }

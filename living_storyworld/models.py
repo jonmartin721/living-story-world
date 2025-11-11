@@ -49,6 +49,9 @@ class Chapter:
     choices: List[Choice] = field(default_factory=list)
     selected_choice_id: Optional[str] = None
     choice_reasoning: Optional[str] = None
+    generated_at: Optional[str] = None  # ISO format timestamp
+    text_model_used: Optional[str] = None  # Model used for text generation
+    image_model_used: Optional[str] = None  # Model used for image generation
 
 
 @dataclass

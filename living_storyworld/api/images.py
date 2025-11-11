@@ -59,12 +59,16 @@ async def generate_image(slug: str, request: ImageGenerateRequest):
         )
 
     # Generate image
+    from ..settings import load_user_settings
+    settings = load_user_settings()
+    image_model = settings.default_image_model
+
     loop = asyncio.get_event_loop()
     image_path = await loop.run_in_executor(
         executor,
         generate_scene_image,
         dirs["base"],
-        "flux-dev",
+        image_model,
         cfg.style_pack,
         prompt,
         chapter_num

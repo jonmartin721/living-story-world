@@ -173,3 +173,17 @@ button:disabled {
 ::-webkit-scrollbar-thumb:hover {
     background: #9ca3af;
 }
+
+/* Shimmer animation for skeleton loaders */
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.shimmer {
+    animation: shimmer 2s infinite;
+}

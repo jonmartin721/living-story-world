@@ -66,6 +66,10 @@ class OpenAIProvider(TextProvider):
     """OpenAI text generation provider."""
 
     ALLOWED_MODELS = {
+        "gpt-5",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-5-chat",
         "gpt-4o",
         "gpt-4o-mini",
         "gpt-4-turbo",
@@ -120,7 +124,7 @@ class OpenAIProvider(TextProvider):
         )
 
     def get_default_model(self) -> str:
-        return "gpt-4o-mini"
+        return "gpt-5-mini"
 
     def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
         """Rough cost estimate based on typical chapter length."""
@@ -455,11 +459,102 @@ class OpenRouterProvider(TextProvider):
         return True
 
 
+class GeminiProvider(TextProvider):
+    """Google Gemini text generation provider."""
+
+    ALLOWED_MODELS = {
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash-exp",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
+        "gemini-1.5-pro",
+    }
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        if not self.api_key:
+            raise RuntimeError("Gemini API key not found. Set GEMINI_API_KEY environment variable or pass api_key parameter.")
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        temperature: float = 1.0,
+        model: Optional[str] = None,
+    ) -> TextGenerationResult:
+        import google.generativeai as genai
+
+        genai.configure(api_key=self.api_key)
+
+        model_name = model or self.get_default_model()
+        if model_name not in self.ALLOWED_MODELS:
+            raise ValueError(
+                f"Unknown Gemini model: {model_name}. "
+                f"Allowed: {', '.join(sorted(self.ALLOWED_MODELS))}"
+            )
+
+        # Convert messages to Gemini format
+        gemini_messages = []
+        for msg in messages:
+            role = "user" if msg["role"] == "user" else "model"
+            gemini_messages.append({
+                "role": role,
+                "parts": [msg["content"]]
+            })
+
+        model_instance = genai.GenerativeModel(model_name)
+
+        # Gemini doesn't support separate system/user like OpenAI
+        # If first message is system, prepend it to first user message
+        if messages and messages[0]["role"] == "system":
+            system_content = messages[0]["content"]
+            if len(gemini_messages) > 1:
+                gemini_messages[1]["parts"][0] = f"{system_content}\n\n{gemini_messages[1]['parts'][0]}"
+                gemini_messages = gemini_messages[1:]  # Remove the system message
+
+        response = model_instance.generate_content(
+            gemini_messages,
+            generation_config={
+                "temperature": temperature,
+            }
+        )
+
+        content = response.text
+        cost = self.estimate_cost(messages, model_name)
+
+        return TextGenerationResult(
+            content=content,
+            provider="gemini",
+            model=model_name,
+            estimated_cost=cost,
+        )
+
+    def get_default_model(self) -> str:
+        return "gemini-2.5-flash"
+
+    def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
+        """Gemini Flash is free for up to 15 requests/minute, 1500 requests/day."""
+        # Flash models are free tier
+        model_name = model or self.get_default_model()
+        if "flash" in model_name.lower():
+            return 0.0  # Free tier
+        # Pro models have costs but still very cheap
+        return (1000 * 1.25 / 1_000_000) + (1000 * 5.00 / 1_000_000)
+
+    @property
+    def provider_name(self) -> str:
+        return "Gemini"
+
+    @property
+    def requires_api_key(self) -> bool:
+        return True
+
+
 def get_text_provider(provider_name: str, api_key: Optional[str] = None) -> TextProvider:
     """Factory function to get a text provider by name.
 
     Args:
-        provider_name: One of "openai", "together", "huggingface", "groq", "openrouter"
+        provider_name: One of "openai", "together", "huggingface", "groq", "openrouter", "gemini"
         api_key: Optional API key (falls back to environment variables)
 
     Returns:
@@ -474,6 +569,7 @@ def get_text_provider(provider_name: str, api_key: Optional[str] = None) -> Text
         "huggingface": HuggingFaceProvider,
         "groq": GroqProvider,
         "openrouter": OpenRouterProvider,
+        "gemini": GeminiProvider,
     }
 
     provider_class = providers.get(provider_name.lower())
