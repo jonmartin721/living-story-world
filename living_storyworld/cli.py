@@ -287,6 +287,13 @@ def main(argv: Optional[list[str]] = None) -> None:
         run_tui()
     sp.set_defaults(func=_play)
 
+    sp = sub.add_parser("desktop", help="Launch the desktop application")
+    sp.add_argument("--port", type=int, default=8001, help="Port to run the server on (default: 8001)")
+    def _desktop(args: argparse.Namespace) -> None:
+        from living_storyworld.desktop import launch_desktop
+        launch_desktop(port=args.port)
+    sp.set_defaults(func=_desktop)
+
     args = p.parse_args(argv)
     if not args.cmd:
         # No subcommand provided: launch TUI by default
