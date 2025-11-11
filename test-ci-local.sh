@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🧪 Running CI tests locally..."
+echo "Running CI tests locally..."
 echo ""
 
 # Activate virtualenv
@@ -15,17 +15,17 @@ source .venv/bin/activate
 echo "→ Running pytest..."
 pytest tests/ -v --tb=short
 
-# Build executable with PyInstaller
+# Build with Tauri
 echo ""
-echo "→ Building executable..."
-./build-executable.sh > /dev/null 2>&1
-
-# Run smoke tests on executable
-echo ""
-echo "→ Running smoke tests on executable..."
-./scripts/smoke-test.sh dist/LivingStoryworld
+echo "→ Building Tauri app..."
+cd src-tauri
+cargo build --release
+cd ..
 
 echo ""
 echo "✅ All CI tests passed locally!"
+echo ""
+echo "Built app: src-tauri/target/release/living-storyworld"
+ls -lh src-tauri/target/release/living-storyworld
 echo ""
 echo "You can now safely commit and push to GitHub."
