@@ -313,11 +313,10 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         traceback_str = traceback.format_exc()
         logging.error(f"Full traceback: {traceback_str}")
 
-        # Send sanitized error to client (no traceback)
+        # Send sanitized error to client (no traceback or error details)
         await queue.put({
             "stage": "error",
             "error": "Chapter generation failed. Please check your settings and try again.",
-            "error_type": type(e).__name__,
             "job_id": job_id  # For support reference
         })
         print(f"ERROR in chapter generation: {error_msg}")

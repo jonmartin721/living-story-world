@@ -1058,34 +1058,39 @@ function app() {
             }
         },
 
-        markdownToHtml(markdown) {
-            // Very basic markdown to HTML conversion
-            // In production, you'd want to use a proper markdown library
-            let html = markdown;
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
 
+        markdownToHtml(markdown) {
             // Remove metadata comment at top
-            html = html.replace(/^<!--[\s\S]*?-->\n*/m, '');
+            let text = markdown.replace(/^<!--[\s\S]*?-->\n*/m, '');
+
+            // Escape HTML to prevent XSS
+            text = this.escapeHtml(text);
 
             // Headers
-            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+            text = text.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+            text = text.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            text = text.replace(/^# (.*$)/gim, '<h1>$1</h1>');
 
             // Bold
-            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
             // Italic
-            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
             // Paragraphs
-            html = html.split('\n\n').map(para => {
+            text = text.split('\n\n').map(para => {
                 if (para.startsWith('<h') || !para.trim()) {
                     return para;
                 }
                 return '<p>' + para + '</p>';
             }).join('\n');
 
-            return html;
+            return text;
         },
 
         // Helper function to get image model options based on selected provider

@@ -267,6 +267,10 @@ def main(argv: Optional[list[str]] = None) -> None:
 
         print(f"[bold green]Starting web server at {url}[/]")
         print("[dim]Press Ctrl+C to stop[/]")
+        print()
+        print("[yellow]SECURITY:[/] This server binds to localhost only (127.0.0.1)")
+        print("[yellow]Do NOT expose this to the internet without adding authentication[/]")
+        print()
 
         # Run uvicorn
         import uvicorn

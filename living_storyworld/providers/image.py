@@ -247,11 +247,34 @@ class HuggingFaceImageProvider(ImageProvider):
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {"inputs": prompt}
 
-        response = requests.post(api_url, headers=headers, json=payload)
+        response = requests.post(api_url, headers=headers, json=payload, stream=True)
         response.raise_for_status()
 
+        # SECURITY: Check content type
+        content_type = response.headers.get('Content-Type', '')
+        if content_type and not content_type.startswith('image/'):
+            raise RuntimeError(f"Unexpected content type: {content_type}")
+
+        # SECURITY: Check size limit (50MB max)
+        content_length = int(response.headers.get('Content-Length', 0))
+        max_bytes = 50 * 1024 * 1024
+        if content_length > max_bytes:
+            raise ValueError(f"Response too large: {content_length} bytes (max: 50MB)")
+
+        # Stream download with size check
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_bytes(response.content)
+        downloaded = 0
+        try:
+            with output_path.open('wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    downloaded += len(chunk)
+                    if downloaded > max_bytes:
+                        output_path.unlink(missing_ok=True)
+                        raise ValueError("Download exceeded size limit (50MB)")
+                    f.write(chunk)
+        except Exception:
+            output_path.unlink(missing_ok=True)
+            raise
 
         cost = self.estimate_cost(model_name)
 
@@ -308,11 +331,34 @@ class PollinationsProvider(ImageProvider):
 
         url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&model={model_name}&nologo=true"
 
-        response = requests.get(url)
+        response = requests.get(url, stream=True, timeout=30)
         response.raise_for_status()
 
+        # SECURITY: Check content type
+        content_type = response.headers.get('Content-Type', '')
+        if content_type and not content_type.startswith('image/'):
+            raise RuntimeError(f"Unexpected content type: {content_type}")
+
+        # SECURITY: Check size limit (50MB max)
+        content_length = int(response.headers.get('Content-Length', 0))
+        max_bytes = 50 * 1024 * 1024
+        if content_length > max_bytes:
+            raise ValueError(f"Response too large: {content_length} bytes (max: 50MB)")
+
+        # Stream download with size check
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_bytes(response.content)
+        downloaded = 0
+        try:
+            with output_path.open('wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    downloaded += len(chunk)
+                    if downloaded > max_bytes:
+                        output_path.unlink(missing_ok=True)
+                        raise ValueError("Download exceeded size limit (50MB)")
+                    f.write(chunk)
+        except Exception:
+            output_path.unlink(missing_ok=True)
+            raise
 
         return ImageGenerationResult(
             image_path=output_path,

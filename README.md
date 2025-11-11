@@ -57,6 +57,8 @@ A persistent narrative universe you can explore via a simple CLI. It generates c
    ```
    Opens at `http://localhost:8001` with full GUI for browsing, generating, and viewing chapters.
 
+   > **Security Note:** The web server is designed for single-user, localhost-only use. It binds to `127.0.0.1` and has no authentication. Do not expose it to the internet or local network without implementing proper authentication and access controls.
+
    **Option B: Static HTML viewer**
    ```bash
    python3 -m living_storyworld.cli build --world the-flooded-stacks
