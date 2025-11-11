@@ -60,137 +60,30 @@ The web interface provides:
 
 ## Visual Styles
 
-Choose from multiple art direction presets for scene illustrations:
-
-| Style | Description |
-|-------|-------------|
-| `storybook-ink` | Ink and wash illustration with muted palette |
-| `pixel-rpg` | 16-bit SNES-style pixel art |
-| `lowpoly-iso` | Low-poly isometric diorama |
-| `watercolor-dream` | Soft watercolor with dreamy atmosphere |
-| `noir-sketch` | High-contrast ink sketch, noir aesthetic |
-| `vaporwave-glitch` | Vaporwave aesthetic with digital artifacts |
-
-Configure in world settings or via `worlds/<slug>/config.json`
+- **storybook-ink** — Ink and wash illustration
+- **pixel-rpg** — 16-bit SNES-style pixel art
+- **lowpoly-iso** — Low-poly isometric diorama
+- **watercolor-dream** — Soft watercolor
+- **noir-sketch** — High-contrast ink sketch
+- **vaporwave-glitch** — Vaporwave with digital artifacts
 
 ---
 
 ## Narrative Presets
 
-12 genre and tone templates to shape your story:
-
-<table>
-<tr>
-<td width="50%">
-
-**Adventure & Wonder**
-- `cozy-adventure` — Wholesome exploration, gentle stakes
-- `epic-fantasy` — Grand vistas, mythic stakes
-- `solarpunk-explorer` — Hopepunk tone, inventive systems
-- `whimsical-fairy-tale` — Playful enchantment
-
-</td>
-<td width="50%">
-
-**Dark & Mysterious**
-- `noir-mystery` — Moody, metaphor-rich
-- `gothic-horror` — Atmospheric dread
-- `cosmic-horror` — Existential terror
-- `cyberpunk-noir` — High-tech low-life
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Drama & Character**
-- `slice-of-life` — Quiet moments, intimacy
-- `historical-intrigue` — Period authenticity
-
-</td>
-<td>
-
-**Survival & Conflict**
-- `post-apocalyptic` — Harsh beauty, rebuilding
-- `space-opera` — Galactic scale, political intrigue
-
-</td>
-</tr>
-</table>
+12 genre and tone templates: `cozy-adventure`, `epic-fantasy`, `solarpunk-explorer`, `whimsical-fairy-tale`, `noir-mystery`, `gothic-horror`, `cosmic-horror`, `cyberpunk-noir`, `slice-of-life`, `historical-intrigue`, `post-apocalyptic`, `space-opera`
 
 ---
 
 ## Architecture
 
-### Project Structure
-
-```
-living-storyworld/
-├── living_storyworld/
-│   ├── cli.py              # CLI entry point
-│   ├── webapp.py           # FastAPI application
-│   ├── generator.py        # Chapter generation orchestrator
-│   ├── world.py            # World initialization and state
-│   ├── storage.py          # Filesystem abstraction
-│   ├── models.py           # Core data models
-│   ├── providers/          # Pluggable text/image providers
-│   ├── api/                # FastAPI routers
-│   └── web/                # Frontend assets
-└── worlds/
-    └── <slug>/
-        ├── config.json     # World configuration
-        ├── world.json      # Persistent state
-        ├── chapters/       # Generated markdown
-        └── media/
-            └── scenes/     # Scene illustrations
-```
-
-### Provider Architecture
-
-**Text Providers**: OpenAI, Groq, Together AI, HuggingFace, OpenRouter
-**Image Providers**: Replicate (Flux), Fal.ai, HuggingFace, Pollinations (free)
-
-All providers implement unified interfaces for easy swapping and cost estimation.
-
-### Data Models
-
-Core dataclasses define world structure:
-- `WorldConfig` — Title, theme, model settings, memory system
-- `WorldState` — Characters, locations, chapter history, tick count
-- `Chapter` — Markdown content, metadata, entity references
-- `Character`, `Location`, `Item` — Persistent entities
+FastAPI backend with pluggable text/image providers. Worlds stored as JSON with generated markdown chapters and PNG scene illustrations. Data models track persistent state across characters, locations, and narrative history.
 
 ---
 
 ## Advanced Features
 
-### Memory System
-
-Inspired by NovelAI, each world includes three memory fields:
-
-- **Memory** — Always in context (lore, key facts)
-- **Author's Note** — Style guidance inserted at strategic points
-- **World Instructions** — Custom world-specific directives
-
-Configure via web settings or edit `worlds/<slug>/config.json`
-
-### Entity Tracking
-
-Chapters automatically extract and register:
-- New characters with descriptions
-- New locations and landmarks
-- Scene summaries for continuity
-
-All tracked in `world.json` for persistent world state.
-
-### Image Model Options
-
-| Model | Provider | Quality | Cost | Speed |
-|-------|----------|---------|------|-------|
-| `flux-dev` | Replicate | High | ~$0.025 | Moderate |
-| `flux-schnell` | Replicate | Good | ~$0.003 | Fast |
-| `fal-flux` | Fal.ai | High | ~$0.025 | Fast |
-| `pollinations` | Pollinations | Moderate | Free | Variable |
+Worlds include Memory, Author's Note, and World Instructions fields for narrative control. Chapters automatically extract and track new characters, locations, and scene summaries for continuity.
 
 ---
 
@@ -233,10 +126,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## Acknowledgments
-
-Built with:
-- [FastAPI](https://fastapi.tiangolo.com/) — Modern web framework
-- [Groq](https://groq.com/) — Fast LLM inference
-- [Replicate](https://replicate.com/) — AI model hosting
-- [Flux](https://blackforestlabs.ai/) — State-of-the-art image generation
+Built with FastAPI, Groq, Replicate, and Flux.
