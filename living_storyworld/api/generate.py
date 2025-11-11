@@ -143,8 +143,19 @@ Make everything cohesive but UNPREDICTABLE. Surprise me. Take creative risks."""
         ]
 
         # Generate using the provider
-        result = provider.generate(messages, temperature=1.8, model=model)
-        data = json.loads(result.content)
+        result = provider.generate(messages, temperature=1.5, model=model)  # Lower temp for better JSON compliance
+
+        # Extract JSON from response (might be wrapped in markdown code blocks)
+        content = result.content.strip()
+        if content.startswith('```json'):
+            content = content[7:]  # Remove ```json
+        if content.startswith('```'):
+            content = content[3:]  # Remove ```
+        if content.endswith('```'):
+            content = content[:-3]  # Remove trailing ```
+        content = content.strip()
+
+        data = json.loads(content)
 
         # Ensure we have all required fields with defaults
         world_result = {

@@ -209,6 +209,7 @@ function app() {
 
         async randomWorld() {
             this.generatingTheme = true;
+            console.log('[Random World] Starting generation...');
 
             // Store originals in case of failure
             const originals = {
@@ -227,8 +228,18 @@ function app() {
             this.newWorld.memory = 'Generating...';
 
             try {
-                const response = await fetch('/api/generate/world');
+                console.log('[Random World] Fetching from API...');
+                const response = await fetch('/api/generate/world', {
+                    signal: AbortSignal.timeout(45000) // 45 second timeout for slow API calls
+                });
+                console.log('[Random World] Response received, status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const data = await response.json();
+                console.log('[Random World] Data parsed:', data);
 
                 // Fill all fields from the response
                 this.newWorld.title = data.title;
@@ -239,11 +250,12 @@ function app() {
                 this.newWorld.maturity_level = data.maturity_level;
                 this.newWorld.memory = data.memory || '';
             } catch (error) {
-                console.error('Failed to generate world:', error);
+                console.error('[Random World] Error:', error);
                 // Restore originals on failure
                 Object.assign(this.newWorld, originals);
-                this.showToast('Failed to generate world. Please try again.');
+                this.showToast(`Failed to generate world: ${error.message}`);
             } finally {
+                console.log('[Random World] Generation completed');
                 this.generatingTheme = false;
             }
         },
