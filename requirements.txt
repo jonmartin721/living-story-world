@@ -11,4 +11,5 @@ pytest>=7.4.0
 pytest-asyncio>=0.21.0
 httpx>=0.25.0
 pywebview>=5.0.0
+pythonnet>=3.0.0; sys_platform == 'win32'
 pyinstaller>=6.0.0
