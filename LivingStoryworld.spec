@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
 from PyInstaller.utils.hooks import collect_all
 
 datas = [('living_storyworld/web', 'living_storyworld/web')]
@@ -19,11 +20,23 @@ hiddenimports = [
     'uvicorn.protocols.websockets',
     'uvicorn.protocols.websockets.auto',
     'uvicorn.lifespan',
-    'uvicorn.lifespan.on'
+    'uvicorn.lifespan.on',
+    'win32com',
+    'win32com.client',
+    'pythoncom',
+    'pywintypes',
 ]
 
 tmp_ret = collect_all('webview')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
+# Collect Windows-specific dependencies
+if os.name == 'nt':
+    try:
+        tmp_ret = collect_all('win32com')
+        datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+    except Exception:
+        pass
 
 
 a = Analysis(
@@ -54,7 +67,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,  # Show console for debugging (especially on Windows)
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

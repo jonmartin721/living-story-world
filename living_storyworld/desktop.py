@@ -51,16 +51,23 @@ def start_server(port: int = 8001):
 def launch_desktop(port: int = 8001):
     """Launch the desktop application with PyWebView."""
     print("Starting Living Storyworld desktop app...")
+    print(f"Platform: {sys.platform}")
 
     # Start FastAPI server in background
-    server = start_server(port)
-    print(f"Server started on http://127.0.0.1:{port}")
+    try:
+        server = start_server(port)
+        print(f"✓ Server started on http://127.0.0.1:{port}")
+    except Exception as e:
+        print(f"ERROR: Failed to start server: {e}")
+        input("Press Enter to exit...")
+        sys.exit(1)
 
     url = f"http://127.0.0.1:{port}"
 
     # Create and start the webview window
     try:
-        webview.create_window(
+        print("Initializing window...")
+        window = webview.create_window(
             "Living Storyworld",
             url,
             width=1280,
@@ -68,19 +75,33 @@ def launch_desktop(port: int = 8001):
             resizable=True,
             min_size=(800, 600)
         )
-        webview.start()
+        print("Starting webview...")
+
+        # Use edge on Windows for better compatibility
+        gui = 'edgechromium' if sys.platform == 'win32' else None
+        webview.start(gui=gui)
+
     except Exception as e:
         print(f"ERROR: Failed to start webview: {e}")
-        print("\nTrying to open in browser instead...")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+
+        print("\n" + "="*50)
+        print("Fallback: Opening in browser instead...")
+        print("="*50)
+
         import webbrowser
+        time.sleep(1)
         webbrowser.open(url)
-        print(f"Server running at {url}")
-        print("Press Ctrl+C to stop")
+        print(f"✓ Browser opened to {url}")
+        print("\nServer is running. Press Ctrl+C to stop.")
+
         try:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
-            pass
+            print("\nShutting down...")
     finally:
         # Cleanup
         if hasattr(server, 'should_exit'):
