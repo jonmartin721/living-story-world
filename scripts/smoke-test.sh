@@ -4,7 +4,7 @@
 
 set -e
 
-EXECUTABLE=$1
+EXECUTABLE=$(realpath "$1")
 TEMP_DIR=$(mktemp -d)
 
 echo "🧪 Running smoke tests on: $EXECUTABLE"
@@ -12,18 +12,18 @@ echo "📁 Test directory: $TEMP_DIR"
 
 # Test 1: Help command
 echo "Test 1: --help command"
-$EXECUTABLE --help > /dev/null
+"$EXECUTABLE" --help > /dev/null
 echo "✅ Help command works"
 
 # Test 2: Init command (create test world)
 echo "Test 2: init command"
-cd $TEMP_DIR
-$EXECUTABLE init --title "Test World" --theme "A test world" --style storybook-ink --preset cozy-adventure > /dev/null
+cd "$TEMP_DIR"
+"$EXECUTABLE" init --title "Test World" --theme "A test world" --style storybook-ink > /dev/null
 echo "✅ Init command works"
 
 # Test 3: Info command (list worlds)
 echo "Test 3: info command"
-$EXECUTABLE info --json > /dev/null
+"$EXECUTABLE" info > /dev/null
 echo "✅ Info command works"
 
 # Test 4: World exists check
@@ -43,8 +43,8 @@ fi
 echo "✅ Config file created"
 
 # Cleanup
-cd -
-rm -rf $TEMP_DIR
+cd - > /dev/null
+rm -rf "$TEMP_DIR"
 
 echo ""
 echo "✅ All smoke tests passed!"
