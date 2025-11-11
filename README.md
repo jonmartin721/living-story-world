@@ -1,21 +1,20 @@
 # Living Storyworld
 
-> A persistent narrative universe generator that creates illustrated story chapters using AI-powered text and image generation.
+> A storybook created from your imagination, with infinite possibilities. Make decisions and steer the story, or sit back and enjoy a relaxing tale.
 
-Create evolving fictional worlds where each chapter builds on the last. Living Storyworld combines multiple LLM providers with AI image generation to produce coherent, ongoing narratives with custom scene illustrations—all from a simple CLI or modern web interface.
+Create evolving fictional worlds where each chapter builds on the last. Living Storyworld combines multiple LLM providers with AI image generation to produce coherent, ongoing narratives with custom scene illustrations. 
 
 ---
 
 ## Features
 
 - **Persistent World State** — Characters, locations, and narrative continuity maintained across chapters
-- **Multi-Provider Support** — Choose from OpenAI, Groq, Together AI, HuggingFace, OpenRouter for text; Replicate, Fal.ai, Pollinations for images
+- **Multi-Provider Support** — Choose from OpenAI, Groq, Together AI, HuggingFace, OpenRouter for text; Replicate, Fal.ai, Pollinations for images. Free options available (rate-limited or requiring free API keys)
 - **Visual Styles** — Multiple art direction presets (storybook-ink, pixel-rpg, lowpoly-iso, watercolor-dream, and more)
 - **Narrative Presets** — 12+ genre/tone templates from cozy-adventure to cyberpunk-noir
-- **Web Interface** — Modern GUI with real-time generation progress and chapter management
+- **Modern Web Interface** — Full-featured GUI with real-time progress and chapter management
 - **Smart Caching** — Avoids duplicate API calls by hashing image prompts
-- **Flexible Output** — Generate static HTML viewers or use the interactive web app
-
+- **Random World Creation** — Fully randomized world with lore and direction prefilled
 ---
 
 ## Quick Start
@@ -24,7 +23,7 @@ Create evolving fictional worlds where each chapter builds on the last. Living S
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/living-storyworld.git
+git clone https://github.com/jonmartin721/living-storyworld.git
 cd living-storyworld
 
 # Set up virtual environment (recommended)
@@ -35,104 +34,27 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Configuration
-
-Configure your API keys using the setup wizard:
-
-```bash
-python3 -m living_storyworld.cli setup
-```
-
-The wizard securely stores your keys in `~/.config/living-storyworld/settings.json` with `600` permissions.
-
-<details>
-<summary>Alternative: Environment Variables</summary>
-
-```bash
-# Copy example env file
-cp .env.example .env
-
-# Edit .env and add your keys
-export GROQ_API_KEY=gsk_...
-export REPLICATE_API_TOKEN=r8_...
-```
-</details>
-
-### Create Your First World
-
-```bash
-python3 -m living_storyworld.cli init \
-  --title "The Flooded Stacks" \
-  --theme "A city of drowned archives where knowledge flows like water" \
-  --style storybook-ink \
-  --preset cozy-adventure
-```
-
-### Generate a Chapter
-
-```bash
-python3 -m living_storyworld.cli chapter \
-  --world the-flooded-stacks \
-  --focus "The Archivist discovers a sealed section"
-```
-
-### View Your Story
-
-**Option 1: Web Interface (Recommended)**
+### Launch the Web Interface
 
 ```bash
 python3 -m living_storyworld.cli web
 ```
 
-Visit `http://localhost:8001` for a modern GUI with:
-- Browse multiple worlds
-- Generate chapters with real-time progress
-- View illustrated chapters in card layout
-- Regenerate images on demand
+The web app will open automatically at `http://localhost:8001`.
 
-**Option 2: Static HTML Viewer**
+### Get Started
 
-```bash
-python3 -m living_storyworld.cli build --world the-flooded-stacks
-# Open worlds/the-flooded-stacks/web/index.html in your browser
-```
+1. **Configure API Keys** — Click Settings to add your API keys. The app will guide you through provider options including free tiers
+2. **Create a World** — Use the "New World" button or try "Random World" for instant generation
+3. **Generate Chapters** — Select your world and click "Generate Chapter" to continue the story with real-time progress
+4. **Customize Settings** — Adjust narrative presets, visual styles, and memory fields for each world
 
----
-
-## Usage
-
-### World Management
-
-| Command | Description |
-|---------|-------------|
-| `init` | Create a new narrative world |
-| `chapter` | Generate a new chapter with scene illustration |
-| `image scene` | Regenerate a specific chapter's scene image |
-| `build` | Build static HTML viewer for a world |
-| `web` | Launch interactive web interface |
-| `play` | Interactive terminal UI |
-
-### Available Interfaces
-
-**Web Interface** (Primary)
-```bash
-python3 -m living_storyworld.cli web [--port 8001] [--no-browser]
-```
-
-**Terminal UI**
-```bash
-python3 -m living_storyworld.cli play
-```
-
-**Command Line**
-```bash
-# Full chapter generation example
-python3 -m living_storyworld.cli chapter \
-  --world my-world \
-  --preset noir-mystery \
-  --focus "Detective follows a lead to the docks" \
-  --length 2000
-```
+The web interface provides:
+- Multi-world management and navigation
+- Real-time chapter generation with progress streaming
+- Illustrated chapter viewer in card layout
+- Image regeneration on demand
+- World configuration and API settings
 
 ---
 

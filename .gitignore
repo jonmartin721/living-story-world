@@ -94,3 +94,18 @@ living_storyworld.log
 # pip install artifacts
 =*
 
+# Tauri (experimental, not in use)
+tauri-app/
+
+# PyInstaller
+build/
+dist/
+*.spec
+run_app.py
+
+# Test coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
