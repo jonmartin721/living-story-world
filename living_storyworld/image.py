@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -75,7 +74,7 @@ def safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, time
                     output_path.unlink(missing_ok=True)
                     raise ValueError(f"Download exceeded size limit ({max_size_mb} MB)")
                 f.write(chunk)
-    except Exception as e:
+    except Exception:
         # Clean up partial file on any error
         output_path.unlink(missing_ok=True)
         raise

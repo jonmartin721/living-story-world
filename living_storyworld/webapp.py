@@ -93,7 +93,7 @@ app.include_router(generate.router)
 # - User authentication/authorization
 # - Per-world access tokens
 # - Serving files through controlled endpoints instead of StaticFiles
-from .storage import WORLDS_DIR
+from .storage import WORLDS_DIR  # noqa: E402
 if WORLDS_DIR.exists():
     app.mount("/worlds", StaticFiles(directory=str(WORLDS_DIR)), name="worlds")
 

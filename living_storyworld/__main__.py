@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 from typing import Optional
 
@@ -23,7 +22,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     try:
         from living_storyworld.tui import run_tui
         run_tui()
-    except Exception as e:
+    except Exception:
         # Fallback: minimal console wizard
         from living_storyworld.wizard import run_world_wizard
         print("Textual TUI unavailable; running console wizard.")

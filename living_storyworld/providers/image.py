@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import os
 from abc import ABC, abstractmethod
@@ -57,7 +56,7 @@ def _safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, tim
                     output_path.unlink(missing_ok=True)
                     raise ValueError(f"Download exceeded size limit ({max_size_mb} MB)")
                 f.write(chunk)
-    except Exception as e:
+    except Exception:
         output_path.unlink(missing_ok=True)
         raise
 

@@ -143,15 +143,21 @@
     user-select: none;
 }
 
-/* Prevent cursor on buttons and labels */
+/* Prevent text selection on buttons and labels */
 button,
 input[type="button"],
 input[type="submit"],
 label {
-    cursor: default;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: pointer;
 }
 
-button:disabled {
+button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled {
     cursor: not-allowed;
 }
 

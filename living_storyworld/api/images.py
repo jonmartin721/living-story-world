@@ -8,8 +8,6 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field, validator
 
-from ..storage import WORLDS_DIR, validate_slug
-from ..world import load_world
 from ..image import generate_scene_image
 from .dependencies import get_validated_world_slug, load_world_async
 

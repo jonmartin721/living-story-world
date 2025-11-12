@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import os
 from typing import Optional
 
 from .settings import ensure_api_key_from_settings
-from .storage import get_current_world, WORLDS_DIR
-from .world import load_world
+from .storage import get_current_world
 
 
 def run_tui() -> None:
     try:
         from textual.app import App, ComposeResult
-        from textual.widgets import Header, Footer, Static, Button, Input, Select
+        from textual.widgets import Header, Footer, Static, Button, Input
         from textual.containers import Vertical, Horizontal
         from textual.reactive import reactive
     except Exception:

@@ -800,17 +800,11 @@ function app() {
 
                 const data = await response.json();
 
-                // Update chapter in current world state
+                // Update chapter in current world state (viewingChapter should reference the same object)
                 const chapter = this.currentWorld.chapters.find(ch => ch.number === chapterNum);
                 if (chapter) {
                     chapter.selected_choice_id = data.choice.id;
                     chapter.choice_reasoning = data.reasoning;
-                }
-
-                // Update viewing chapter if it's the one being displayed
-                if (this.viewingChapter && this.viewingChapter.number === chapterNum) {
-                    this.viewingChapter.selected_choice_id = data.choice.id;
-                    this.viewingChapter.choice_reasoning = data.reasoning;
                 }
 
                 this.addConsoleLog(`Choice locked in for chapter ${chapterNum}: ${data.choice.text}`, 'success');
@@ -843,14 +837,17 @@ function app() {
         },
 
         getGenerateButtonText() {
+            // Check if we're viewing an older chapter first (need to navigate forward)
+            if (this.viewingChapter?.number < this.currentWorld?.chapters?.length) {
+                return 'Next Chapter ➡️';
+            }
+            // Now check for choice selection states (only applies to latest chapter)
             if (this.hasUnselectedChoice() && this.choiceConfirmStage === 0) {
                 return '👆 Make a Choice';
             } else if (this.choiceConfirmStage === 1) {
                 return '✓ Confirm Choice';
             } else if (this.choiceConfirmStage === 2) {
                 return '🔒 Lock in Choice';
-            } else if (this.viewingChapter?.number < this.currentWorld?.chapters?.length) {
-                return 'Next Chapter';
             } else {
                 return '✨ Generate Next Chapter';
             }
@@ -872,6 +869,10 @@ function app() {
         },
 
         isGenerateButtonDisabled() {
+            // Never disable "Next Chapter" navigation button
+            if (this.viewingChapter?.number < this.currentWorld?.chapters?.length) {
+                return false;
+            }
             return this.generating || this.selectingChoice || (this.hasUnselectedChoice() && this.choiceConfirmStage === 0);
         },
 

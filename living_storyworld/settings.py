@@ -157,3 +157,39 @@ def get_api_key_for_provider(provider: str, settings: Optional[UserSettings] = N
     env_key, settings_key = key_map.get(provider, (None, None))
     return env_key or settings_key
 
+
+def get_available_text_providers(settings: Optional[UserSettings] = None) -> list[str]:
+    """Get list of text providers that have API keys configured.
+
+    Returns providers in preferred order for fallback:
+    1. Primary provider (from settings)
+    2. Other free/cheap providers (groq, gemini)
+    3. Paid providers (openai, together, openrouter, huggingface)
+
+    Args:
+        settings: Optional UserSettings instance (loads if not provided)
+
+    Returns:
+        List of provider names that have API keys configured
+    """
+    s = settings or load_user_settings()
+
+    available = []
+    text_providers = ["openai", "together", "huggingface", "groq", "gemini", "openrouter"]
+
+    # Add primary provider first
+    if s.text_provider in text_providers and get_api_key_for_provider(s.text_provider, s):
+        available.append(s.text_provider)
+
+    # Add other free/cheap providers
+    for provider in ["groq", "gemini"]:
+        if provider != s.text_provider and get_api_key_for_provider(provider, s):
+            available.append(provider)
+
+    # Add remaining paid providers
+    for provider in ["openai", "together", "openrouter", "huggingface"]:
+        if provider != s.text_provider and provider not in available and get_api_key_for_provider(provider, s):
+            available.append(provider)
+
+    return available
+

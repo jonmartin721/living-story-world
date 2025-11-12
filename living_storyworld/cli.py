@@ -3,26 +3,21 @@ from __future__ import annotations
 import argparse
 import os
 from getpass import getpass
-from pathlib import Path
 from typing import Optional
 
 from rich import print
-from rich.table import Table
 
-from .config import STYLE_PACKS, load_config, save_config
+from .config import STYLE_PACKS
 from .generator import generate_chapter
 from .image import generate_scene_image
-from .models import WorldConfig, WorldState
-from .presets import PRESETS, DEFAULT_PRESET
-from .settings import UserSettings, load_user_settings, save_user_settings, ensure_api_key_from_settings
+from .presets import PRESETS
+from .settings import load_user_settings, save_user_settings, ensure_api_key_from_settings
 from .storage import (
     WORLDS_DIR,
-    ensure_world_dirs,
     get_current_world,
     read_json,
     set_current_world,
     slugify,
-    write_json,
 )
 from .world import init_world, load_world, save_world, tick_world
 from .tui import run_tui
@@ -63,7 +58,6 @@ def cmd_chapter(args: argparse.Namespace) -> None:
     cfg, state, dirs = load_world(slug)
 
     # Generate markdown via OpenAI
-    settings = load_user_settings()
     ch = generate_chapter(
         dirs["base"],
         cfg,

@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world, save_world
-from ..generator import generate_chapter
+from ..generator import generate_chapter, generate_chapter_summary
 from ..image import generate_scene_image
 from ..settings import load_user_settings
 
@@ -23,6 +24,21 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 # Active generation jobs
 active_jobs: Dict[str, asyncio.Queue] = {}
+
+# Settings cache with TTL
+_settings_cache = None
+_settings_cache_time = 0
+_SETTINGS_CACHE_TTL = 60
+
+
+def get_cached_settings():
+    """Get cached settings or load fresh if cache expired."""
+    global _settings_cache, _settings_cache_time
+    current_time = time.time()
+    if _settings_cache is None or current_time - _settings_cache_time > _SETTINGS_CACHE_TTL:
+        _settings_cache = load_user_settings()
+        _settings_cache_time = current_time
+    return _settings_cache
 
 
 class ChapterGenerateRequest(BaseModel):
@@ -136,7 +152,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         await queue.put({
             "stage": "text",
             "percent": 10,
-            "message": "Calling OpenAI API for chapter text..."
+            "message": "Generating chapter text..."
         })
 
         # Start text generation in background
@@ -152,7 +168,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         )
 
         # Send progress updates while waiting (estimated ~25-35 seconds for text generation)
-        estimated_duration = 30.0  # seconds
+        estimated_duration = 33.0  # seconds (slowed by 10% to better match actual generation time)
         start_percent = 10
         end_percent = 85
         update_interval = 0.5  # Update every 0.5 seconds
@@ -180,17 +196,23 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         text_duration = time.time() - text_start
         print(f"[TIMING] Text generation: {text_duration:.2f}s", flush=True)
 
+        # Read chapter markdown for summary generation
+        chapter_md = (dirs["base"] / "chapters" / chapter.filename).read_text(encoding="utf-8")
+
         await queue.put({
-            "stage": "text",
-            "percent": 89,
-            "message": f"Text generation complete ({text_duration:.1f}s)"
+            "stage": "post-processing",
+            "percent": 70,
+            "message": "Generating summary and image..."
         })
+
+        # Start summary generation (runs in parallel with image)
+        summary_task = asyncio.create_task(generate_chapter_summary(chapter_md, cfg))
 
         # Generate image if needed
         image_path = None
         actual_image_model = None
         if not request.no_images and chapter.scene_prompt:
-            settings = load_user_settings()
+            settings = get_cached_settings()
             actual_image_model = settings.default_image_model
 
             await queue.put({
@@ -244,6 +266,18 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 "percent": 94,
                 "message": f"Image generation complete ({image_duration:.1f}s)"
             })
+
+        # Wait for summary generation to complete
+        await queue.put({
+            "stage": "post-processing",
+            "percent": 95,
+            "message": "Finalizing summary..."
+        })
+
+        ai_summary = await summary_task
+        chapter.ai_summary = ai_summary
+        if ai_summary:
+            print(f"[INFO] Generated AI summary: {ai_summary[:50]}...", flush=True)
 
         # Add metadata to chapter
         from datetime import datetime
@@ -521,7 +555,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
         image_path = None
         regen_image_model = None
         if not request.no_images and chapter.scene_prompt:
-            settings = load_user_settings()
+            settings = get_cached_settings()
             regen_image_model = settings.default_image_model
 
             await queue.put({
@@ -670,7 +704,6 @@ async def delete_chapter(slug: str, chapter_num: int):
     scenes_dir = dirs["base"] / "media" / "scenes"
     if scenes_dir.exists():
         pattern = f"scene-{chapter_num:04d}-*.png"
-        import glob
         for scene_file in scenes_dir.glob(pattern):
             scene_file.unlink()
             print(f"[INFO] Deleted scene image: {scene_file.name}", flush=True)

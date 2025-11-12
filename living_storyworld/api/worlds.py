@@ -5,9 +5,8 @@ from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 from pathlib import Path
 
-from ..storage import WORLDS_DIR, get_current_world, set_current_world, validate_slug
+from ..storage import WORLDS_DIR, get_current_world, set_current_world
 from ..world import init_world, load_world
-from ..models import WorldConfig, WorldState
 from .dependencies import get_validated_world_slug
 
 router = APIRouter(prefix="/api/worlds", tags=["worlds"])

@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Living Storyworld</title>
+    <title>Living Story World</title>
       <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -20,7 +20,7 @@
             <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
-                        <h1 class="text-2xl font-bold text-white">Living Storyworld</h1>
+                        <h1 class="text-2xl font-bold text-white">Living Story World</h1>
                         <p class="text-sm text-gray-400">Interactive narrative universe</p>
                     </div>
 
@@ -272,18 +272,62 @@
                     </div>
                 </template>
 
-                <!-- Empty State -->
-                <div x-show="currentWorld && currentWorld.chapters?.length === 0 && !generating" class="text-center py-12 bg-gray-800 rounded-lg shadow transition-colors duration-200">
-                    <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-white">No chapters yet</h3>
-                    <p class="mt-1 text-sm text-gray-400">Get started by generating your first chapter.</p>
-                    <button
-                        @click="generateChapter()"
-                        class="mt-4 px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-600">
-                        Generate First Chapter
-                    </button>
+                <!-- Empty State / First Chapter Loader -->
+                <div x-show="currentWorld && currentWorld.chapters?.length === 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Empty State -->
+                    <div x-show="!generating" class="text-center py-12 bg-gray-800 rounded-lg shadow transition-colors duration-200">
+                        <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-white">No chapters yet</h3>
+                        <p class="mt-1 text-sm text-gray-400">Get started by generating your first chapter.</p>
+                        <button
+                            @click="generateChapter()"
+                            class="mt-4 px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-600">
+                            Generate First Chapter
+                        </button>
+                    </div>
+
+                    <!-- First Chapter Generation Loader -->
+                    <div x-show="generating" class="bg-gray-800 shadow rounded-lg overflow-hidden animate-pulse">
+                        <!-- Skeleton Image with Progress Indicator -->
+                        <div class="aspect-video bg-gray-700 relative">
+                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-gray-600 to-transparent shimmer"></div>
+                            <!-- Progress Indicator Overlay -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/60">
+                                <div class="relative w-16 h-16 mb-3">
+                                    <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                                        <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none" class="text-gray-600"></circle>
+                                        <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none"
+                                                :stroke-dasharray="`${(2 * Math.PI * 28) * (progress.percent / 100)} ${2 * Math.PI * 28}`"
+                                                class="text-blue-400 transition-all duration-300"></circle>
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-white text-sm font-bold" x-text="Math.round(progress.percent) + '%'"></span>
+                                    </div>
+                                </div>
+                                <div class="text-blue-300 text-sm font-medium px-4 text-center" x-text="progress.stage || 'Generating...'"></div>
+                                <div class="text-gray-400 text-xs mt-1 px-4 text-center max-w-xs" x-text="progress.message"></div>
+                            </div>
+                        </div>
+
+                        <!-- Skeleton Info -->
+                        <div class="p-4">
+                            <div class="h-4 bg-gray-700 rounded w-20 mb-2"></div>
+                            <div class="h-5 bg-gray-700 rounded w-3/4 mb-2"></div>
+                            <div class="space-y-2 mb-4">
+                                <div class="h-3 bg-gray-700 rounded w-full"></div>
+                                <div class="h-3 bg-gray-700 rounded w-5/6"></div>
+                                <div class="h-3 bg-gray-700 rounded w-4/6"></div>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <div class="flex-1 h-9 bg-gray-700 rounded"></div>
+                                <div class="h-9 w-12 bg-gray-700 rounded"></div>
+                                <div class="h-9 w-12 bg-gray-700 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -291,7 +335,8 @@
         <!-- Setup Wizard Modal -->
         <div x-show="showSetupWizard"
              x-cloak
-             class="fixed inset-0 bg-gray-900 bg-opacity-95 flex items-center justify-center z-50 p-4">
+             class="fixed inset-0 bg-gray-900 bg-opacity-95 flex items-center justify-center z-50 p-4"
+             @click.self="showSetupWizard = false">
             <div class="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-8">
                 <div class="mb-6">
                     <h2 class="text-2xl font-bold text-white mb-2">Welcome to Living Storyworld!</h2>
@@ -376,7 +421,8 @@
         <!-- Create World Modal -->
         <div x-show="showCreateWorld"
              x-cloak
-             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4"
+             @click.self="showCreateWorld = false">
             <div class="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 transition-colors duration-200 max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-start mb-4">
                     <h3 class="text-lg font-bold text-white">Create New World</h3>
@@ -538,7 +584,8 @@
         <!-- Edit World Modal -->
         <div x-show="showEditWorld"
              x-cloak
-             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4"
+             @click.self="showEditWorld = false">
             <div class="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 transition-colors duration-200 max-h-[90vh] overflow-y-auto">
                 <h3 class="text-lg font-bold text-white mb-4">Edit World</h3>
                 <form @submit.prevent="updateWorld()">
@@ -567,17 +614,7 @@
                                 class="w-full px-3 py-2 rounded-lg border-2 bg-gray-700 border-gray-600 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-900 transition-all duration-200 hover:border-gray-500">
                         </div>
                         <div class="md:col-span-2">
-                            <div class="flex justify-between items-center mb-1">
-                                <label class="block text-sm font-medium text-gray-300">Theme</label>
-                                <button
-                                    type="button"
-                                    @click="randomThemeEdit()"
-                                    :disabled="generatingTheme"
-                                    class="text-xs text-blue-400 hover:text-blue-300 font-medium disabled:text-gray-400 disabled:cursor-not-allowed">
-                                    <span x-show="!generatingTheme">🎲 Random</span>
-                                    <span x-show="generatingTheme">⏳ Generating...</span>
-                                </button>
-                            </div>
+                            <label class="block text-sm font-medium text-gray-300 mb-1">Theme</label>
                             <input
                                 type="text"
                                 x-model="editWorld.theme"
@@ -693,7 +730,8 @@
         <!-- Settings Modal -->
         <div x-show="showSettings"
              x-cloak
-             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4"
+             @click.self="showSettings = false">
             <div class="bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200">
                 <div class="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4">
                     <div class="flex justify-between items-center">
@@ -1132,6 +1170,7 @@
 
                             <!-- Spinner for generating chapter -->
                             <div x-show="generating" class="flex items-center gap-2">
+                                <span>Generating</span>
                                 <div class="relative w-5 h-5">
                                     <svg class="w-5 h-5 transform -rotate-90" viewBox="0 0 20 20">
                                         <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none" class="text-gray-400"></circle>
@@ -1140,7 +1179,6 @@
                                                 class="text-white transition-all duration-300"></circle>
                                     </svg>
                                 </div>
-                                <span x-text="getProgressText()"></span>
                             </div>
                         </button>
 
@@ -1154,7 +1192,8 @@
              x-cloak
              class="fixed inset-0 z-50 overflow-y-auto"
              @keydown.escape.window="confirmDialog.reject()">
-            <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="flex items-center justify-center min-h-screen px-4"
+                 @click.self="confirmDialog.reject()">
                 <div class="fixed inset-0 bg-black opacity-50"></div>
                 <div class="bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full z-10 transition-colors duration-200">
                     <div class="bg-gray-800 px-6 pt-5 pb-4">
@@ -1188,7 +1227,8 @@
         <!-- Console Viewer Modal -->
         <div x-show="showConsole"
              x-cloak
-             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4"
+             @click.self="showConsole = false">
             <div class="bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col transition-colors duration-200">
                 <div class="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white">Console Logs</h3>
@@ -1242,7 +1282,8 @@
         <!-- Regeneration Options Dialog -->
         <div x-show="showRegenerateOptions"
              x-cloak
-             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4">
+             class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 p-4"
+             @click.self="showRegenerateOptions = false">
             <div class="bg-gray-800 rounded-lg shadow-xl max-w-md w-full transition-colors duration-200">
                 <div class="px-6 py-4 border-b border-gray-700">
                     <h3 class="text-xl font-bold text-white">What would you like to regenerate?</h3>

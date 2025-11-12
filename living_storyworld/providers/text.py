@@ -482,6 +482,17 @@ class GeminiProvider(TextProvider):
             }
         )
 
+        # Check if response was blocked by safety filters
+        if not response.parts:
+            # finish_reason: 1=SAFETY, 2=RECITATION, 3=OTHER
+            finish_reason = response.candidates[0].finish_reason if response.candidates else None
+            if finish_reason == 1:
+                raise ValueError("Content was blocked by Gemini's safety filters. Try regenerating with a different prompt or adjusting the maturity level/world instructions.")
+            elif finish_reason == 2:
+                raise ValueError("Content was blocked due to recitation concerns. Try regenerating.")
+            else:
+                raise ValueError(f"Content generation failed (finish_reason={finish_reason}). Please try again.")
+
         content = response.text
         cost = self.estimate_cost(messages, model_name)
 

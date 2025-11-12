@@ -4,7 +4,7 @@ import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/generate", tags=["generate"])
@@ -54,7 +54,7 @@ def _generate_random_theme() -> str:
         theme = theme.strip('"').strip("'")
         return theme
 
-    except Exception as e:
+    except Exception:
         # Fallback themes if API fails
         import random
         fallbacks = [
@@ -74,6 +74,28 @@ def _generate_random_world() -> dict:
         import time
         from ..settings import load_user_settings, get_api_key_for_provider
         from ..providers import get_text_provider
+
+        # Pre-select preset and style pack for guaranteed variety
+        presets = [
+            "cozy-adventure", "noir-mystery", "epic-fantasy", "solarpunk-explorer",
+            "gothic-horror", "space-opera", "slice-of-life", "cosmic-horror",
+            "cyberpunk-noir", "whimsical-fairy-tale", "post-apocalyptic", "historical-intrigue"
+        ]
+        style_packs = [
+            "storybook-ink", "watercolor-dream", "pixel-rpg", "comic-book",
+            "noir-sketch", "art-nouveau", "oil-painting", "lowpoly-iso"
+        ]
+        maturity_levels = ["general", "teen", "mature", "explicit"]
+
+        # Randomly select preset, style, and maturity level
+        selected_preset = random.choice(presets)
+        selected_style = random.choice(style_packs)
+        # Weighted random for maturity - favor general/teen
+        selected_maturity = random.choices(
+            maturity_levels,
+            weights=[50, 35, 12, 3],  # Heavily favor general/teen
+            k=1
+        )[0]
 
         # Add entropy to the prompt to force variation
         random_seed = random.randint(1000, 9999)
@@ -105,11 +127,10 @@ def _generate_random_world() -> dict:
 
 Seed: {random_seed} | Timestamp: {timestamp}
 
-Available style packs: storybook-ink, watercolor-dream, pixel-rpg, comic-book, noir-sketch, art-nouveau, oil-painting, lowpoly-iso
-
-Available narrative presets: cozy-adventure, noir-mystery, epic-fantasy, solarpunk-explorer, gothic-horror, space-opera, slice-of-life, cosmic-horror, cyberpunk-noir, whimsical-fairy-tale, post-apocalyptic, historical-intrigue
-
-Available maturity levels: general, teen, mature, explicit
+The user has requested a world with these characteristics:
+- Narrative preset: {selected_preset}
+- Visual style: {selected_style}
+- Maturity level: {selected_maturity}
 
 GENERATION STRATEGY - Follow this distribution:
 - 50% of concepts should be FAMILIAR and approachable (cozy fantasy villages, mystery academies, adventure guilds, space exploration, magical schools, merchant cities)
@@ -118,21 +139,17 @@ GENERATION STRATEGY - Follow this distribution:
 - 5% can be truly OUTLANDISH or bizarre
 
 Most worlds should feel like something readers would recognize or enjoy reading. Think popular novels, games, and shows.
-Favor general and teen maturity levels. Only use mature/explicit when the concept genuinely requires it.
 
 Return a JSON object with these fields:
-- title: A compelling title (2-5 words) that's inviting and clear
-- theme: One sentence describing the world's core concept - be specific and vivid
-- style_pack: Choose one that matches the aesthetic
-- preset: Choose one that matches the narrative tone
-- maturity_level: Choose based on content (favor general/teen)
-- memory: A short paragraph (2-4 sentences) of essential world lore/backstory with specific details that establish the setting, atmosphere, and key elements
+- title: A compelling title (2-5 words) that matches the {selected_preset} tone and is inviting and clear
+- theme: One sentence describing the world's core concept - be specific and vivid, matching the {selected_preset} style
+- memory: A short paragraph (2-4 sentences) of essential world lore/backstory with specific details that establish the setting, atmosphere, and key elements suitable for {selected_maturity} audiences
 
-Make everything cohesive and engaging. Most concepts should feel like something people would want to read."""
+Make everything cohesive with the selected preset and engaging. Most concepts should feel like something people would want to read."""
             },
             {
                 "role": "user",
-                "content": f"Generate one engaging story world concept. Variation seed: {random_seed}. Return ONLY valid JSON, nothing else."
+                "content": f"Generate one engaging story world concept for the {selected_preset} genre. Variation seed: {random_seed}. Return ONLY valid JSON with title, theme, and memory fields. Nothing else."
             }
         ]
 
@@ -151,17 +168,17 @@ Make everything cohesive and engaging. Most concepts should feel like something 
 
         data = json.loads(content)
 
-        # Ensure we have all required fields with defaults
+        # Build result using pre-selected values for preset, style, and maturity
         world_result = {
             "title": data.get("title", "Untitled World"),
             "theme": data.get("theme", "A world of mystery and wonder"),
-            "style_pack": data.get("style_pack", "storybook-ink"),
-            "preset": data.get("preset", "cozy-adventure"),
-            "maturity_level": data.get("maturity_level", "general"),
+            "style_pack": selected_style,
+            "preset": selected_preset,
+            "maturity_level": selected_maturity,
             "memory": data.get("memory", ""),
         }
 
-        print(f"[RANDOM WORLD] Generated via {text_provider_name}: {world_result['title']} - {world_result['theme'][:50]}...", flush=True)
+        print(f"[RANDOM WORLD] Generated via {text_provider_name} [{selected_preset}/{selected_style}]: {world_result['title']} - {world_result['theme'][:50]}...", flush=True)
         return world_result
 
     except Exception as e:

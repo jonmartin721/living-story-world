@@ -68,7 +68,7 @@ def launch_desktop(port: int = 8001):
     # Create and start the webview window
     try:
         print("Initializing window...")
-        window = webview.create_window(
+        webview.create_window(
             "Living Storyworld",
             url,
             width=1280,

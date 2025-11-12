@@ -1,8 +1,10 @@
 # Living Storyworld
 
-A storybook created from your imagination, with infinite possibilities. Make decisions and steer the story, or sit back and enjoy a relaxing tale! Create evolving fictional worlds where each chapter builds on the last. Living Storyworld combines multiple LLM providers with AI image generation to produce coherent, ongoing narratives with custom scene illustrations. 
+>A storybook created from your imagination, with infinite possibilities! Make decisions and steer the story, or sit back and enjoy a relaxing tale! Create evolving fictional worlds where each chapter builds on the last. 
 
-This fun little project was inspired by text adventures, with a modern twist of simplified decision-making and creativity. I wanted to make something that could be both less and more than traditional text adventures, without the (powerful) burden that a service like NovelAI puts on you to be creative. 
+Living Storyworld combines multiple LLM providers with AI image generation to produce coherent, ongoing narratives with custom scene illustrations. 
+
+This project was inspired by text adventures, with a modern twist of simplified decision-making and creativity. I wanted to make something that could be both less and more than traditional text adventures, without the (powerful) burden that a service like NovelAI puts on you to be creative. 
 
 ---
 
@@ -10,7 +12,7 @@ This fun little project was inspired by text adventures, with a modern twist of 
 
 - **Persistent World State** — Characters, locations, and narrative continuity maintained across chapters
 - **Multi-Provider Support** — Choose from OpenAI, Groq, Together AI, HuggingFace, OpenRouter for text; Replicate, Fal.ai, Pollinations for images. Free options available (rate-limited or requiring free API keys)
-- **Visual Styles** — Multiple art direction presets (storybook-ink, pixel-rpg, lowpoly-iso, watercolor-dream, and more)
+- **Style Options** — Multiple art direction presets (storybook-ink, pixel-rpg, lowpoly-iso, watercolor-dream, and more)
 - **Narrative Presets** — 12+ genre/tone templates from cozy-adventure to cyberpunk-noir
 - **Modern Web Interface** — Full-featured GUI with real-time progress and chapter management
 - **Smart Caching** — Avoids duplicate API calls by hashing image prompts
@@ -19,7 +21,7 @@ This fun little project was inspired by text adventures, with a modern twist of 
 
 ## Quick Start
 
-Pre-built executables are available on the [Releases](https://github.com/jonmartin721/living-storyworld/releases) page. Alternatively, run from source:
+Pre-built executables are available on the [Releases](https://github.com/jonmartin721/living-storyworld/releases) page. Just download and run! Alternatively, build and run from source:
 
 ### Installation
 
@@ -70,19 +72,24 @@ The web interface provides full world management, chapter generation with live p
 
 ## Narrative Presets
 
-12 genre and tone templates: `cozy-adventure`, `epic-fantasy`, `solarpunk-explorer`, `whimsical-fairy-tale`, `noir-mystery`, `gothic-horror`, `cosmic-horror`, `cyberpunk-noir`, `slice-of-life`, `historical-intrigue`, `post-apocalyptic`, `space-opera`
+- **cozy-adventure** — Warm, character-driven journeys with gentle stakes. Ideal for small-town mysteries, friendly quests, and wholesome discovery where relationships and atmosphere matter more than danger.
+- **epic-fantasy** — Grand scope, high stakes, and sweeping worldbuilding. Use for multi-act sagas with kingdoms, prophecy, magic systems, and large-cast conflicts.
+- **solarpunk-explorer** — Optimistic, eco-forward exploration and community-building. Focuses on sustainable tech, collaborative solutions, and bright, hopeful futures.
+- **whimsical-fairy-tale** — Lyrical, symbolic stories with moral beats and charming oddities. Perfect for modern fairy tales, enchanted forests, and small moral dilemmas wrapped in charm.
+- **noir-mystery** — Cynical narration, sharp dialogue, and morally gray detectives. Best for urban crime, investigation-led chapters, and mood-driven tension.
+- **gothic-horror** — Brooding atmosphere, tragic secrets, and slow-burn dread. Use for haunted estates, cursed lineages, and character-driven psychological terror.
+- **cosmic-horror** — Existential dread, incomprehensible forces, and diminishing sanity. Fit for stories that emphasize insignificance and the unknown over physical threats.
+- **cyberpunk-noir** — Neon-soaked streets, corp power plays, and hacker intrigue. Tone is gritty, stylish, and focused on socio-technical conflict and moral ambiguity.
+- **slice-of-life** — Quiet, everyday moments with emotional grounding. Great for character studies, relationship arcs, and low-stakes realism.
+- **historical-intrigue** — Period detail, political maneuvering, and authenticity-first narration. Use for court drama, espionage, and stories rooted in real or alternate histories.
+- **post-apocalyptic** — Survival, rebuilding, and societal remnants. Range from harsh survivalist tone to hopeful reconstruction depending on world state.
+- **space-opera** — Fast-paced interstellar adventure with grand set pieces. Ideal for fleet actions, exotic worlds, and heroic/operatic character arcs.
 
 ---
 
 ## Architecture
 
 FastAPI backend with pluggable text/image providers. Worlds stored as JSON with generated markdown chapters and PNG scene illustrations. Data models track persistent state across characters, locations, and narrative history.
-
----
-
-## Advanced Features
-
-Worlds include Memory, Author's Note, and World Instructions fields for narrative control. Chapters automatically extract and track new characters, locations, and scene summaries for continuity.
 
 ---
 
@@ -109,15 +116,13 @@ Using Gemini 2.5 Flash and Pollinations, everything is completely free. The setu
 
 Contributions welcome! Areas for expansion:
 
-- Additional style packs and narrative presets
-- Character/location portrait generation
-- Export formats (EPUB, PDF)
-- Advanced world simulation mechanics
-- Test coverage improvements
+- Additional style packs and narrative presets.
+- Character/location portrait generation.
 - World art shown for each world behind chapters.
 - Better visual transitions between chapters.
 - Themed reading mode for different worlds, or in Settings.
 - How can we end stories naturally or let readers do it in a way that isn't limiting or too abrupt?
+- Handling models refusing for safety concerns (happens occasionally).
 
 I'd love to see new improvements, feel free to suggest and open a PR! Contributions are very welcome.
 
@@ -128,5 +133,3 @@ I'd love to see new improvements, feel free to suggest and open a PR! Contributi
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
-
-Built with FastAPI, multiple AI provider integrations, and modern web technologies.

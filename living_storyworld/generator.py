@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-import os
 import re
-from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -224,10 +222,10 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: s
         f"Write Chapter {state.next_chapter}:\n",
         f"Start with a unique chapter title as H1 (do NOT include 'Chapter {state.next_chapter}' in the title - just the evocative name). ",
         f"Then write {min_words}-{max_words} words of rich prose emphasizing physical action, movement through spaces, and scene changes. ",
-        f"PUSH THE STORY FORWARD - introduce new complications, visit different locations, advance the timeline, reveal new information. ",
-        f"Avoid repeating locations or beats from recent chapters. Each chapter should feel like PROGRESS. ",
-        f"Minimize static dialogue - have characters talk while doing things, traveling, or exploring. ",
-        f"Include vivid sensory detail and a memorable closing beat.\n",
+        "PUSH THE STORY FORWARD - introduce new complications, visit different locations, advance the timeline, reveal new information. ",
+        "Avoid repeating locations or beats from recent chapters. Each chapter should feel like PROGRESS. ",
+        "Minimize static dialogue - have characters talk while doing things, traveling, or exploring. ",
+        "Include vivid sensory detail and a memorable closing beat.\n",
         f"At top, put: {metadata_format}",
         "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n",
         "When creating new_characters, their descriptions should hint at complexity/flaws/contradictions, NOT just surface traits. "
@@ -264,32 +262,67 @@ def generate_chapter(
     make_scene_image: bool = True,
     chapter_length: str = "medium",
 ) -> Chapter:
-    # Load settings to determine which provider to use
+    # Load settings and get available providers for fallback
+    from .settings import get_available_text_providers
     settings = load_user_settings()
-    text_provider_name = settings.text_provider
-    api_key = get_api_key_for_provider(text_provider_name, settings)
-    text_model = settings.default_text_model
+    available_providers = get_available_text_providers(settings)
 
-    # Get the text provider
-    try:
-        provider = get_text_provider(text_provider_name, api_key=api_key)
-    except Exception as e:
-        # Fallback to legacy OpenAI client if provider setup fails
-        print(f"[WARN] Provider {text_provider_name} failed, falling back to OpenAI: {e}", flush=True)
-        client = _get_client()
-        style, messages, temp = _build_chapter_prompt(cfg, state, chapter_length)
-        resp = client.chat.completions.create(
-            model=text_model,
-            messages=messages,
-            temperature=temp,
-        )
-        md = resp.choices[0].message.content or ""
+    if not available_providers:
+        raise ValueError("No text providers configured. Please add API keys in Settings.")
+
+    # Try each available provider until one succeeds
+    last_error = None
+    for provider_name in available_providers:
+        try:
+            api_key = get_api_key_for_provider(provider_name, settings)
+            provider = get_text_provider(provider_name, api_key=api_key)
+
+            # Build prompt and generate
+            style, messages, temp = _build_chapter_prompt(cfg, state, chapter_length)
+
+            # Get appropriate model for this provider
+            if provider_name == "gemini":
+                model = "gemini-2.0-flash-exp"
+            elif provider_name == "groq":
+                model = "llama-3.3-70b-versatile"
+            elif provider_name == "openai":
+                model = "gpt-4o-mini"
+            elif provider_name == "together":
+                model = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+            elif provider_name == "openrouter":
+                model = "meta-llama/llama-3.3-70b-instruct"
+            else:
+                model = settings.default_text_model
+
+            result = provider.generate(messages, temperature=temp, model=model)
+            md = result.content
+            print(f"[INFO] Generated chapter using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
+            break  # Success, exit loop
+
+        except Exception as e:
+            last_error = e
+            error_msg = str(e)
+
+            # Check if this was a safety filter issue
+            is_safety_block = "safety filter" in error_msg.lower() or "blocked" in error_msg.lower()
+
+            if len(available_providers) > 1:
+                # We have fallback options
+                remaining = [p for p in available_providers if p != provider_name]
+                if is_safety_block:
+                    print(f"[WARN] {provider_name} blocked content (safety filters). Trying fallback provider: {remaining[0] if remaining else 'none'}", flush=True)
+                else:
+                    print(f"[WARN] {provider_name} failed: {error_msg}. Trying fallback provider: {remaining[0] if remaining else 'none'}", flush=True)
+            else:
+                # No fallbacks available
+                if is_safety_block:
+                    raise ValueError(f"Content blocked by {provider_name}'s safety filters. Try regenerating or configure additional text providers in Settings for automatic fallback.")
+                raise
+
     else:
-        # Use the provider abstraction
-        style, messages, temp = _build_chapter_prompt(cfg, state, chapter_length)
-        result = provider.generate(messages, temperature=temp, model=text_model)
-        md = result.content
-        print(f"[INFO] Generated chapter using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
+        # All providers failed
+        providers_tried = ", ".join(available_providers)
+        raise ValueError(f"All text providers failed ({providers_tried}). Last error: {last_error}. Configure additional providers in Settings for better reliability.")
 
     meta = _parse_meta(md)
     scene_prompt = str(meta.get("scene_prompt", "")) if isinstance(meta, dict) else ""
@@ -338,8 +371,8 @@ def generate_chapter(
     chapter_path.write_text(md, encoding="utf-8")
 
     # Capture actual model used for text generation
-    actual_text_model = text_model  # Default to settings model
-    if 'result' in locals() and hasattr(result, 'model'):
+    actual_text_model = model
+    if hasattr(result, 'model'):
         actual_text_model = result.model
 
     # Create chapter object
@@ -355,15 +388,8 @@ def generate_chapter(
         text_model_used=actual_text_model,
     )
 
-    # Generate AI summary for continuity (async but we'll await it)
-    import asyncio
-    loop = asyncio.new_event_loop()
-    ai_summary = loop.run_until_complete(generate_chapter_summary(md, cfg))
-    ch.ai_summary = ai_summary
-    loop.close()
-
-    if ai_summary:
-        print(f"[INFO] Generated AI summary for chapter {num}: {ai_summary[:50]}...", flush=True)
+    # AI summary will be generated separately in parallel with image generation
+    ch.ai_summary = None
 
     # Optionally queue scene image generation marker (actual pixel gen in image module)
     if make_scene_image and scene_prompt:
@@ -459,7 +485,7 @@ async def infer_choice_reasoning(
 
     try:
         provider = get_text_provider(text_provider_name, api_key=api_key)
-    except Exception as e:
+    except Exception:
         # If provider fails, return a generic reasoning
         return f"The reader chose to {choice_text.lower()}"
 
@@ -508,7 +534,7 @@ async def generate_chapter_summary(
 
     try:
         provider = get_text_provider(text_provider_name, api_key=api_key)
-    except Exception as e:
+    except Exception:
         # If provider fails, return empty summary
         return ""
 
