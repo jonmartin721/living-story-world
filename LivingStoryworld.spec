@@ -20,6 +20,7 @@ hiddenimports = [
     'living_storyworld.image',
     'living_storyworld.wizard',
     'living_storyworld.tui',
+    'living_storyworld.exceptions',
     'living_storyworld.api',
     'living_storyworld.api.worlds',
     'living_storyworld.api.chapters',
