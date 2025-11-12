@@ -2,10 +2,11 @@
 import os
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('living_storyworld/web', 'living_storyworld/web')]
+datas = [('living_storyworld/web', 'web')]
 binaries = []
 hiddenimports = [
     'living_storyworld',
+    'living_storyworld.__main__',
     'living_storyworld.webapp',
     'living_storyworld.cli',
     'living_storyworld.desktop',
@@ -15,12 +16,17 @@ hiddenimports = [
     'living_storyworld.models',
     'living_storyworld.config',
     'living_storyworld.presets',
+    'living_storyworld.settings',
+    'living_storyworld.image',
+    'living_storyworld.wizard',
+    'living_storyworld.tui',
     'living_storyworld.api',
     'living_storyworld.api.worlds',
     'living_storyworld.api.chapters',
     'living_storyworld.api.images',
     'living_storyworld.api.settings',
     'living_storyworld.api.generate',
+    'living_storyworld.api.dependencies',
     'living_storyworld.providers',
     'living_storyworld.providers.text',
     'living_storyworld.providers.image',

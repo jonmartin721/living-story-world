@@ -2,7 +2,7 @@
 
 >NovelAI but chill
 
-Living Storyworld is a story generator that creates illustrated stories chapter by chapter. Each story builds on previous chapters, maintaining character and location continuity while letting you make choices that affect the narrative going forward.
+Living Storyworld is a story generator that creates illustrated stories chapter by chapter. Each story builds on previous chapters, maintaining character and location continuity while letting you make choices that affect the narrative going forward!
 
 The project started as an experiment in combining modern AI models with classic text adventure mechanics. I wanted to see if we could have the narrative depth of a novel without requiring the creative effort that services like NovelAI demand from users. 
 
@@ -21,7 +21,7 @@ The project started as an experiment in combining modern AI models with classic 
 
 ## Quick Start
 
-You can download pre-built executables from the [Releases](https://github.com/jonmartin721/living-storyworld/releases) page, or run from source:
+I highly recommend downloading pre-built executables from the [Releases](https://github.com/jonmartin721/living-storyworld/releases) page, or run from source:
 
 ```bash
 git clone https://github.com/jonmartin721/living-storyworld.git
@@ -42,7 +42,7 @@ Once you're in, create a new world by clicking "New" (or use the random generato
 
 ## Interface & Workflow
 
-The web interface provides a clean, distraction-free environment for managing your story worlds:
+Here's the main interface:
 
 ![Main interface showing world management](screenshots/main-page.png)
 
@@ -54,13 +54,12 @@ First-time setup is straightforward. The settings panel lets you configure API k
 
 ![API keys configuration](screenshots/api-keys-settings.png)
 
-As you read through chapters, you'll encounter choice points that let you influence how the story unfolds:
-
-![Interactive choice moments](screenshots/make-choices.png)
-
 The reading mode provides a clean, focused view for enjoying your generated chapters:
 
 ![Clean reading interface](screenshots/reading-mode.png)
+
+As you read through chapters in this view, you'll encounter choice points that let you influence how the story unfolds:
+![Interactive choice moments](screenshots/make-choices.png)
 
 ---
 
