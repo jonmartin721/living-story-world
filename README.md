@@ -64,6 +64,7 @@ As you read through chapters in this view, you'll encounter choice points that l
 ---
 
 ## Visual Styles
+These affect how images generated look to a very high degree.
 
 Available illustration styles:
 - `storybook-ink` - Ink and wash illustrations
@@ -78,6 +79,7 @@ Available illustration styles:
 ---
 
 ## Narrative Presets
+These affect pacing, how the story is told, maturity level, and random world generation. 
 
 Story genres to set the tone:
 - `cozy-adventure` - Character-driven stories with gentle stakes
@@ -103,7 +105,10 @@ The project uses FastAPI for the web backend with a plugin system for different 
 
 ## API Keys & Setup
 
-I recommend using Gemini 2.5 Flash (free tier available) with Pollinations for images to get started for free!. The setup wizard will walk you through this configuration.
+I recommend using Gemini 2.5 Flash (free tier available) with Pollinations for images to get started for free!. 
+Get a key here: https://aistudio.google.com/api-keys for a free tier API key.
+
+The setup wizard will walk you through this configuration. You MUST use an API key for a text provider, unlike Pollinations.ai there is no free generations without an API key. You can skip that step, but text won't generate until you provide an API key.
 
 **Security notes:**
 - API keys are stored locally with restricted permissions
@@ -124,7 +129,7 @@ Some areas I'd like to explore:
 - Adding background art for each world
 - Handling cases where AI models refuse to generate content
 
-Pull requests are welcome for bug fixes or small improvements like the above. For larger features, it's probably best to open an issue first to discuss the approach.
+PRs are welcome for bug fixes, improvements, and new features! I look forward to seeing what the community comes up with.
 
 Enjoy!
 

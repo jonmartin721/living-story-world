@@ -4,7 +4,7 @@ These tests ensure that when users select a specific provider, that provider
 is actually used for generation (not defaulting to a different one).
 """
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from living_storyworld.providers.text import (
     get_text_provider,
     OpenAIProvider,

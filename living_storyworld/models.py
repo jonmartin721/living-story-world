@@ -11,7 +11,9 @@ class Character:
     epithet: Optional[str] = None
     traits: List[str] = field(default_factory=list)
     description: Optional[str] = None
-    visual_profile: Dict[str, str] = field(default_factory=dict)  # style tokens, palette hints
+    visual_profile: Dict[str, str] = field(
+        default_factory=dict
+    )  # style tokens, palette hints
 
 
 @dataclass
@@ -60,16 +62,23 @@ class WorldConfig:
     slug: str
     theme: str
     style_pack: str = "storybook-ink"
-    text_model: str = "gemini-2.5-flash"  # Will be overridden by user's chosen provider during world creation
+    text_model: str = (
+        "gemini-2.5-flash"  # Will be overridden by user's chosen provider during world creation
+    )
     image_model: str = "flux-dev"
     maturity_level: str = "general"  # general, teen, mature, explicit
     preset: str = "cozy-adventure"  # Narrative preset defines the vibe/tone
     enable_choices: bool = False  # Interactive chapter choices
 
     # NAI-style memory system
-    memory: Optional[str] = None  # Always included in context (lore, background, key facts)
-    authors_note: Optional[str] = None  # Inserted at strategic point in prompt (style guidance, tone)
-    world_instructions: Optional[str] = None  # Custom instructions specific to this world
+    memory: Optional[str] = (
+        None  # Always included in context (lore, background, key facts)
+    )
+    # Inserted at strategic point in prompt (style guidance, tone)
+    authors_note: Optional[str] = None
+    world_instructions: Optional[str] = (
+        None  # Custom instructions specific to this world
+    )
 
 
 @dataclass
@@ -80,4 +89,3 @@ class WorldState:
     locations: Dict[str, Location] = field(default_factory=dict)
     items: Dict[str, Item] = field(default_factory=dict)
     chapters: List[Chapter] = field(default_factory=list)
-

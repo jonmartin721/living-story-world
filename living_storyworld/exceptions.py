@@ -1,6 +1,7 @@
 """Custom exceptions for Living Storyworld with user-friendly error messages."""
 
 from __future__ import annotations
+
 import logging
 from typing import Optional
 
@@ -10,7 +11,12 @@ logger = logging.getLogger(__name__)
 class LivingStoryworldError(Exception):
     """Base exception for all Living Storyworld errors."""
 
-    def __init__(self, message: str, user_message: Optional[str] = None, help_text: Optional[str] = None):
+    def __init__(
+        self,
+        message: str,
+        user_message: Optional[str] = None,
+        help_text: Optional[str] = None,
+    ):
         """Initialize error with technical and user-friendly messages.
 
         Args:
@@ -37,7 +43,9 @@ class LivingStoryworldError(Exception):
 class APIError(LivingStoryworldError):
     """Base class for API-related errors."""
 
-    def __init__(self, provider: str, message: str, status_code: Optional[int] = None, **kwargs):
+    def __init__(
+        self, provider: str, message: str, status_code: Optional[int] = None, **kwargs
+    ):
         self.provider = provider
         self.status_code = status_code
         super().__init__(message, **kwargs)
@@ -54,7 +62,9 @@ class RateLimitError(APIError):
             message += f" (retry after {retry_after}s)"
 
         user_message = f"Rate limit reached for {provider}"
-        help_text = "Try again in a few minutes, or use a different provider in Settings"
+        help_text = (
+            "Try again in a few minutes, or use a different provider in Settings"
+        )
         if retry_after:
             help_text = f"Wait {retry_after} seconds and try again, or switch to a different provider"
 
@@ -63,7 +73,7 @@ class RateLimitError(APIError):
             message=message,
             status_code=429,
             user_message=user_message,
-            help_text=help_text
+            help_text=help_text,
         )
 
 
@@ -83,7 +93,7 @@ class AuthenticationError(APIError):
             message=message,
             status_code=401,
             user_message=user_message,
-            help_text=help_text
+            help_text=help_text,
         )
 
 
@@ -100,7 +110,7 @@ class QuotaExceededError(APIError):
             message=message,
             status_code=402,
             user_message=user_message,
-            help_text=help_text
+            help_text=help_text,
         )
 
 
@@ -120,7 +130,7 @@ class ContentPolicyError(APIError):
             message=message,
             status_code=400,
             user_message=user_message,
-            help_text=help_text
+            help_text=help_text,
         )
 
 
@@ -133,14 +143,16 @@ class ServerError(APIError):
             message += f": {details}"
 
         user_message = f"{provider} is experiencing issues (error {status_code})"
-        help_text = f"Try again in a few minutes, or temporarily use a different provider"
+        help_text = (
+            "Try again in a few minutes, or temporarily use a different provider"
+        )
 
         super().__init__(
             provider=provider,
             message=message,
             status_code=status_code,
             user_message=user_message,
-            help_text=help_text
+            help_text=help_text,
         )
 
 
@@ -150,13 +162,15 @@ class TimeoutError(APIError):
     def __init__(self, provider: str, timeout: int):
         message = f"{provider} request timed out after {timeout}s"
         user_message = f"Request to {provider} timed out"
-        help_text = f"The provider took too long to respond. Try again, or use a faster model."
+        help_text = (
+            "The provider took too long to respond. Try again, or use a faster model."
+        )
 
         super().__init__(
             provider=provider,
             message=message,
             user_message=user_message,
-            help_text=help_text
+            help_text=help_text,
         )
 
 
@@ -175,14 +189,16 @@ class NetworkError(APIError):
             provider=provider,
             message=message,
             user_message=user_message,
-            help_text=help_text
+            help_text=help_text,
         )
 
 
 class InvalidModelError(APIError):
     """Requested model not available or invalid."""
 
-    def __init__(self, provider: str, model: str, available_models: Optional[list[str]] = None):
+    def __init__(
+        self, provider: str, model: str, available_models: Optional[list[str]] = None
+    ):
         self.model = model
         self.available_models = available_models
 
@@ -198,7 +214,7 @@ class InvalidModelError(APIError):
             message=message,
             status_code=400,
             user_message=user_message,
-            help_text=help_text
+            help_text=help_text,
         )
 
 
@@ -216,8 +232,11 @@ def handle_api_error(error: Exception, provider: str) -> LivingStoryworldError:
 
     # Handle OpenAI SDK errors
     try:
-        from openai import APIError as OpenAIAPIError, RateLimitError as OpenAIRateLimit, AuthenticationError as OpenAIAuthError
-        from openai import APITimeoutError, APIConnectionError
+        from openai import APIConnectionError
+        from openai import APIError as OpenAIAPIError
+        from openai import APITimeoutError
+        from openai import AuthenticationError as OpenAIAuthError
+        from openai import RateLimitError as OpenAIRateLimit
 
         if isinstance(error, OpenAIRateLimit):
             return RateLimitError(provider)
@@ -229,14 +248,19 @@ def handle_api_error(error: Exception, provider: str) -> LivingStoryworldError:
             return NetworkError(provider, str(error))
         elif isinstance(error, OpenAIAPIError):
             # Generic OpenAI API error
-            status_code = getattr(error, 'status_code', None)
+            status_code = getattr(error, "status_code", None)
             if status_code:
                 if status_code >= 500:
                     return ServerError(provider, status_code, str(error))
                 elif status_code == 400:
                     return ContentPolicyError(provider, str(error))
-            return APIError(provider, str(error), status_code=status_code,
-                          user_message=f"API error from {provider}", help_text="Check your request and try again")
+            return APIError(
+                provider,
+                str(error),
+                status_code=status_code,
+                user_message=f"API error from {provider}",
+                help_text="Check your request and try again",
+            )
     except ImportError:
         pass  # OpenAI SDK not installed, skip these checks
 
@@ -248,16 +272,18 @@ def handle_api_error(error: Exception, provider: str) -> LivingStoryworldError:
         details = None
         try:
             error_data = error.response.json()
-            details = error_data.get('error', {}).get('message') or error_data.get('message')
+            details = error_data.get("error", {}).get("message") or error_data.get(
+                "message"
+            )
         except Exception:
             pass
 
         if status_code == 429:
             # Rate limit
             retry_after = None
-            if 'Retry-After' in error.response.headers:
+            if "Retry-After" in error.response.headers:
                 try:
-                    retry_after = int(error.response.headers['Retry-After'])
+                    retry_after = int(error.response.headers["Retry-After"])
                 except ValueError:
                     pass
             return RateLimitError(provider, retry_after)
@@ -272,10 +298,19 @@ def handle_api_error(error: Exception, provider: str) -> LivingStoryworldError:
 
         elif status_code == 400:
             # Bad request - could be content policy
-            if details and any(word in details.lower() for word in ['policy', 'safety', 'inappropriate', 'content']):
+            if details and any(
+                word in details.lower()
+                for word in ["policy", "safety", "inappropriate", "content"]
+            ):
                 return ContentPolicyError(provider, details)
-            return APIError(provider, f"Invalid request: {details or 'Unknown error'}", status_code=400,
-                          user_message=f"Invalid request to {provider}", help_text="Check your request parameters")
+            return APIError(
+                provider,
+                f"Invalid request: {
+                    details or 'Unknown error'}",
+                status_code=400,
+                user_message=f"Invalid request to {provider}",
+                help_text="Check your request parameters",
+            )
 
         elif status_code >= 500:
             # Server error
@@ -295,5 +330,5 @@ def handle_api_error(error: Exception, provider: str) -> LivingStoryworldError:
         provider=provider,
         message=f"Unexpected error: {str(error)}",
         user_message=f"Unexpected error with {provider}",
-        help_text="Try again or use a different provider"
+        help_text="Try again or use a different provider",
     )

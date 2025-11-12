@@ -3,28 +3,33 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from .api import worlds, chapters, images, settings, generate
+from .api import chapters, generate, images, settings, worlds
 
 
 def get_base_path() -> Path:
     """Get base path for bundled app (PyInstaller) or development."""
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # Running in PyInstaller bundle
         return Path(sys._MEIPASS)
     else:
         # Running in normal Python
         return Path(__file__).parent
 
+
 # Security headers middleware
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
+
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -42,7 +47,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "form-action 'self'"
         )
         if os.environ.get("ENVIRONMENT") == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
         return response
 
 
@@ -50,16 +57,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app = FastAPI(
     title="Living Storyworld",
     description="Web interface for Living Storyworld narrative generator",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Format: comma-separated list of allowed origins
 # Default: localhost for development
 allowed_origins_str = os.environ.get(
     "ALLOWED_ORIGINS",
-    "http://localhost:8001,http://127.0.0.1:8001,http://localhost:9999,http://127.0.0.1:9999"
+    "http://localhost:8001,http://127.0.0.1:8001,http://localhost:9999,http://127.0.0.1:9999",
 )
-allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+allowed_origins = [
+    origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -88,6 +97,7 @@ app.include_router(generate.router)
 # - Per-world access tokens
 # - Serving files through controlled endpoints instead of StaticFiles
 from .storage import WORLDS_DIR  # noqa: E402
+
 if WORLDS_DIR.exists():
     app.mount("/worlds", StaticFiles(directory=str(WORLDS_DIR)), name="worlds")
 
@@ -97,6 +107,8 @@ if web_dir.exists():
     app.mount("/static", StaticFiles(directory=str(web_dir)), name="static")
 
 # Root endpoint serves the main HTML
+
+
 @app.get("/")
 async def index():
     """Serve the main web interface"""
@@ -110,11 +122,12 @@ async def index():
 async def validate_configuration():
     """Validate configuration on startup."""
     import logging
+
     from .settings import load_user_settings
 
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     # Suppress httpx INFO logs to reduce noise during API calls
@@ -132,7 +145,9 @@ async def validate_configuration():
     if warnings:
         for warning in warnings:
             logging.warning(f"CONFIG: {warning}")
-        logging.info("Some API keys are missing. Configure them via /api/settings or environment variables.")
+        logging.info(
+            "Some API keys are missing. Configure them via /api/settings or environment variables."
+        )
 
     # Check writable directories
     try:

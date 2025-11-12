@@ -91,7 +91,9 @@ def validate_slug(slug: str) -> str:
     if slug.startswith(".") or slug.startswith("-"):
         raise ValueError("Invalid slug: cannot start with dot or dash")
     if not re.match(r"^[a-z0-9][a-z0-9\-]*[a-z0-9]$|^[a-z0-9]$", slug):
-        raise ValueError("Invalid slug: must contain only lowercase letters, numbers, and hyphens")
+        raise ValueError(
+            "Invalid slug: must contain only lowercase letters, numbers, and hyphens"
+        )
     if len(slug) > 100:
         raise ValueError("Invalid slug: too long (max 100 characters)")
 
@@ -106,4 +108,3 @@ def get_current_world() -> Optional[str]:
     if CURRENT_FILE.exists():
         return read_text(CURRENT_FILE).strip() or None
     return None
-

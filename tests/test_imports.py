@@ -3,7 +3,6 @@
 These tests ensure that PyInstaller bundles include all necessary dependencies.
 """
 import sys
-import importlib
 
 
 class TestCoreModules:

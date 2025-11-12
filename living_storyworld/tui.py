@@ -9,9 +9,9 @@ from .storage import get_current_world
 def run_tui() -> None:
     try:
         from textual.app import App, ComposeResult
-        from textual.widgets import Header, Footer, Static, Button, Input
-        from textual.containers import Vertical, Horizontal
+        from textual.containers import Horizontal, Vertical
         from textual.reactive import reactive
+        from textual.widgets import Button, Footer, Header, Input, Static
     except Exception:
         print("Textual is not installed. Run: pip install textual")
         return
@@ -32,12 +32,18 @@ def run_tui() -> None:
             yield Header(show_clock=True)
             with Vertical(id="wrap"):
                 yield Static("Living Storyworld", classes="title")
-                yield Static("Create chapters and images for your evolving world.", classes="hint")
+                yield Static(
+                    "Create chapters and images for your evolving world.",
+                    classes="hint",
+                )
                 with Horizontal(classes="row"):
                     yield Button("Generate Chapter", id="gen")
                     yield Button("Build Viewer", id="build")
                     yield Button("World Setup", id="setup")
-                yield Input(placeholder="Type a command: chapter | build | info | init | use <slug>", id="cmd")
+                yield Input(
+                    placeholder="Type a command: chapter | build | info | init | use <slug>",
+                    id="cmd",
+                )
                 yield Static("", id="status")
             yield Footer()
 
@@ -65,12 +71,16 @@ def run_tui() -> None:
                 return
             if text.startswith("use "):
                 slug = text.split(None, 1)[1]
-                from .cli import cmd_use
                 import argparse
+
+                from .cli import cmd_use
+
                 try:
                     cmd_use(argparse.Namespace(slug=slug))
                     self.current_world = slug
-                    self.query_one("#status", Static).update(f"Using world: [b]{slug}[/b]")
+                    self.query_one("#status", Static).update(
+                        f"Using world: [b]{slug}[/b]"
+                    )
                 except SystemExit as e:
                     self.query_one("#status", Static).update(f"[red]Error:[/] {e}")
             elif text in ("chapter", "write", "next"):
@@ -82,12 +92,18 @@ def run_tui() -> None:
             elif text.startswith("init"):
                 self._setup()
             else:
-                self.query_one("#status", Static).update("Unknown command. Try: chapter | build | info | init | use <slug>")
+                self.query_one("#status", Static).update(
+                    "Unknown command. Try: chapter | build | info | init | use <slug>"
+                )
 
         def _gen(self) -> None:
-            from .cli import cmd_chapter
             import argparse
-            ns = argparse.Namespace(world=self.current_world, focus=None, no_images=False, preset=None)
+
+            from .cli import cmd_chapter
+
+            ns = argparse.Namespace(
+                world=self.current_world, focus=None, no_images=False, preset=None
+            )
             try:
                 cmd_chapter(ns)
                 self.query_one("#status", Static).update("Generated a new chapter.")
@@ -95,18 +111,24 @@ def run_tui() -> None:
                 self.query_one("#status", Static).update(f"[red]Error:[/] {e}")
 
         def _build(self) -> None:
-            from .cli import cmd_build
             import argparse
+
+            from .cli import cmd_build
+
             ns = argparse.Namespace(world=self.current_world)
             try:
                 cmd_build(ns)
-                self.query_one("#status", Static).update("Built viewer (web/index.html).")
+                self.query_one("#status", Static).update(
+                    "Built viewer (web/index.html)."
+                )
             except SystemExit as e:
                 self.query_one("#status", Static).update(f"[red]Error:[/] {e}")
 
         def _info(self) -> None:
-            from .cli import cmd_info
             import argparse
+
+            from .cli import cmd_info
+
             ns = argparse.Namespace(world=self.current_world)
             try:
                 cmd_info(ns)
@@ -116,6 +138,7 @@ def run_tui() -> None:
         def _setup(self) -> None:
             # Console wizard is simpler than masked inputs in Textual
             from .wizard import run_world_wizard
+
             self.exit()  # leave TUI for a moment
             run_world_wizard()
             # Relaunch TUI updated

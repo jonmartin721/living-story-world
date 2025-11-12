@@ -5,6 +5,8 @@ function app() {
         currentWorld: null,
         generating: false,
         generatingWorlds: new Set(),
+        regeneratingChapters: new Set(),
+        chapterProgress: {},
         generatingTheme: false,
         worldProgress: {},
         showCreateWorld: false,
@@ -15,6 +17,7 @@ function app() {
         setupWizardStep: 1,
         showRegenerateOptions: false,
         regenerateChapterNum: null,
+        selectedRegenerateType: null,
         settingsTab: 'api',
         viewingChapter: null,
         chapterContent: '',
@@ -188,6 +191,13 @@ function app() {
             return lastChapter.choices && lastChapter.choices.length > 0 && !lastChapter.selected_choice_id;
         },
 
+        isLatestChapter(chapterNumber) {
+            if (!this.currentWorld || !this.currentWorld.chapters || this.currentWorld.chapters.length === 0) {
+                return false;
+            }
+            return chapterNumber === this.currentWorld.chapters.length;
+        },
+
         // Helper: Group chapters into sections for collapsible display
         getChapterSections() {
             if (!this.currentWorld || !this.currentWorld.chapters) {
@@ -196,44 +206,49 @@ function app() {
 
             const chapters = this.currentWorld.chapters;
             const total = chapters.length;
-
-            // Always show last 6 chapters as "recent"
-            const recentCount = Math.min(6, total);
             const sections = [];
 
-            // Recent chapters section (always expanded)
-            if (total > 0) {
+            // If less than 10 chapters, show all in one section
+            if (total < 10) {
                 sections.push({
                     id: 'recent',
-                    title: total > 6 ? 'Recent Chapters' : 'Chapters',
-                    range: `${Math.max(1, total - recentCount + 1)}-${total}`,
-                    chapters: chapters.slice(-recentCount),
+                    title: 'Chapters',
+                    range: total > 0 ? `1-${total}` : '',
+                    chapters: chapters,
                     isRecent: true,
-                    count: recentCount
+                    count: total
                 });
+                return sections;
             }
 
-            // Older chapters grouped by 10s
-            if (total > 6) {
-                const older = chapters.slice(0, -recentCount);
-                const groupSize = 10;
+            // 10+ chapters: show last 5 as recent, group rest by 5s
+            const recentCount = 5;
+            sections.push({
+                id: 'recent',
+                title: 'Recent Chapters',
+                range: `${total - recentCount + 1}-${total}`,
+                chapters: chapters.slice(-recentCount),
+                isRecent: true,
+                count: recentCount
+            });
 
-                for (let i = older.length - 1; i >= 0; i -= groupSize) {
-                    const start = Math.max(0, i - groupSize + 1);
-                    const end = i + 1;
-                    const sectionChapters = older.slice(start, end);
-                    const startNum = sectionChapters[0].number;
-                    const endNum = sectionChapters[sectionChapters.length - 1].number;
+            // Group older chapters by 5s from oldest to newest
+            const older = chapters.slice(0, -recentCount);
+            const groupSize = 5;
 
-                    sections.push({
-                        id: `section-${startNum}-${endNum}`,
-                        title: `Chapters ${startNum}-${endNum}`,
-                        range: `${startNum}-${endNum}`,
-                        chapters: sectionChapters,
-                        isRecent: false,
-                        count: sectionChapters.length
-                    });
-                }
+            for (let i = 0; i < older.length; i += groupSize) {
+                const sectionChapters = older.slice(i, i + groupSize);
+                const startNum = sectionChapters[0].number;
+                const endNum = sectionChapters[sectionChapters.length - 1].number;
+
+                sections.push({
+                    id: `section-${startNum}-${endNum}`,
+                    title: `Chapters ${startNum}-${endNum}`,
+                    range: `${startNum}-${endNum}`,
+                    chapters: sectionChapters,
+                    isRecent: false,
+                    count: sectionChapters.length
+                });
             }
 
             return sections;
@@ -648,7 +663,7 @@ function app() {
                 // Reload worlds list
                 await this.loadWorlds();
 
-                this.showToast('Gone', 'success');
+                this.showToast('World deleted', 'success');
             } catch (error) {
                 console.error('Delete error:', error);
                 this.showToast('Could not delete world');
@@ -743,15 +758,32 @@ function app() {
                     delete this.worldProgress[worldSlug];
                 });
 
+                // Handle error events sent by backend with actual error details
                 evtSource.addEventListener('error', (e) => {
-                    console.error('Generation error:', e);
-                    this.addConsoleLog('Chapter generation failed: ' + (e.message || 'Unknown error'), 'error');
-                    this.showToast('Chapter generation failed. Check console for details.');
+                    const errorData = JSON.parse(e.data);
+                    const errorMsg = errorData.error || 'Unknown error';
+                    console.error('Chapter generation error:', errorMsg);
+                    this.addConsoleLog('Chapter generation failed: ' + errorMsg, 'error');
+                    this.showToast('Chapter generation failed: ' + errorMsg);
                     this.generatingWorlds.delete(worldSlug);
                     this.generating = this.generatingWorlds.size > 0;
                     delete this.worldProgress[worldSlug];
                     evtSource.close();
                 });
+
+                // Handle SSE connection failures
+                evtSource.onerror = (e) => {
+                    // Only log if we haven't already handled a proper error event
+                    if (evtSource.readyState === EventSource.CLOSED) {
+                        console.error('SSE connection closed unexpectedly:', e);
+                        this.addConsoleLog('Connection to server lost during generation', 'error');
+                        this.showToast('Connection lost. Check your network.');
+                        this.generatingWorlds.delete(worldSlug);
+                        this.generating = this.generatingWorlds.size > 0;
+                        delete this.worldProgress[worldSlug];
+                        evtSource.close();
+                    }
+                };
 
             } catch (error) {
                 console.error('Failed to generate chapter:', error);
@@ -918,11 +950,18 @@ function app() {
 
         showRegenerateDialog(chapterNum) {
             this.regenerateChapterNum = chapterNum;
+            this.selectedRegenerateType = null;
             this.showRegenerateOptions = true;
+        },
+
+        confirmRegenerate() {
+            if (!this.selectedRegenerateType) return;
+            this.handleRegenerate(this.selectedRegenerateType);
         },
 
         async handleRegenerate(type) {
             this.showRegenerateOptions = false;
+            this.selectedRegenerateType = null;
             const chapterNum = this.regenerateChapterNum;
 
             if (!chapterNum) return;
@@ -938,12 +977,10 @@ function app() {
         },
 
         async rerollChapterTextOnly(chapterNum) {
-            if (!await this.confirm('Regenerate chapter text only? The current image will be kept.')) return;
-
             const worldSlug = this.currentWorldSlug;
-            this.generatingWorlds.add(worldSlug);
-            this.generating = this.generatingWorlds.size > 0;
-            this.worldProgress[worldSlug] = { percent: 0, message: 'Starting text regeneration...', stage: 'init' };
+            const chapterKey = `${worldSlug}-${chapterNum}`;
+            this.regeneratingChapters.add(chapterKey);
+            this.chapterProgress[chapterKey] = { percent: 0, message: 'Starting text regeneration...', stage: 'init', type: 'text' };
             this.addConsoleLog(`Starting text-only reroll of chapter ${chapterNum}...`, 'info');
 
             try {
@@ -960,33 +997,82 @@ function app() {
                 const { job_id } = await response.json();
                 this.addConsoleLog(`Text-only reroll job created: ${job_id}`, 'info');
 
-                // Poll for completion
-                await this.pollJobStatus(job_id);
+                // Listen to SSE stream
+                const evtSource = new EventSource(`/api/worlds/${this.currentWorldSlug}/chapters/stream/${job_id}`);
 
-                this.showToast('Chapter text regenerated successfully!', 'success');
-                await this.loadWorld(this.currentWorldSlug);
+                evtSource.addEventListener('progress', (e) => {
+                    const data = JSON.parse(e.data);
+                    this.chapterProgress[chapterKey] = { ...data, type: 'text' };
+                    // Only log stage changes, not every progress update
+                    if (data.stage !== this._lastLoggedStage) {
+                        this.addConsoleLog(data.message, 'log');
+                        this._lastLoggedStage = data.stage;
+                    }
+                });
+
+                evtSource.addEventListener('complete', (e) => {
+                    const updatedChapter = JSON.parse(e.data);
+
+                    // Find and update the chapter if we're still viewing this world
+                    if (this.currentWorldSlug === this.currentWorldSlug) {
+                        const chapterIndex = this.currentWorld.chapters.findIndex(ch => ch.number === chapterNum);
+                        if (chapterIndex !== -1) {
+                            this.currentWorld.chapters[chapterIndex] = updatedChapter;
+                        }
+                    }
+
+                    this.chapterProgress[chapterKey] = { percent: 100, message: 'Text regenerated!', stage: 'done', type: 'text' };
+                    this._lastLoggedStage = null;
+                    this.addConsoleLog(`Chapter ${chapterNum} text regenerated successfully!`, 'success');
+                    evtSource.close();
+                    setTimeout(() => {
+                        this.regeneratingChapters.delete(chapterKey);
+                        delete this.chapterProgress[chapterKey];
+                    }, 1000);
+                });
+
+                // Handle error events sent by backend with actual error details
+                evtSource.addEventListener('error', (e) => {
+                    const errorData = JSON.parse(e.data);
+                    const errorMsg = errorData.error || 'Unknown error';
+                    console.error('Text regeneration error:', errorMsg);
+                    this.addConsoleLog('Text regeneration failed: ' + errorMsg, 'error');
+                    this.showToast('Text regeneration failed: ' + errorMsg);
+                    this.regeneratingChapters.delete(chapterKey);
+                    delete this.chapterProgress[chapterKey];
+                    evtSource.close();
+                });
+
+                // Handle SSE connection failures
+                evtSource.onerror = (e) => {
+                    if (evtSource.readyState === EventSource.CLOSED) {
+                        console.error('SSE connection closed unexpectedly:', e);
+                        this.addConsoleLog('Connection to server lost during text regeneration', 'error');
+                        this.showToast('Connection lost. Check your network.');
+                        this.regeneratingChapters.delete(chapterKey);
+                        delete this.chapterProgress[chapterKey];
+                        evtSource.close();
+                    }
+                };
             } catch (error) {
                 console.error('Failed to regenerate chapter text:', error);
                 this.addConsoleLog(`Error regenerating text: ${error.message}`, 'error');
                 this.showToast('Failed to regenerate chapter text. Check console for details.');
-            } finally {
-                this.generatingWorlds.delete(worldSlug);
-                this.generating = this.generatingWorlds.size > 0;
-                delete this.worldProgress[worldSlug];
+                this.regeneratingChapters.delete(chapterKey);
+                delete this.chapterProgress[chapterKey];
             }
         },
 
         async rerollChapter(chapterNum) {
-            if (!await this.confirm('Regenerate this chapter completely? Both text and image will be replaced.')) return;
 
             const worldSlug = this.currentWorldSlug;
-            this.generatingWorlds.add(worldSlug);
-            this.generating = this.generatingWorlds.size > 0;
-            this.worldProgress[worldSlug] = { percent: 0, message: 'Starting full regeneration...', stage: 'init' };
+            const chapterKey = `${worldSlug}-${chapterNum}`;
+            this.regeneratingChapters.add(chapterKey);
+            this.chapterProgress[chapterKey] = { percent: 0, message: 'Starting full regeneration...', stage: 'init', type: 'everything' };
             this._lastLoggedStage = null;
             this.addConsoleLog(`Starting reroll of chapter ${chapterNum}...`, 'info');
 
-            try {
+            try{
                 // Start reroll with images enabled
                 const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters/${chapterNum}/reroll`, {
                     method: 'PUT',
@@ -1005,7 +1091,7 @@ function app() {
 
                 evtSource.addEventListener('progress', (e) => {
                     const data = JSON.parse(e.data);
-                    this.worldProgress[worldSlug] = data;
+                    this.chapterProgress[chapterKey] = { ...data, type: 'everything' };
                     // Only log stage changes, not every progress update
                     if (data.stage !== this._lastLoggedStage) {
                         this.addConsoleLog(data.message, 'log');
@@ -1024,74 +1110,60 @@ function app() {
                         }
                     }
 
-                    this.generatingWorlds.delete(worldSlug);
-                    this.generating = this.generatingWorlds.size > 0;
-                    this.worldProgress[worldSlug] = { percent: 100, message: 'Chapter regenerated!', stage: 'done' };
+                    this.chapterProgress[chapterKey] = { percent: 100, message: 'Chapter regenerated!', stage: 'done', type: 'everything' };
                     this._lastLoggedStage = null;
                     this.addConsoleLog(`Chapter ${chapterNum} regenerated successfully!`, 'success');
                     evtSource.close();
-                    delete this.worldProgress[worldSlug];
+                    setTimeout(() => {
+                        this.regeneratingChapters.delete(chapterKey);
+                        delete this.chapterProgress[chapterKey];
+                    }, 1000);
                 });
 
+                // Handle error events sent by backend with actual error details
                 evtSource.addEventListener('error', (e) => {
-                    console.error('Reroll error:', e);
-                    this.addConsoleLog('Chapter reroll failed: ' + (e.message || 'Unknown error'), 'error');
-                    this.showToast('Chapter regeneration failed, check console.');
-                    this.generatingWorlds.delete(worldSlug);
-                    this.generating = this.generatingWorlds.size > 0;
-                    delete this.worldProgress[worldSlug];
+                    const errorData = JSON.parse(e.data);
+                    const errorMsg = errorData.error || 'Unknown error';
+                    console.error('Chapter reroll error:', errorMsg);
+                    this.addConsoleLog('Chapter reroll failed: ' + errorMsg, 'error');
+                    this.showToast('Chapter regeneration failed: ' + errorMsg);
+                    this.regeneratingChapters.delete(chapterKey);
+                    delete this.chapterProgress[chapterKey];
                     evtSource.close();
                 });
+
+                // Handle SSE connection failures
+                evtSource.onerror = (e) => {
+                    if (evtSource.readyState === EventSource.CLOSED) {
+                        console.error('SSE connection closed unexpectedly:', e);
+                        this.addConsoleLog('Connection to server lost during chapter regeneration', 'error');
+                        this.showToast('Connection lost. Check your network.');
+                        this.regeneratingChapters.delete(chapterKey);
+                        delete this.chapterProgress[chapterKey];
+                        evtSource.close();
+                    }
+                };
 
             } catch (error) {
                 console.error('Failed to reroll chapter:', error);
                 this.addConsoleLog('Failed to reroll chapter: ' + error.message, 'error');
                 this.showToast('Failed to regenerate chapter. Check console for details.');
-                this.generatingWorlds.delete(worldSlug);
-                this.generating = this.generatingWorlds.size > 0;
-                delete this.worldProgress[worldSlug];
+                this.regeneratingChapters.delete(chapterKey);
+                delete this.chapterProgress[chapterKey];
             }
         },
 
-        async deleteChapter(chapterNum) {
-            if (!await this.confirm('Delete this chapter permanently? This cannot be undone.')) return;
-
-            try {
-                const response = await fetch(`/api/worlds/${this.currentWorldSlug}/chapters/${chapterNum}`, {
-                    method: 'DELETE'
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                // Remove chapter from local state
-                const chapterIndex = this.currentWorld.chapters.findIndex(ch => ch.number === chapterNum);
-                if (chapterIndex !== -1) {
-                    this.currentWorld.chapters.splice(chapterIndex, 1);
-                }
-
-                // Close modal if open
-                this.showChapterModal = false;
-                this.chapterContent = '';
-
-            } catch (error) {
-                console.error('Failed to delete chapter:', error);
-                this.showToast('Failed to delete chapter. Check console for details.');
-            }
-        },
-
+  
         async regenerateImage(chapterNum) {
-            if (!await this.confirm('Regenerate the scene image for this chapter?')) return;
 
             const worldSlug = this.currentWorldSlug;
-            this.generatingWorlds.add(worldSlug);
-            this.generating = this.generatingWorlds.size > 0;
-            this.worldProgress[worldSlug] = { percent: 10, message: 'Regenerating image...', stage: 'image' };
+            const chapterKey = `${worldSlug}-${chapterNum}`;
+            this.regeneratingChapters.add(chapterKey);
+            this.chapterProgress[chapterKey] = { percent: 10, message: 'Regenerating image...', stage: 'image', type: 'image' };
             this.addConsoleLog(`Starting image regeneration for chapter ${chapterNum}...`, 'info');
 
             try {
-                this.worldProgress[worldSlug] = { percent: 30, message: 'Calling image API...', stage: 'image' };
+                this.chapterProgress[chapterKey] = { percent: 30, message: 'Calling image API...', stage: 'image', type: 'image' };
                 this.addConsoleLog('Calling image generation API...', 'log');
 
                 const response = await fetch(`/api/worlds/${worldSlug}/images`, {
@@ -1104,7 +1176,7 @@ function app() {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
-                this.worldProgress[worldSlug] = { percent: 80, message: 'Processing image...', stage: 'image' };
+                this.chapterProgress[chapterKey] = { percent: 80, message: 'Processing image...', stage: 'image', type: 'image' };
                 this.addConsoleLog('Processing generated image...', 'log');
 
                 const data = await response.json();
@@ -1113,24 +1185,23 @@ function app() {
                 if (this.currentWorldSlug === worldSlug) {
                     const chapter = this.currentWorld.chapters.find(ch => ch.number === chapterNum);
                     if (chapter) {
-                        chapter.scene = data.scene + '?' + Date.now(); // Cache bust
+                        chapter.scene = data.scene; // Backend now handles cache bypass with unique filenames
                     }
                 }
 
-                this.worldProgress[worldSlug] = { percent: 100, message: 'Image regenerated!', stage: 'done' };
+                this.chapterProgress[chapterKey] = { percent: 100, message: 'Image regenerated!', stage: 'done', type: 'image' };
                 this.addConsoleLog(`Image for chapter ${chapterNum} regenerated successfully!`, 'success');
+                this.showToast('Image regenerated successfully!', 'success');
                 setTimeout(() => {
-                    this.generatingWorlds.delete(worldSlug);
-                    this.generating = this.generatingWorlds.size > 0;
-                    delete this.worldProgress[worldSlug];
+                    this.regeneratingChapters.delete(chapterKey);
+                    delete this.chapterProgress[chapterKey];
                 }, 1000);
             } catch (error) {
                 console.error('Failed to regenerate image:', error);
                 this.addConsoleLog('Failed to regenerate image: ' + error.message, 'error');
                 this.showToast('Failed to regenerate image: ' + error.message);
-                this.generatingWorlds.delete(worldSlug);
-                this.generating = this.generatingWorlds.size > 0;
-                delete this.worldProgress[worldSlug];
+                this.regeneratingChapters.delete(chapterKey);
+                delete this.chapterProgress[chapterKey];
             }
         },
 

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional
 from pathlib import Path
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field, validator
 
 from ..storage import WORLDS_DIR, get_current_world, set_current_world
 from ..world import init_world, load_world
@@ -14,17 +15,25 @@ router = APIRouter(prefix="/api/worlds", tags=["worlds"])
 
 class WorldCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=200, description="World title")
-    theme: str = Field(..., min_length=1, max_length=1000, description="World theme/description")
+    theme: str = Field(
+        ..., min_length=1, max_length=1000, description="World theme/description"
+    )
     style_pack: str = Field(default="storybook-ink", max_length=100)
     maturity_level: str = Field(default="general", max_length=20)
     preset: str = Field(default="cozy-adventure", max_length=50)
     enable_choices: bool = Field(default=False)
     slug: Optional[str] = Field(None, max_length=100)
-    memory: Optional[str] = Field(None, max_length=10000, description="Persistent world memory")
-    authors_note: Optional[str] = Field(None, max_length=5000, description="Author's notes/instructions")
-    world_instructions: Optional[str] = Field(None, max_length=5000, description="World-specific instructions")
+    memory: Optional[str] = Field(
+        None, max_length=10000, description="Persistent world memory"
+    )
+    authors_note: Optional[str] = Field(
+        None, max_length=5000, description="Author's notes/instructions"
+    )
+    world_instructions: Optional[str] = Field(
+        None, max_length=5000, description="World-specific instructions"
+    )
 
-    @validator('title', 'theme', 'memory', 'authors_note', 'world_instructions')
+    @validator("title", "theme", "memory", "authors_note", "world_instructions")
     def strip_whitespace(cls, v):  # pylint: disable=no-self-argument
         return v.strip() if v else v
 
@@ -40,7 +49,7 @@ class WorldUpdateRequest(BaseModel):
     authors_note: Optional[str] = Field(None, max_length=5000)
     world_instructions: Optional[str] = Field(None, max_length=5000)
 
-    @validator('title', 'theme', 'memory', 'authors_note', 'world_instructions')
+    @validator("title", "theme", "memory", "authors_note", "world_instructions")
     def strip_whitespace(cls, v):  # pylint: disable=no-self-argument
         return v.strip() if v else v
 
@@ -72,22 +81,24 @@ async def list_worlds():
         if world_dir.is_dir():
             try:
                 cfg, state, _ = load_world(world_dir.name)
-                worlds.append(WorldResponse(
-                    title=cfg.title,
-                    slug=cfg.slug,
-                    theme=cfg.theme,
-                    style_pack=cfg.style_pack,
-                    text_model=cfg.text_model,
-                    maturity_level=getattr(cfg, 'maturity_level', 'general'),
-                    preset=getattr(cfg, 'preset', 'cozy-adventure'),
-                    enable_choices=getattr(cfg, 'enable_choices', False),
-                    tick=state.tick,
-                    chapter_count=len(state.chapters),
-                    is_current=(cfg.slug == current),
-                    memory=getattr(cfg, 'memory', None),
-                    authors_note=getattr(cfg, 'authors_note', None),
-                    world_instructions=getattr(cfg, 'world_instructions', None)
-                ))
+                worlds.append(
+                    WorldResponse(
+                        title=cfg.title,
+                        slug=cfg.slug,
+                        theme=cfg.theme,
+                        style_pack=cfg.style_pack,
+                        text_model=cfg.text_model,
+                        maturity_level=getattr(cfg, "maturity_level", "general"),
+                        preset=getattr(cfg, "preset", "cozy-adventure"),
+                        enable_choices=getattr(cfg, "enable_choices", False),
+                        tick=state.tick,
+                        chapter_count=len(state.chapters),
+                        is_current=(cfg.slug == current),
+                        memory=getattr(cfg, "memory", None),
+                        authors_note=getattr(cfg, "authors_note", None),
+                        world_instructions=getattr(cfg, "world_instructions", None),
+                    )
+                )
             except Exception:
                 # Skip invalid worlds
                 pass
@@ -107,21 +118,25 @@ async def create_world(request: WorldCreateRequest):
     if existing_worlds >= max_worlds:
         raise HTTPException(
             status_code=429,
-            detail=f"Maximum number of worlds ({max_worlds}) reached. Delete some worlds before creating new ones."
+            detail=f"Maximum number of worlds ({max_worlds}) reached. Delete some worlds before creating new ones.",
         )
 
     try:
-        stat = shutil.disk_usage(WORLDS_DIR.parent if WORLDS_DIR.exists() else Path.home())
+        stat = shutil.disk_usage(
+            WORLDS_DIR.parent if WORLDS_DIR.exists() else Path.home()
+        )
         min_free_mb = 100
         free_mb = stat.free / (1024 * 1024)
         if free_mb < min_free_mb:
             raise HTTPException(
                 status_code=507,
-                detail=f"Insufficient disk space ({free_mb:.0f}MB free, need {min_free_mb}MB minimum)"
+                detail=f"Insufficient disk space ({
+                    free_mb:.0f}MB free, need {min_free_mb}MB minimum)",
             )
     except Exception as e:
         # Log but don't block on disk check failure
         import logging
+
         logging.warning(f"Failed to check disk space: {e}")
 
     slug = init_world(
@@ -134,7 +149,7 @@ async def create_world(request: WorldCreateRequest):
         enable_choices=request.enable_choices,
         memory=request.memory,
         authors_note=request.authors_note,
-        world_instructions=request.world_instructions
+        world_instructions=request.world_instructions,
     )
 
     cfg, state, _ = load_world(slug)
@@ -152,7 +167,7 @@ async def create_world(request: WorldCreateRequest):
         is_current=True,
         memory=cfg.memory,
         authors_note=cfg.authors_note,
-        world_instructions=cfg.world_instructions
+        world_instructions=cfg.world_instructions,
     )
 
 
@@ -164,6 +179,7 @@ async def get_world(world_info: tuple[str, Path] = Depends(get_validated_world_s
 
     # Load media index for scene images
     from ..storage import read_json
+
     media_idx = read_json(dirs["base"] / "media" / "index.json", [])
     scene_for_chapter = {}
     for m in media_idx:
@@ -175,25 +191,29 @@ async def get_world(world_info: tuple[str, Path] = Depends(get_validated_world_s
         # Convert Choice dataclass objects to dicts
         choices_data = []
         for choice in ch.choices:
-            choices_data.append({
-                "id": choice.id,
-                "text": choice.text,
-                "description": choice.description
-            })
+            choices_data.append(
+                {
+                    "id": choice.id,
+                    "text": choice.text,
+                    "description": choice.description,
+                }
+            )
 
-        chapters.append({
-            "number": ch.number,
-            "title": ch.title,
-            "filename": ch.filename,
-            "summary": ch.summary,
-            "scene": scene_for_chapter.get(ch.number),
-            "characters_in_scene": ch.characters_in_scene,
-            "choices": choices_data,
-            "selected_choice_id": ch.selected_choice_id,
-            "generated_at": getattr(ch, 'generated_at', None),
-            "text_model_used": getattr(ch, 'text_model_used', None),
-            "image_model_used": getattr(ch, 'image_model_used', None)
-        })
+        chapters.append(
+            {
+                "number": ch.number,
+                "title": ch.title,
+                "filename": ch.filename,
+                "summary": ch.summary,
+                "scene": scene_for_chapter.get(ch.number),
+                "characters_in_scene": ch.characters_in_scene,
+                "choices": choices_data,
+                "selected_choice_id": ch.selected_choice_id,
+                "generated_at": getattr(ch, "generated_at", None),
+                "text_model_used": getattr(ch, "text_model_used", None),
+                "image_model_used": getattr(ch, "image_model_used", None),
+            }
+        )
 
     return {
         "config": {
@@ -202,21 +222,21 @@ async def get_world(world_info: tuple[str, Path] = Depends(get_validated_world_s
             "theme": cfg.theme,
             "style_pack": cfg.style_pack,
             "text_model": cfg.text_model,
-            "maturity_level": getattr(cfg, 'maturity_level', 'general'),
-            "preset": getattr(cfg, 'preset', 'cozy-adventure'),
-            "enable_choices": getattr(cfg, 'enable_choices', False),
-            "memory": getattr(cfg, 'memory', None),
-            "authors_note": getattr(cfg, 'authors_note', None),
-            "world_instructions": getattr(cfg, 'world_instructions', None)
+            "maturity_level": getattr(cfg, "maturity_level", "general"),
+            "preset": getattr(cfg, "preset", "cozy-adventure"),
+            "enable_choices": getattr(cfg, "enable_choices", False),
+            "memory": getattr(cfg, "memory", None),
+            "authors_note": getattr(cfg, "authors_note", None),
+            "world_instructions": getattr(cfg, "world_instructions", None),
         },
         "state": {
             "tick": state.tick,
             "next_chapter": state.next_chapter,
             "characters": state.characters,
-            "locations": state.locations
+            "locations": state.locations,
         },
         "chapters": chapters,
-        "is_current": slug == get_current_world()
+        "is_current": slug == get_current_world(),
     }
 
 
@@ -229,11 +249,15 @@ async def set_current(world_info: tuple[str, Path] = Depends(get_validated_world
 
 
 @router.put("/{slug}")
-async def update_world(request: WorldUpdateRequest, world_info: tuple[str, Path] = Depends(get_validated_world_slug)):
+async def update_world(
+    request: WorldUpdateRequest,
+    world_info: tuple[str, Path] = Depends(get_validated_world_slug),
+):
     """Update world configuration"""
     slug, world_path = world_info
 
     from ..world import save_world
+
     cfg, state, dirs = load_world(slug)
 
     # Update fields if provided
@@ -265,27 +289,31 @@ async def update_world(request: WorldUpdateRequest, world_info: tuple[str, Path]
             "slug": cfg.slug,
             "theme": cfg.theme,
             "style_pack": cfg.style_pack,
-            "maturity_level": getattr(cfg, 'maturity_level', 'general'),
-            "preset": getattr(cfg, 'preset', 'cozy-adventure'),
-            "enable_choices": getattr(cfg, 'enable_choices', False),
+            "maturity_level": getattr(cfg, "maturity_level", "general"),
+            "preset": getattr(cfg, "preset", "cozy-adventure"),
+            "enable_choices": getattr(cfg, "enable_choices", False),
             "memory": cfg.memory,
             "authors_note": cfg.authors_note,
-            "world_instructions": cfg.world_instructions
-        }
+            "world_instructions": cfg.world_instructions,
+        },
     }
 
 
 @router.delete("/{slug}")
-async def delete_world(world_info: tuple[str, Path] = Depends(get_validated_world_slug)):
+async def delete_world(
+    world_info: tuple[str, Path] = Depends(get_validated_world_slug),
+):
     """Delete a world"""
     slug, world_path = world_info
 
     import shutil
+
     shutil.rmtree(world_path)
 
     # If this was the current world, unset it
     if get_current_world() == slug:
         from ..storage import CURRENT_FILE
+
         if CURRENT_FILE.exists():
             CURRENT_FILE.unlink()
 

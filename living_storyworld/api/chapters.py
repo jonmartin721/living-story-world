@@ -6,17 +6,17 @@ import logging
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ..storage import WORLDS_DIR, validate_slug
-from ..world import load_world, save_world
 from ..generator import generate_chapter, generate_chapter_summary
 from ..image import generate_scene_image
 from ..settings import load_user_settings
+from ..storage import WORLDS_DIR, validate_slug
+from ..world import load_world, save_world
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/worlds/{slug}/chapters", tags=["chapters"])
@@ -37,7 +37,10 @@ def get_cached_settings():
     """Get cached settings or load fresh if cache expired."""
     global _settings_cache, _settings_cache_time
     current_time = time.time()
-    if _settings_cache is None or current_time - _settings_cache_time > _SETTINGS_CACHE_TTL:
+    if (
+        _settings_cache is None
+        or current_time - _settings_cache_time > _SETTINGS_CACHE_TTL
+    ):
         _settings_cache = load_user_settings()
         _settings_cache_time = current_time
     return _settings_cache
@@ -45,11 +48,15 @@ def get_cached_settings():
 
 class ChapterGenerateRequest(BaseModel):
     no_images: bool = False
-    chapter_length: str = Field("medium", description="Chapter length: short, medium, or long")
+    chapter_length: str = Field(
+        "medium", description="Chapter length: short, medium, or long"
+    )
 
 
 class ChoiceSelectionRequest(BaseModel):
-    choice_id: str = Field(..., description="ID of the selected choice, or 'auto' for AI selection")
+    choice_id: str = Field(
+        ..., description="ID of the selected choice, or 'auto' for AI selection"
+    )
 
 
 @router.post("")
@@ -107,41 +114,45 @@ async def stream_chapter_progress(slug: str, job_id: str):
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, queue: asyncio.Queue, job_id: str):
+async def run_chapter_generation(
+    slug: str, request: ChapterGenerateRequest, queue: asyncio.Queue, job_id: str
+):
     """Background task to generate chapter with progress updates"""
-    import traceback
     import time
+    import traceback
+
     try:
         loop = asyncio.get_event_loop()
 
         # Send initial progress
-        await queue.put({
-            "stage": "init",
-            "percent": 5,
-            "message": "Loading world..."
-        })
+        await queue.put({"stage": "init", "percent": 5, "message": "Loading world..."})
 
         # Load world (sync operation in executor)
         cfg, state, dirs = await loop.run_in_executor(executor, load_world, slug)
 
-        await queue.put({
-            "stage": "init",
-            "percent": 8,
-            "message": "World loaded, preparing generation..."
-        })
+        await queue.put(
+            {
+                "stage": "init",
+                "percent": 8,
+                "message": "World loaded, preparing generation...",
+            }
+        )
 
         # Auto-select a choice if the previous chapter has unselected choices
         if cfg.enable_choices and state.chapters:
             prev_chapter = state.chapters[-1]
             if prev_chapter.choices and not prev_chapter.selected_choice_id:
                 import random
+
                 selected_choice = random.choice(prev_chapter.choices)
 
-                await queue.put({
-                    "stage": "init",
-                    "percent": 9,
-                    "message": f"Auto-selecting choice: '{selected_choice.text[:50]}...'"
-                })
+                await queue.put(
+                    {
+                        "stage": "init",
+                        "percent": 9,
+                        "message": f"Auto-selecting choice: '{selected_choice.text[:50]}...'",
+                    }
+                )
 
                 # Update previous chapter with the auto-selection
                 prev_chapter.selected_choice_id = selected_choice.id
@@ -151,11 +162,9 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
 
         # Generate text with smooth progress updates
-        await queue.put({
-            "stage": "text",
-            "percent": 10,
-            "message": "Generating chapter text..."
-        })
+        await queue.put(
+            {"stage": "text", "percent": 10, "message": "Generating chapter text..."}
+        )
 
         # Start text generation in background
         text_start = time.time()
@@ -180,16 +189,22 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             progress_ratio = min(elapsed / estimated_duration, 1.0)
             # Use easing function for smoother progress (slower at end)
             eased_progress = 1 - (1 - progress_ratio) ** 2
-            current_percent = int(start_percent + (end_percent - start_percent) * eased_progress)
+            current_percent = int(
+                start_percent + (end_percent - start_percent) * eased_progress
+            )
 
-            await queue.put({
-                "stage": "text",
-                "percent": current_percent,
-                "message": f"Chapter text... ({elapsed:.0f}s)"
-            })
+            await queue.put(
+                {
+                    "stage": "text",
+                    "percent": current_percent,
+                    "message": f"Chapter text... ({elapsed:.0f}s)",
+                }
+            )
 
             try:
-                await asyncio.wait_for(asyncio.shield(text_future), timeout=update_interval)
+                await asyncio.wait_for(
+                    asyncio.shield(text_future), timeout=update_interval
+                )
                 break
             except asyncio.TimeoutError:
                 continue
@@ -199,13 +214,17 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         logger.info("Text generation completed: %.2fs", text_duration)
 
         # Read chapter markdown for summary generation
-        chapter_md = (dirs["base"] / "chapters" / chapter.filename).read_text(encoding="utf-8")
+        chapter_md = (dirs["base"] / "chapters" / chapter.filename).read_text(
+            encoding="utf-8"
+        )
 
-        await queue.put({
-            "stage": "post-processing",
-            "percent": 70,
-            "message": "Generating summary and image..."
-        })
+        await queue.put(
+            {
+                "stage": "post-processing",
+                "percent": 70,
+                "message": "Generating summary and image...",
+            }
+        )
 
         # Start summary generation (runs in parallel with image)
         summary_task = asyncio.create_task(generate_chapter_summary(chapter_md, cfg))
@@ -217,11 +236,13 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             settings = get_cached_settings()
             actual_image_model = settings.default_image_model
 
-            await queue.put({
-                "stage": "image",
-                "percent": 90,
-                "message": f"Generating image ({actual_image_model})..."
-            })
+            await queue.put(
+                {
+                    "stage": "image",
+                    "percent": 90,
+                    "message": f"Generating image ({actual_image_model})...",
+                }
+            )
 
             # Start image generation in background
             image_start = time.time()
@@ -232,7 +253,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 actual_image_model,
                 cfg.style_pack,
                 chapter.scene_prompt,
-                chapter.number
+                chapter.number,
             )
 
             # Send progress updates while waiting (estimated ~8 seconds)
@@ -245,16 +266,22 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 elapsed = time.time() - image_start
                 progress_ratio = min(elapsed / estimated_image_duration, 1.0)
                 eased_progress = 1 - (1 - progress_ratio) ** 2
-                current_percent = int(start_percent + (end_percent - start_percent) * eased_progress)
+                current_percent = int(
+                    start_percent + (end_percent - start_percent) * eased_progress
+                )
 
-                await queue.put({
-                    "stage": "image",
-                    "percent": current_percent,
-                    "message": f"Scene image... ({elapsed:.0f}s)"
-                })
+                await queue.put(
+                    {
+                        "stage": "image",
+                        "percent": current_percent,
+                        "message": f"Scene image... ({elapsed:.0f}s)",
+                    }
+                )
 
                 try:
-                    await asyncio.wait_for(asyncio.shield(image_future), timeout=update_interval)
+                    await asyncio.wait_for(
+                        asyncio.shield(image_future), timeout=update_interval
+                    )
                     break
                 except asyncio.TimeoutError:
                     continue
@@ -263,18 +290,22 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             image_duration = time.time() - image_start
             logger.info("Image generation completed: %.2fs", image_duration)
 
-            await queue.put({
-                "stage": "image",
-                "percent": 94,
-                "message": f"Image generation complete ({image_duration:.1f}s)"
-            })
+            await queue.put(
+                {
+                    "stage": "image",
+                    "percent": 94,
+                    "message": f"Image generation complete ({image_duration:.1f}s)",
+                }
+            )
 
         # Wait for summary generation to complete
-        await queue.put({
-            "stage": "post-processing",
-            "percent": 95,
-            "message": "Finalizing summary..."
-        })
+        await queue.put(
+            {
+                "stage": "post-processing",
+                "percent": 95,
+                "message": "Finalizing summary...",
+            }
+        )
 
         ai_summary = await summary_task
         chapter.ai_summary = ai_summary
@@ -283,18 +314,17 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
 
         # Add metadata to chapter
         from datetime import datetime
-        chapter.generated_at = datetime.utcnow().isoformat() + 'Z'
+
+        chapter.generated_at = datetime.utcnow().isoformat() + "Z"
         # text_model_used is already set in generator.py, don't override it
         # Set image model only if it was actually generated
         if actual_image_model:
             chapter.image_model_used = actual_image_model
 
         # Update state
-        await queue.put({
-            "stage": "saving",
-            "percent": 95,
-            "message": "Saving world state..."
-        })
+        await queue.put(
+            {"stage": "saving", "percent": 95, "message": "Saving world state..."}
+        )
 
         state.chapters.append(chapter.__dict__)
         state.next_chapter += 1
@@ -303,6 +333,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
 
         # Build response
         from dataclasses import asdict
+
         chapter_data = {
             "number": chapter.number,
             "title": chapter.title,
@@ -313,21 +344,26 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             "choices": [asdict(c) for c in chapter.choices] if chapter.choices else [],
             "selected_choice_id": chapter.selected_choice_id,
             "choice_reasoning": chapter.choice_reasoning,
-            "scene": f"/worlds/{slug}/media/scenes/{image_path.name}" if image_path else None,
+            "scene": (
+                f"/worlds/{slug}/media/scenes/{image_path.name}" if image_path else None
+            ),
             "generated_at": chapter.generated_at,
             "text_model_used": chapter.text_model_used,
-            "image_model_used": chapter.image_model_used
+            "image_model_used": chapter.image_model_used,
         }
 
-        await queue.put({
-            "stage": "complete",
-            "percent": 100,
-            "message": "Chapter complete!",
-            "chapter": chapter_data
-        })
+        await queue.put(
+            {
+                "stage": "complete",
+                "percent": 100,
+                "message": "Chapter complete!",
+                "chapter": chapter_data,
+            }
+        )
 
     except Exception as e:
         import logging
+
         logging.exception(f"Chapter generation failed for job {job_id}")
 
         error_msg = f"{type(e).__name__}: {str(e)}"
@@ -335,11 +371,13 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         logging.error(f"Full traceback: {traceback_str}")
 
         # Send sanitized error to client (no traceback or error details)
-        await queue.put({
-            "stage": "error",
-            "error": "Chapter generation failed. Please check your settings and try again.",
-            "job_id": job_id  # For support reference
-        })
+        await queue.put(
+            {
+                "stage": "error",
+                "error": "Chapter generation failed. Please check your settings and try again.",
+                "job_id": job_id,  # For support reference
+            }
+        )
         logger.error("Chapter generation failed: %s", error_msg)
 
 
@@ -409,6 +447,7 @@ async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionReq
     choice_id = request.choice_id
     if choice_id == "auto":
         import random
+
         choice_id = random.choice(choices).id
 
     # Find the selected choice
@@ -434,13 +473,15 @@ async def select_choice(slug: str, chapter_num: int, request: ChoiceSelectionReq
         "choice": {
             "id": selected_choice.id,
             "text": selected_choice.text,
-            "description": selected_choice.description
-        }
+            "description": selected_choice.description,
+        },
     }
 
 
 @router.put("/{chapter_num}/reroll")
-async def reroll_chapter(slug: str, chapter_num: int, request: Optional[ChapterGenerateRequest] = None):
+async def reroll_chapter(
+    slug: str, chapter_num: int, request: Optional[ChapterGenerateRequest] = None
+):
     """Regenerate text for a specific chapter"""
     try:
         slug = validate_slug(slug)
@@ -465,18 +506,21 @@ async def reroll_chapter(slug: str, chapter_num: int, request: Optional[ChapterG
     return {"job_id": job_id}
 
 
-async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenerateRequest, queue: asyncio.Queue, job_id: str):
+async def run_chapter_reroll(
+    slug: str,
+    chapter_num: int,
+    request: ChapterGenerateRequest,
+    queue: asyncio.Queue,
+    job_id: str,
+):
     """Background task to regenerate a chapter"""
-    import traceback
     import time
+    import traceback
+
     try:
         loop = asyncio.get_event_loop()
 
-        await queue.put({
-            "stage": "init",
-            "percent": 5,
-            "message": "Loading world..."
-        })
+        await queue.put({"stage": "init", "percent": 5, "message": "Loading world..."})
 
         cfg, state, dirs = await loop.run_in_executor(executor, load_world, slug)
 
@@ -490,17 +534,18 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
                 break
 
         if chapter_index is None:
-            await queue.put({
-                "stage": "error",
-                "error": f"Chapter {chapter_num} not found"
-            })
+            await queue.put(
+                {"stage": "error", "error": f"Chapter {chapter_num} not found"}
+            )
             return
 
-        await queue.put({
-            "stage": "text",
-            "percent": 10,
-            "message": "Calling OpenAI API for chapter text..."
-        })
+        await queue.put(
+            {
+                "stage": "text",
+                "percent": 10,
+                "message": "Calling OpenAI API for chapter text...",
+            }
+        )
 
         # Generate new chapter text with smooth progress
         text_start = time.time()
@@ -510,8 +555,8 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             dirs["base"],
             cfg,
             state,
-            request.focus,
-            request.no_images,  # Respect the no_images flag from request
+            not request.no_images,  # make_scene_image: True if not no_images
+            request.chapter_length,
         )
 
         # Send progress updates while waiting
@@ -524,16 +569,22 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             elapsed = time.time() - text_start
             progress_ratio = min(elapsed / estimated_duration, 1.0)
             eased_progress = 1 - (1 - progress_ratio) ** 2
-            current_percent = int(start_percent + (end_percent - start_percent) * eased_progress)
+            current_percent = int(
+                start_percent + (end_percent - start_percent) * eased_progress
+            )
 
-            await queue.put({
-                "stage": "text",
-                "percent": current_percent,
-                "message": f"Chapter text... ({elapsed:.0f}s)"
-            })
+            await queue.put(
+                {
+                    "stage": "text",
+                    "percent": current_percent,
+                    "message": f"Chapter text... ({elapsed:.0f}s)",
+                }
+            )
 
             try:
-                await asyncio.wait_for(asyncio.shield(text_future), timeout=update_interval)
+                await asyncio.wait_for(
+                    asyncio.shield(text_future), timeout=update_interval
+                )
                 break
             except asyncio.TimeoutError:
                 continue
@@ -544,13 +595,20 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
 
         # Override chapter number to match the one we're replacing
         chapter.number = chapter_num
-        chapter.filename = old_chapter_data.get("filename")
+        chapter.filename = old_chapter_data.filename
 
-        await queue.put({
-            "stage": "text",
-            "percent": 89,
-            "message": f"Text generation complete ({text_duration:.1f}s)"
-        })
+        # Set metadata timestamp
+        from datetime import datetime
+
+        chapter.generated_at = datetime.utcnow().isoformat() + "Z"
+
+        await queue.put(
+            {
+                "stage": "text",
+                "percent": 89,
+                "message": f"Text generation complete ({text_duration:.1f}s)",
+            }
+        )
 
         # Generate image if needed
         image_path = None
@@ -559,11 +617,13 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             settings = get_cached_settings()
             regen_image_model = settings.default_image_model
 
-            await queue.put({
-                "stage": "image",
-                "percent": 90,
-                "message": f"Generating image ({regen_image_model})..."
-            })
+            await queue.put(
+                {
+                    "stage": "image",
+                    "percent": 90,
+                    "message": f"Generating image ({regen_image_model})...",
+                }
+            )
 
             # Start image generation with smooth progress
             image_start = time.time()
@@ -574,7 +634,9 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
                 regen_image_model,
                 cfg.style_pack,
                 chapter.scene_prompt,
-                chapter.number
+                chapter.number,
+                "16:9",  # aspect_ratio
+                True,  # bypass_cache - always bypass when regenerating
             )
 
             # Send progress updates while waiting
@@ -587,16 +649,22 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
                 elapsed = time.time() - image_start
                 progress_ratio = min(elapsed / estimated_image_duration, 1.0)
                 eased_progress = 1 - (1 - progress_ratio) ** 2
-                current_percent = int(start_percent + (end_percent - start_percent) * eased_progress)
+                current_percent = int(
+                    start_percent + (end_percent - start_percent) * eased_progress
+                )
 
-                await queue.put({
-                    "stage": "image",
-                    "percent": current_percent,
-                    "message": f"Scene image... ({elapsed:.0f}s)"
-                })
+                await queue.put(
+                    {
+                        "stage": "image",
+                        "percent": current_percent,
+                        "message": f"Scene image... ({elapsed:.0f}s)",
+                    }
+                )
 
                 try:
-                    await asyncio.wait_for(asyncio.shield(image_future), timeout=update_interval)
+                    await asyncio.wait_for(
+                        asyncio.shield(image_future), timeout=update_interval
+                    )
                     break
                 except asyncio.TimeoutError:
                     continue
@@ -605,29 +673,58 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             image_duration = time.time() - image_start
             logger.info("Image generation (reroll) completed: %.2fs", image_duration)
 
-            await queue.put({
-                "stage": "image",
-                "percent": 94,
-                "message": f"Image generation complete ({image_duration:.1f}s)"
-            })
+            await queue.put(
+                {
+                    "stage": "image",
+                    "percent": 94,
+                    "message": f"Image generation complete ({image_duration:.1f}s)",
+                }
+            )
 
-        # Update image model metadata if regenerated
+        await queue.put(
+            {"stage": "saving", "percent": 95, "message": "Saving world state..."}
+        )
+
+        # Preserve important metadata from old chapter
+        from dataclasses import asdict
+
+        old_chapter_dict = (
+            asdict(old_chapter_data)
+            if hasattr(old_chapter_data, "__dict__")
+            else old_chapter_data
+        )
+
+        # Update image metadata if regenerated
         if regen_image_model:
             chapter.image_model_used = regen_image_model
 
-        await queue.put({
-            "stage": "saving",
-            "percent": 95,
-            "message": "Saving world state..."
-        })
-
         # Update the chapter in state
-        state.chapters[chapter_index] = chapter.__dict__
+        state.chapters[chapter_index] = asdict(chapter)
 
         # Save world state
         await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
 
-        from dataclasses import asdict
+        # Find existing scene image if no new one was generated
+        existing_scene_path = None
+        if not image_path:
+            scenes_dir = dirs["base"] / "media" / "scenes"
+            if scenes_dir.exists():
+                # Find most recent scene file for this chapter
+                pattern = f"scene-{chapter_num:04d}-*.png"
+                scene_files = sorted(
+                    scenes_dir.glob(pattern),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                if scene_files:
+                    existing_scene_path = (
+                        f"/worlds/{slug}/media/scenes/{scene_files[0].name}"
+                    )
+                    logger.info(f"🔗 Preserved existing image: {existing_scene_path}")
+                else:
+                    logger.info("⚠️ No existing scene image found")
+
+        # Build chapter data for response, preserving metadata
         chapter_data = {
             "number": chapter.number,
             "title": chapter.title,
@@ -636,20 +733,41 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             "scene_prompt": chapter.scene_prompt,
             "characters_in_scene": chapter.characters_in_scene,
             "choices": [asdict(c) for c in chapter.choices] if chapter.choices else [],
-            "selected_choice_id": chapter.selected_choice_id,
-            "choice_reasoning": chapter.choice_reasoning,
-            "scene": f"/worlds/{slug}/media/scenes/{image_path.name}" if image_path else old_chapter_data.get("scene")
+            "selected_choice_id": old_chapter_dict.get(
+                "selected_choice_id", chapter.selected_choice_id
+            ),
+            "choice_reasoning": old_chapter_dict.get(
+                "choice_reasoning", chapter.choice_reasoning
+            ),
+            "scene": (
+                f"/worlds/{slug}/media/scenes/{image_path.name}"
+                if image_path
+                else existing_scene_path
+            ),
+            "generated_at": chapter.generated_at,
+            "text_model_used": chapter.text_model_used,
+            "image_model_used": (
+                regen_image_model
+                if regen_image_model
+                else old_chapter_dict.get("image_model_used")
+            ),
+            "ai_summary": old_chapter_dict.get(
+                "ai_summary", None
+            ),  # Preserve AI summary
         }
 
-        await queue.put({
-            "stage": "complete",
-            "percent": 100,
-            "message": "Chapter regenerated!",
-            "chapter": chapter_data
-        })
+        await queue.put(
+            {
+                "stage": "complete",
+                "percent": 100,
+                "message": "Chapter regenerated!",
+                "chapter": chapter_data,
+            }
+        )
 
     except Exception as e:
         import logging
+
         logging.exception(f"Chapter reroll failed for job {job_id}")
 
         error_msg = f"{type(e).__name__}: {str(e)}"
@@ -657,12 +775,14 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
         logging.error(f"Full traceback: {traceback_str}")
 
         # Send sanitized error to client (no traceback)
-        await queue.put({
-            "stage": "error",
-            "error": "Chapter regeneration failed. Please check your settings and try again.",
-            "error_type": type(e).__name__,
-            "job_id": job_id  # For support reference
-        })
+        await queue.put(
+            {
+                "stage": "error",
+                "error": "Chapter regeneration failed. Please check your settings and try again.",
+                "error_type": type(e).__name__,
+                "job_id": job_id,  # For support reference
+            }
+        )
         logger.error("Chapter reroll failed: %s", error_msg)
 
 

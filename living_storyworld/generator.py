@@ -6,11 +6,11 @@ import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from .models import WorldConfig, WorldState, Chapter, Choice
-from .presets import PRESETS, DEFAULT_PRESET
 from .config import STYLE_PACKS
-from .settings import load_user_settings, get_api_key_for_provider
+from .models import Chapter, Choice, WorldConfig, WorldState
+from .presets import DEFAULT_PRESET, PRESETS
 from .providers import get_text_provider
+from .settings import get_api_key_for_provider, load_user_settings
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +19,17 @@ def _get_client():
     try:
         from openai import OpenAI  # type: ignore
     except Exception as e:
-        raise RuntimeError("OpenAI SDK not installed. Run: pip install openai>=1.0") from e
+        raise RuntimeError(
+            "OpenAI SDK not installed. Run: pip install openai>=1.0"
+        ) from e
     return OpenAI()
 
 
-def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: str = "medium") -> Tuple[str, list[dict], float]:
-    style = STYLE_PACKS.get(cfg.style_pack, STYLE_PACKS["storybook-ink"])  # textual art bible for images
+def _build_chapter_prompt(
+    cfg: WorldConfig, state: WorldState, chapter_length: str = "medium"
+) -> Tuple[str, list[dict], float]:
+    # textual art bible for images
+    style = STYLE_PACKS.get(cfg.style_pack, STYLE_PACKS["storybook-ink"])
     preset = PRESETS.get(cfg.preset, DEFAULT_PRESET)
 
     # Load global instructions from user settings
@@ -33,12 +38,14 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: s
 
     # Maturity level guidance
     maturity_guidance = {
-        "general": "Keep content appropriate for all ages. Avoid violence, profanity, and mature themes.",
-        "teen": "Keep content appropriate for teen audiences. Mild violence and tension is acceptable, but avoid explicit content.",
-        "mature": "Content may include moderate violence, adult themes, and occasional strong language. Keep sexual content subtle/implied.",
-        "explicit": "Content may include graphic violence, explicit language, and mature sexual themes. Write authentically without censorship."
+        "general": "Write family-friendly content suitable for all ages. Keep themes light and appropriate.",
+        "teen": "Write young adult fiction. Include tension, conflict, and emotional depth appropriate for teen readers.",
+        "mature": "Write adult fiction with mature themes and realistic situations. Use authentic language and explore complex emotional landscapes.",
+        "explicit": "Write unrestricted adult fiction with full creative freedom. Portray mature themes authentically and unflinchingly as serves the story.",
     }
-    maturity_instruction = maturity_guidance.get(cfg.maturity_level, maturity_guidance["general"])
+    maturity_instruction = maturity_guidance.get(
+        cfg.maturity_level, maturity_guidance["general"]
+    )
 
     # Build system message with global + world-specific instructions
     metadata_keys = (
@@ -56,16 +63,16 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: s
         )
 
     sys_parts = [
-        f"Write a compelling chapter that advances the story. "
+        f"This is a fictional story for entertainment purposes only. Write a compelling chapter that advances the story. "
         f"Include metadata as JSON comment with: {metadata_keys} "
         + preset.system_directives,
         f"Maturity: {maturity_instruction}",
         "Keep the story moving with action and exploration. Change locations regularly, avoid long conversations in one place. Characters should be doing things, not just talking.",
         "Make the world feel big. Characters can travel to new places and discover unexpected territories. Each chapter should reveal something new about the world.",
         "Write realistic characters with flaws and contradictions. People can be selfish, make bad choices, or have hidden motives. Not everyone gets redeemed.",
-        "Use fresh, memorable character names. Avoid the most common fantasy names.",
+        "CRITICAL: Use fresh, memorable character names. NEVER use these overused AI names: Elara, Lyra, Aria, Kira, Zara, Seraphina, Theron, Kael, Alaric, Aiden, Eira, Orion. Choose distinctive, unexpected names that fit the world's culture.",
         "Vary each chapter - if you've been in forests recently, go somewhere different. If there was a lot of talking, add more action. Keep the story progressing.",
-        "In metadata, note if the story feels repetitive or has reached a natural ending."
+        "In metadata, note if the story feels repetitive or has reached a natural ending.",
     ]
 
     # Add global instructions if present
@@ -82,37 +89,43 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: s
     story_context = []
     if state.chapters:
         # Get summaries from recent chapters (last 3-4 for focused context without over-anchoring)
-        recent_chapters = state.chapters[-4:] if len(state.chapters) >= 4 else state.chapters
+        recent_chapters = (
+            state.chapters[-4:] if len(state.chapters) >= 4 else state.chapters
+        )
 
         for ch in recent_chapters:
             chapter_info = [f"Chapter {ch.number}: {ch.title}"]
 
             # Use lighter summaries to avoid over-anchoring on recent events
-            if hasattr(ch, 'ai_summary') and ch.ai_summary:
+            if hasattr(ch, "ai_summary") and ch.ai_summary:
                 chapter_info.append(f"{ch.ai_summary}")
             elif ch.summary:
                 chapter_info.append(f"{ch.summary}")
 
             # Include the selected choice for continuity, but skip reasoning to reduce anchor weight
             if ch.selected_choice_id and ch.choices:
-                selected_choice = next((c for c in ch.choices if c.id == ch.selected_choice_id), None)
+                selected_choice = next(
+                    (c for c in ch.choices if c.id == ch.selected_choice_id), None
+                )
                 if selected_choice:
                     chapter_info.append(f"Choice: {selected_choice.text}")
 
-            story_context.append('\n'.join(chapter_info))
+            story_context.append("\n".join(chapter_info))
 
         # Create a chained story progression with broader strokes
         if len(state.chapters) > 4:
             # For longer stories, include brief arc summary
             older_summary = []
             for ch in state.chapters[-8:-4]:  # Earlier chapters
-                if hasattr(ch, 'ai_summary') and ch.ai_summary:
+                if hasattr(ch, "ai_summary") and ch.ai_summary:
                     # Just title and key beat, no details
                     older_summary.append(f"Ch {ch.number} ({ch.title})")
                 elif ch.summary:
                     older_summary.append(f"Ch {ch.number} ({ch.title})")
             if older_summary:
-                story_context.insert(0, "Earlier progression: " + " → ".join(older_summary))
+                story_context.insert(
+                    0, "Earlier progression: " + " → ".join(older_summary)
+                )
 
     world_brief = {
         "title": cfg.title,
@@ -144,18 +157,28 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: s
     if cfg.enable_choices and state.chapters:
         prev_chapter = state.chapters[-1]
         if prev_chapter.selected_choice_id and prev_chapter.choices:
-            selected_choice = next((c for c in prev_chapter.choices if c.id == prev_chapter.selected_choice_id), None)
+            selected_choice = next(
+                (
+                    c
+                    for c in prev_chapter.choices
+                    if c.id == prev_chapter.selected_choice_id
+                ),
+                None,
+            )
             if selected_choice:
-                choice_context = f"READER'S CHOICE (PRIMARY DIRECTIVE): {selected_choice.text}\n\n"
+                choice_context = (
+                    f"READER'S CHOICE (PRIMARY DIRECTIVE): {selected_choice.text}\n\n"
+                )
                 choice_context += "This choice MUST be the central driver of this chapter. Build the narrative directly from the consequences and implications of this decision. Any optional focus/nudges above are secondary to honoring this choice.\n\n"
                 user_parts.append(choice_context)
 
     # Variable chapter length with random variation
     import random
+
     length_config = {
-        "short": (400, 600),    # Base length
+        "short": (400, 600),  # Base length
         "medium": (800, 1200),  # 2x short
-        "long": (1600, 2400)    # 4x short
+        "long": (1600, 2400),  # 4x short
     }
     min_words, max_words = length_config.get(chapter_length, length_config["medium"])
     # Add ±10% random variation for natural feel
@@ -167,9 +190,11 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: s
     metadata_format = '<!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string, '
     metadata_format += '"new_characters": [{id, name, description}], "new_locations": [{id, name, description}]'
     if cfg.enable_choices:
-        metadata_format += ', "choices": [{"id": string, "text": string, "description": string}], '
+        metadata_format += (
+            ', "choices": [{"id": string, "text": string, "description": string}], '
+        )
         metadata_format += '"story_health": {"is_repetitive": bool, "natural_ending_reached": bool, "needs_fresh_direction": bool, "notes": string}'
-    metadata_format += '} -->\n'
+    metadata_format += "} -->\n"
 
     # Special instructions for first chapter
     if state.next_chapter == 1:
@@ -186,22 +211,26 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: s
             "Think: 'opening scene of a good novel' not 'encyclopedia entry'.\n\n"
         )
 
-    user_parts.extend([
-        f"Write Chapter {state.next_chapter}:\n",
-        f"Start with a unique chapter title as H1 (do NOT include 'Chapter {state.next_chapter}' in the title - just the evocative name). ",
-        f"Then write {min_words}-{max_words} words of rich prose emphasizing physical action, movement through spaces, and scene changes. ",
-        "PUSH THE STORY FORWARD - introduce new complications, visit different locations, advance the timeline, reveal new information. ",
-        "Avoid repeating locations or beats from recent chapters. Each chapter should feel like PROGRESS. ",
-        "Minimize static dialogue - have characters talk while doing things, traveling, or exploring. ",
-        "Include vivid sensory detail and a memorable closing beat.\n",
-        f"At top, put: {metadata_format}",
-        "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n",
-        "When creating new_characters, their descriptions should hint at complexity/flaws/contradictions, NOT just surface traits. "
-        "Examples: 'A merchant who smiles too much while calculating debts' not 'A friendly merchant'. "
-        "'A priest haunted by what she did to get here' not 'A devoted priest'. Give them EDGES.\n",
-        f"Art direction (for scene_prompt only): {style}.\n",
-        f"Preset instructions: {preset.text_instructions}"
-    ])
+    user_parts.extend(
+        [
+            f"Write Chapter {state.next_chapter}:\n",
+            f"Start with a unique chapter title as H1 (do NOT include 'Chapter {
+            state.next_chapter}' in the title - just the evocative name). ",
+            f"Then write {min_words}-{max_words} words of rich prose emphasizing physical action, movement through spaces, and scene changes. ",
+            "PUSH THE STORY FORWARD - introduce new complications, visit different locations, advance the timeline, reveal new information. ",
+            "Avoid repeating locations or beats from recent chapters. Each chapter should feel like PROGRESS. ",
+            "Minimize static dialogue - have characters talk while doing things, traveling, or exploring. ",
+            "Include vivid sensory detail and a memorable closing beat.\n",
+            f"At top, put: {metadata_format}",
+            "Include new_characters/new_locations arrays (can be empty if focusing on existing cast). Use kebab-case for IDs.\n",
+            "When creating new_characters, their descriptions should hint at complexity/flaws/contradictions, NOT just surface traits. "
+            "AVOID generic AI names (Elara, Lyra, Aria, Kira, Theron, Kael, etc). Use distinctive names that match the world's culture. "
+            "Examples: 'A merchant who smiles too much while calculating debts' not 'A friendly merchant'. "
+            "'A priest haunted by what she did to get here' not 'A devoted priest'. Give them EDGES.\n",
+            f"Art direction (for scene_prompt only): {style}.\n",
+            f"Preset instructions: {preset.text_instructions}",
+        ]
+    )
 
     user = "".join(user_parts)
 
@@ -232,11 +261,14 @@ def generate_chapter(
 ) -> Chapter:
     # Load settings and get available providers for fallback
     from .settings import get_available_text_providers
+
     settings = load_user_settings()
     available_providers = get_available_text_providers(settings)
 
     if not available_providers:
-        raise ValueError("No text providers configured. Please add API keys in Settings.")
+        raise ValueError(
+            "No text providers configured. Please add API keys in Settings."
+        )
 
     # Try each available provider until one succeeds
     last_error = None
@@ -253,7 +285,12 @@ def generate_chapter(
 
             result = provider.generate(messages, temperature=temp, model=model)
             md = result.content
-            logger.info("Generated chapter using %s (%s), cost: $%.4f", result.provider, result.model, result.estimated_cost)
+            logger.info(
+                "Generated chapter using %s (%s), cost: $%.4f",
+                result.provider,
+                result.model,
+                result.estimated_cost,
+            )
             break  # Success, exit loop
 
         except Exception as e:
@@ -261,30 +298,47 @@ def generate_chapter(
             error_msg = str(e)
 
             # Check if this was a safety filter issue
-            is_safety_block = "safety filter" in error_msg.lower() or "blocked" in error_msg.lower()
+            is_safety_block = (
+                "safety filter" in error_msg.lower() or "blocked" in error_msg.lower()
+            )
 
             if len(available_providers) > 1:
                 # We have fallback options
                 remaining = [p for p in available_providers if p != provider_name]
                 if is_safety_block:
-                    logger.warning("%s blocked content (safety filters). Trying fallback provider: %s", provider_name, remaining[0] if remaining else 'none')
+                    logger.warning(
+                        "%s blocked content (safety filters). Trying fallback provider: %s",
+                        provider_name,
+                        remaining[0] if remaining else "none",
+                    )
                 else:
-                    logger.warning("%s failed: %s. Trying fallback provider: %s", provider_name, error_msg, remaining[0] if remaining else 'none')
+                    logger.warning(
+                        "%s failed: %s. Trying fallback provider: %s",
+                        provider_name,
+                        error_msg,
+                        remaining[0] if remaining else "none",
+                    )
             else:
                 # No fallbacks available
                 if is_safety_block:
-                    raise ValueError(f"Content blocked by {provider_name}'s safety filters. Try regenerating or configure additional text providers in Settings for automatic fallback.")
+                    raise ValueError(
+                        f"Content blocked by {provider_name}'s safety filters. Try regenerating or configure additional text providers in Settings for automatic fallback."
+                    )
                 raise
 
     else:
         # All providers failed
         providers_tried = ", ".join(available_providers)
-        raise ValueError(f"All text providers failed ({providers_tried}). Last error: {last_error}. Configure additional providers in Settings for better reliability.")
+        raise ValueError(
+            f"All text providers failed ({providers_tried}). Last error: {last_error}. Configure additional providers in Settings for better reliability."
+        )
 
     meta = _parse_meta(md)
     scene_prompt = str(meta.get("scene_prompt", "")) if isinstance(meta, dict) else ""
     summary = str(meta.get("summary", "")) if isinstance(meta, dict) else None
-    characters_in_scene = meta.get("characters_in_scene", []) if isinstance(meta, dict) else []
+    characters_in_scene = (
+        meta.get("characters_in_scene", []) if isinstance(meta, dict) else []
+    )
     if not isinstance(characters_in_scene, list):
         characters_in_scene = []
 
@@ -299,7 +353,12 @@ def generate_chapter(
 
             # Log warning if story health issues detected
             if is_repetitive or natural_ending or needs_fresh:
-                logger.info("Story health - Repetitive: %s, Natural End: %s, Needs Fresh: %s", is_repetitive, natural_ending, needs_fresh)
+                logger.info(
+                    "Story health - Repetitive: %s, Natural End: %s, Needs Fresh: %s",
+                    is_repetitive,
+                    natural_ending,
+                    needs_fresh,
+                )
                 if health_notes:
                     logger.info("Story health notes: %s", health_notes)
 
@@ -309,12 +368,18 @@ def generate_chapter(
         choices_data = meta.get("choices", [])
         if isinstance(choices_data, list):
             for choice_dict in choices_data:
-                if isinstance(choice_dict, dict) and "id" in choice_dict and "text" in choice_dict:
-                    choices.append(Choice(
-                        id=str(choice_dict["id"]),
-                        text=str(choice_dict["text"]),
-                        description=str(choice_dict.get("description", ""))
-                    ))
+                if (
+                    isinstance(choice_dict, dict)
+                    and "id" in choice_dict
+                    and "text" in choice_dict
+                ):
+                    choices.append(
+                        Choice(
+                            id=str(choice_dict["id"]),
+                            text=str(choice_dict["text"]),
+                            description=str(choice_dict.get("description", "")),
+                        )
+                    )
 
     # Extract and register new entities
     new_characters = meta.get("new_characters", []) if isinstance(meta, dict) else []
@@ -329,7 +394,7 @@ def generate_chapter(
 
     # Capture actual model used for text generation
     actual_text_model = model
-    if hasattr(result, 'model'):
+    if hasattr(result, "model"):
         actual_text_model = result.model
 
     # Create chapter object
@@ -357,16 +422,19 @@ def generate_chapter(
 
 def _extract_title(md: str) -> Optional[str]:
     import re
+
     for line in md.splitlines():
         if line.strip().startswith("# "):
             title = line.strip("# ").strip()
             # Strip "Chapter X:" or "Chapter X -" prefix if present
-            title = re.sub(r'^Chapter\s+\d+\s*[:\-]\s*', '', title, flags=re.IGNORECASE)
+            title = re.sub(r"^Chapter\s+\d+\s*[:\-]\s*", "", title, flags=re.IGNORECASE)
             return title
     return None
 
 
-def _write_scene_request(base_dir: Path, chapter_num: int, style_pack: str, scene_prompt: str) -> None:
+def _write_scene_request(
+    base_dir: Path, chapter_num: int, style_pack: str, scene_prompt: str
+) -> None:
     reqs = base_dir / "media" / "scene_requests.json"
     data = []
     if reqs.exists():
@@ -374,22 +442,30 @@ def _write_scene_request(base_dir: Path, chapter_num: int, style_pack: str, scen
             data = json.loads(reqs.read_text(encoding="utf-8"))
         except Exception:
             data = []
-    data.append({
-        "chapter": chapter_num,
-        "style_pack": style_pack,
-        "prompt": scene_prompt,
-    })
+    data.append(
+        {
+            "chapter": chapter_num,
+            "style_pack": style_pack,
+            "prompt": scene_prompt,
+        }
+    )
     reqs.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
-def _register_new_entities(state: WorldState, new_characters: list, new_locations: list) -> None:
+def _register_new_entities(
+    state: WorldState, new_characters: list, new_locations: list
+) -> None:
     """Register new characters and locations from chapter metadata into world state."""
     from .models import Character, Location
 
     # Add new characters
     if isinstance(new_characters, list):
         for char_data in new_characters:
-            if isinstance(char_data, dict) and "id" in char_data and "name" in char_data:
+            if (
+                isinstance(char_data, dict)
+                and "id" in char_data
+                and "name" in char_data
+            ):
                 char_id = str(char_data["id"])
                 if char_id not in state.characters:
                     char = Character(
@@ -397,7 +473,7 @@ def _register_new_entities(state: WorldState, new_characters: list, new_location
                         name=str(char_data.get("name", char_id)),
                         description=str(char_data.get("description", "")),
                         epithet=str(char_data.get("epithet", "")),
-                        traits=char_data.get("traits", [])
+                        traits=char_data.get("traits", []),
                     )
                     state.characters[char_id] = char.__dict__
                     logger.debug("Added new character: %s (%s)", char.name, char_id)
@@ -412,17 +488,14 @@ def _register_new_entities(state: WorldState, new_characters: list, new_location
                         id=loc_id,
                         name=str(loc_data.get("name", loc_id)),
                         description=str(loc_data.get("description", "")),
-                        tags=loc_data.get("tags", [])
+                        tags=loc_data.get("tags", []),
                     )
                     state.locations[loc_id] = loc.__dict__
                     logger.debug("Added new location: %s (%s)", loc.name, loc_id)
 
 
 async def infer_choice_reasoning(
-    choice_text: str,
-    chapter_summary: str,
-    world_theme: str,
-    cfg: WorldConfig
+    choice_text: str, chapter_summary: str, world_theme: str, cfg: WorldConfig
 ) -> str:
     """Use LLM to infer why the reader chose this option.
 
@@ -455,8 +528,11 @@ Reader's Choice: {choice_text}
 Reasoning:"""
 
     messages = [
-        {"role": "system", "content": "You are a narrative analyst. Provide concise, insightful reasoning about story choices."},
-        {"role": "user", "content": prompt}
+        {
+            "role": "system",
+            "content": "You are a narrative analyst. Provide concise, insightful reasoning about story choices.",
+        },
+        {"role": "user", "content": prompt},
     ]
 
     try:
@@ -471,10 +547,7 @@ Reasoning:"""
         return f"The reader chose to {choice_text.lower()}"
 
 
-async def generate_chapter_summary(
-    chapter_content: str,
-    cfg: WorldConfig
-) -> str:
+async def generate_chapter_summary(chapter_content: str, cfg: WorldConfig) -> str:
     """Use LLM to generate a concise summary of chapter events for story continuity.
 
     Args:
@@ -497,10 +570,11 @@ async def generate_chapter_summary(
 
     # Extract just the story content (remove HTML/metadata)
     import re
+
     # Remove HTML metadata comments
-    content_clean = re.sub(r'<!--.*?-->', '', chapter_content, flags=re.DOTALL)
+    content_clean = re.sub(r"<!--.*?-->", "", chapter_content, flags=re.DOTALL)
     # Remove HTML tags
-    content_clean = re.sub(r'<[^>]+>', '', content_clean)
+    content_clean = re.sub(r"<[^>]+>", "", content_clean)
     # Get first ~1000 characters for context
     content_sample = content_clean[:1000]
 
@@ -512,8 +586,11 @@ Chapter content:
 Summary:"""
 
     messages = [
-        {"role": "system", "content": "You are a story editor. Create concise, accurate summaries that capture the essence of what happens in each chapter."},
-        {"role": "user", "content": prompt}
+        {
+            "role": "system",
+            "content": "You are a story editor. Create concise, accurate summaries that capture the essence of what happens in each chapter.",
+        },
+        {"role": "user", "content": prompt},
     ]
 
     try:

@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
 
+logger = logging.getLogger(__name__)
 
-def _init_api_key(env_var: str, provider_name: str, api_key: Optional[str] = None) -> str:
+
+def _init_api_key(
+    env_var: str, provider_name: str, api_key: Optional[str] = None
+) -> str:
     """Get API key from parameter or environment variable."""
     key = api_key or os.environ.get(env_var)
     if not key:
@@ -22,6 +27,7 @@ def _init_api_key(env_var: str, provider_name: str, api_key: Optional[str] = Non
 @dataclass
 class TextGenerationResult:
     """Result from text generation."""
+
     content: str
     provider: str
     model: str
@@ -56,7 +62,9 @@ class TextProvider(ABC):
         pass
 
     @abstractmethod
-    def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
+    def estimate_cost(
+        self, messages: list[dict[str, str]], model: Optional[str] = None
+    ) -> float:
         """Estimate cost in USD for generating with these messages."""
         pass
 
@@ -90,11 +98,15 @@ class OpenAICompatibleProvider(TextProvider):
         try:
             from openai import OpenAI
         except ImportError as e:
-            raise RuntimeError("OpenAI SDK not installed. Run: pip install openai>=1.0") from e
+            raise RuntimeError(
+                "OpenAI SDK not installed. Run: pip install openai>=1.0"
+            ) from e
 
         base_url = self.get_base_url()
         if base_url:
-            client = OpenAI(api_key=self.api_key, base_url=base_url)  # pylint: disable=no-member
+            client = OpenAI(
+                api_key=self.api_key, base_url=base_url
+            )  # pylint: disable=no-member
         else:
             client = OpenAI(api_key=self.api_key)  # pylint: disable=no-member
 
@@ -141,16 +153,20 @@ class OpenAIProvider(TextProvider):
         temperature: float = 1.0,
         model: Optional[str] = None,
     ) -> TextGenerationResult:
-        from ..exceptions import handle_api_error, InvalidModelError
+        from ..exceptions import InvalidModelError, handle_api_error
 
         # VALIDATION: Temperature bounds
         if not 0.0 <= temperature <= 2.0:
-            raise ValueError(f"Temperature must be between 0.0 and 2.0, got {temperature}")
+            raise ValueError(
+                f"Temperature must be between 0.0 and 2.0, got {temperature}"
+            )
 
         try:
             from openai import OpenAI
         except ImportError as e:
-            raise RuntimeError("OpenAI SDK not installed. Run: pip install openai>=1.0") from e
+            raise RuntimeError(
+                "OpenAI SDK not installed. Run: pip install openai>=1.0"
+            ) from e
 
         client = OpenAI(api_key=self.api_key)
         model_name = model or self.get_default_model()
@@ -158,6 +174,22 @@ class OpenAIProvider(TextProvider):
         # VALIDATION: Model name
         if model_name not in self.ALLOWED_MODELS:
             raise InvalidModelError("OpenAI", model_name, list(self.ALLOWED_MODELS))
+
+        # VALIDATION: Model-specific temperature constraints
+        # Some OpenAI models only support specific temperature values
+        if "gpt-3.5-turbo" in model_name and temperature != 1:
+            logger.warning(
+                "OpenAI model %s only supports temperature=1, adjusting from %s",
+                model_name,
+                temperature,
+            )
+            temperature = 1
+        elif temperature > 2:
+            logger.warning(
+                "OpenAI models support max temperature=2, adjusting from %s",
+                temperature,
+            )
+            temperature = 2
 
         try:
             resp = client.chat.completions.create(
@@ -182,7 +214,9 @@ class OpenAIProvider(TextProvider):
     def get_default_model(self) -> str:
         return "gpt-5-mini"
 
-    def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
+    def estimate_cost(
+        self, messages: list[dict[str, str]], model: Optional[str] = None
+    ) -> float:
         """Rough cost estimate based on typical chapter length."""
         # Very rough approximation: ~1000 input tokens, ~1000 output tokens
         # gpt-4o-mini: $0.150/1M input, $0.600/1M output
@@ -215,7 +249,9 @@ class TogetherAIProvider(OpenAICompatibleProvider):
     def get_default_model(self) -> str:
         return "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
 
-    def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
+    def estimate_cost(
+        self, messages: list[dict[str, str]], model: Optional[str] = None
+    ) -> float:
         """Together AI pricing varies by model."""
         model_name = model or self.get_default_model()
         # Llama 3.1 70B: $0.88/1M input, $0.88/1M output (approximate)
@@ -271,11 +307,13 @@ class HuggingFaceProvider(TextProvider):
                 "temperature": temperature,
                 "max_new_tokens": 1000,
                 "return_full_text": False,
-            }
+            },
         }
 
         try:
-            response = requests.post(api_url, headers=headers, json=payload, timeout=120)
+            response = requests.post(
+                api_url, headers=headers, json=payload, timeout=120
+            )
 
             # Handle rate limiting
             if response.status_code == 429:
@@ -298,7 +336,9 @@ class HuggingFaceProvider(TextProvider):
                         f"Model {model_name} is loading. Please wait 20-30 seconds and try again. "
                         "HuggingFace models need to warm up on first use."
                     )
-                raise RuntimeError(f"HuggingFace service temporarily unavailable: {error_data}")
+                raise RuntimeError(
+                    f"HuggingFace service temporarily unavailable: {error_data}"
+                )
 
             response.raise_for_status()
 
@@ -340,7 +380,9 @@ class HuggingFaceProvider(TextProvider):
     def get_default_model(self) -> str:
         return "mistralai/Mistral-7B-Instruct-v0.3"
 
-    def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
+    def estimate_cost(
+        self, messages: list[dict[str, str]], model: Optional[str] = None
+    ) -> float:
         """Hugging Face Inference API is free (rate-limited)."""
         return 0.0
 
@@ -365,7 +407,9 @@ class GroqProvider(OpenAICompatibleProvider):
     def get_default_model(self) -> str:
         return "llama-3.3-70b-versatile"
 
-    def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
+    def estimate_cost(
+        self, messages: list[dict[str, str]], model: Optional[str] = None
+    ) -> float:
         """Groq has free tier with rate limits."""
         # Groq charges per token: $0.59/1M input, $0.79/1M output for Llama 3.3 70B
         model_name = model or self.get_default_model()
@@ -393,9 +437,13 @@ class OpenRouterProvider(OpenAICompatibleProvider):
         return "https://openrouter.ai/api/v1"
 
     def get_default_model(self) -> str:
-        return "z-ai/glm-4.6"  # GLM-4.6 with 200K context, advanced reasoning and coding
+        return (
+            "z-ai/glm-4.6"  # GLM-4.6 with 200K context, advanced reasoning and coding
+        )
 
-    def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
+    def estimate_cost(
+        self, messages: list[dict[str, str]], model: Optional[str] = None
+    ) -> float:
         """OpenRouter pricing varies by model."""
         model_name = model or self.get_default_model()
         # GLM-4.6: ~$0.15/1M input, ~$0.60/1M output (15% cheaper than GLM-4-Plus)
@@ -451,10 +499,7 @@ class GeminiProvider(TextProvider):
         gemini_messages = []
         for msg in messages:
             role = "user" if msg["role"] == "user" else "model"
-            gemini_messages.append({
-                "role": role,
-                "parts": [msg["content"]]
-            })
+            gemini_messages.append({"role": role, "parts": [msg["content"]]})
 
         model_instance = genai.GenerativeModel(model_name)
 
@@ -463,26 +508,37 @@ class GeminiProvider(TextProvider):
         if messages and messages[0]["role"] == "system":
             system_content = messages[0]["content"]
             if len(gemini_messages) > 1:
-                gemini_messages[1]["parts"][0] = f"{system_content}\n\n{gemini_messages[1]['parts'][0]}"
+                gemini_messages[1]["parts"][
+                    0
+                ] = f"{system_content}\n\n{
+                    gemini_messages[1]['parts'][0]}"
                 gemini_messages = gemini_messages[1:]  # Remove the system message
 
         response = model_instance.generate_content(
             gemini_messages,
             generation_config={
                 "temperature": temperature,
-            }
+            },
         )
 
         # Check if response was blocked by safety filters
         if not response.parts:
             # finish_reason: 1=SAFETY, 2=RECITATION, 3=OTHER
-            finish_reason = response.candidates[0].finish_reason if response.candidates else None
+            finish_reason = (
+                response.candidates[0].finish_reason if response.candidates else None
+            )
             if finish_reason == 1:
-                raise ValueError("Content was blocked by Gemini's safety filters. Try regenerating with a different prompt or adjusting the maturity level/world instructions.")
+                raise ValueError(
+                    "Content was blocked by Gemini's safety filters. Try regenerating with a different prompt or adjusting the maturity level/world instructions."
+                )
             elif finish_reason == 2:
-                raise ValueError("Content was blocked due to recitation concerns. Try regenerating.")
+                raise ValueError(
+                    "Content was blocked due to recitation concerns. Try regenerating."
+                )
             else:
-                raise ValueError(f"Content generation failed (finish_reason={finish_reason}). Please try again.")
+                raise ValueError(
+                    f"Content generation failed (finish_reason={finish_reason}). Please try again."
+                )
 
         content = response.text
         cost = self.estimate_cost(messages, model_name)
@@ -497,7 +553,9 @@ class GeminiProvider(TextProvider):
     def get_default_model(self) -> str:
         return "gemini-2.5-flash"
 
-    def estimate_cost(self, messages: list[dict[str, str]], model: Optional[str] = None) -> float:
+    def estimate_cost(
+        self, messages: list[dict[str, str]], model: Optional[str] = None
+    ) -> float:
         """Gemini Flash is free for up to 15 requests/minute, 1500 requests/day."""
         # Flash models are free tier
         model_name = model or self.get_default_model()
@@ -515,7 +573,9 @@ class GeminiProvider(TextProvider):
         return True
 
 
-def get_text_provider(provider_name: str, api_key: Optional[str] = None) -> TextProvider:
+def get_text_provider(
+    provider_name: str, api_key: Optional[str] = None
+) -> TextProvider:
     """Factory function to get a text provider by name.
 
     Args:

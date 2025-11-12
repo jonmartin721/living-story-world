@@ -28,11 +28,27 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install ruff
+        pip install ruff flake8 black pyflakes isort mypy
 
     - name: Lint with ruff
       run: |
         ruff check living_storyworld/
+
+    - name: Lint with flake8
+      run: |
+        flake8 living_storyworld/ --max-line-length=100 --ignore=E203,W503,E701
+
+    - name: Check with pyflakes (undefined imports)
+      run: |
+        pyflakes living_storyworld/
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff living_storyworld/
+
+    - name: Type check with mypy
+      run: |
+        mypy living_storyworld/ --ignore-missing-imports --no-strict-optional || true
 
     - name: Run tests
       run: |

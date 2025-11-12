@@ -1,9 +1,10 @@
 """Desktop application launcher using PyWebView."""
 
+import socket
+import sys
 import threading
 import time
-import sys
-import socket
+
 import uvicorn
 import webview
 
@@ -30,10 +31,7 @@ def is_server_ready(port: int, timeout: int = 10) -> bool:
 def start_server(port: int = 8001):
     """Start the FastAPI server in a background thread."""
     config = uvicorn.Config(
-        "living_storyworld.webapp:app",
-        host="127.0.0.1",
-        port=port,
-        log_level="warning"
+        "living_storyworld.webapp:app", host="127.0.0.1", port=port, log_level="warning"
     )
     server = Server(config=config)
 
@@ -59,7 +57,7 @@ def launch_desktop(port: int = 8001):
         print(f"✓ Server started on http://127.0.0.1:{port}")
     except Exception as e:
         print(f"ERROR: Failed to start server: {e}")
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             input("Press Enter to exit...")
         sys.exit(1)
 
@@ -72,32 +70,34 @@ def launch_desktop(port: int = 8001):
             "Living Storyworld",
             url,
             width=1280,
-            height=800,
+            height=1000,
             resizable=True,
-            min_size=(800, 600)
+            min_size=(800, 600),
         )
         print("Starting webview...")
 
         # Use edge on Windows, auto-detect on other platforms
-        gui = 'edgechromium' if sys.platform == 'win32' else None
+        gui = "edgechromium" if sys.platform == "win32" else None
         webview.start(gui=gui)
 
     except Exception as e:
         print(f"ERROR: Failed to start webview: {e}")
         print(f"Error type: {type(e).__name__}")
 
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             # On Windows, show full traceback for debugging
             import traceback
+
             traceback.print_exc()
 
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("Fallback: Opening in browser instead...")
-        if sys.platform == 'linux':
+        if sys.platform == "linux":
             print("(Linux desktop mode requires GTK - using browser)")
-        print("="*50)
+        print("=" * 50)
 
         import webbrowser
+
         time.sleep(1)
         webbrowser.open(url)
         print(f"✓ Browser opened to {url}")
@@ -110,7 +110,7 @@ def launch_desktop(port: int = 8001):
             print("\nShutting down...")
     finally:
         # Cleanup
-        if hasattr(server, 'should_exit'):
+        if hasattr(server, "should_exit"):
             server.should_exit = True
 
     sys.exit(0)

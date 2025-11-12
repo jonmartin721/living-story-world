@@ -31,8 +31,9 @@ class WorldResponse(BaseModel):
 def _generate_random_theme() -> str:
     """Generate a random theme using OpenAI"""
     try:
-        from openai import OpenAI
         import os
+
+        from openai import OpenAI
 
         client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
@@ -41,15 +42,15 @@ def _generate_random_theme() -> str:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a creative writing assistant. Generate unique, evocative themes for narrative storyworlds. Be creative, poetic, and specific. Each theme should be one concise sentence describing an interesting setting or concept."
+                    "content": "You are a creative writing assistant. Generate unique, evocative themes for narrative storyworlds. Be creative, poetic, and specific. Each theme should be one concise sentence describing an interesting setting or concept.",
                 },
                 {
                     "role": "user",
-                    "content": "Generate one unique and creative theme for a storyworld. Make it vivid and specific. Just the theme, no explanation."
-                }
+                    "content": "Generate one unique and creative theme for a storyworld. Make it vivid and specific. Just the theme, no explanation.",
+                },
             ],
             temperature=1.2,
-            max_tokens=50
+            max_tokens=50,
         )
 
         theme = response.choices[0].message.content.strip()
@@ -60,6 +61,7 @@ def _generate_random_theme() -> str:
     except Exception:
         # Fallback themes if API fails
         import random
+
         fallbacks = [
             "A city of floating gardens suspended in eternal twilight",
             "Underground libraries carved from crystalline caverns",
@@ -75,18 +77,34 @@ def _generate_random_world() -> dict:
     try:
         import random
         import time
-        from ..settings import load_user_settings, get_api_key_for_provider
+
         from ..providers import get_text_provider
+        from ..settings import get_api_key_for_provider, load_user_settings
 
         # Pre-select preset and style pack for guaranteed variety
         presets = [
-            "cozy-adventure", "noir-mystery", "epic-fantasy", "solarpunk-explorer",
-            "gothic-horror", "space-opera", "slice-of-life", "cosmic-horror",
-            "cyberpunk-noir", "whimsical-fairy-tale", "post-apocalyptic", "historical-intrigue"
+            "cozy-adventure",
+            "noir-mystery",
+            "epic-fantasy",
+            "solarpunk-explorer",
+            "gothic-horror",
+            "space-opera",
+            "slice-of-life",
+            "cosmic-horror",
+            "cyberpunk-noir",
+            "whimsical-fairy-tale",
+            "post-apocalyptic",
+            "historical-intrigue",
         ]
         style_packs = [
-            "storybook-ink", "watercolor-dream", "pixel-rpg", "comic-book",
-            "noir-sketch", "art-nouveau", "oil-painting", "lowpoly-iso"
+            "storybook-ink",
+            "watercolor-dream",
+            "pixel-rpg",
+            "comic-book",
+            "noir-sketch",
+            "art-nouveau",
+            "oil-painting",
+            "lowpoly-iso",
         ]
         maturity_levels = ["general", "teen", "mature", "explicit"]
 
@@ -95,9 +113,7 @@ def _generate_random_world() -> dict:
         selected_style = random.choice(style_packs)
         # Weighted random for maturity - favor general/teen
         selected_maturity = random.choices(
-            maturity_levels,
-            weights=[50, 35, 12, 3],  # Heavily favor general/teen
-            k=1
+            maturity_levels, weights=[50, 35, 12, 3], k=1  # Heavily favor general/teen
         )[0]
 
         # Add entropy to the prompt to force variation
@@ -111,7 +127,9 @@ def _generate_random_world() -> dict:
 
         # If no API key for configured provider, fallback to OpenAI
         if not api_key:
-            logger.warning("No API key for %s, falling back to OpenAI", text_provider_name)
+            logger.warning(
+                "No API key for %s, falling back to OpenAI", text_provider_name
+            )
             text_provider_name = "openai"
             api_key = get_api_key_for_provider("openai", settings)
             model = "gpt-4o-mini"
@@ -148,12 +166,12 @@ Return a JSON object with these fields:
 - theme: One sentence describing the world's core concept - be specific and vivid, matching the {selected_preset} style
 - memory: A short paragraph (2-4 sentences) of essential world lore/backstory with specific details that establish the setting, atmosphere, and key elements suitable for {selected_maturity} audiences
 
-Make everything cohesive with the selected preset and engaging. Most concepts should feel like something people would want to read."""
+Make everything cohesive with the selected preset and engaging. Most concepts should feel like something people would want to read.""",
             },
             {
                 "role": "user",
-                "content": f"Generate one engaging story world concept for the {selected_preset} genre. Variation seed: {random_seed}. Return ONLY valid JSON with title, theme, and memory fields. Nothing else."
-            }
+                "content": f"Generate one engaging story world concept for the {selected_preset} genre. Variation seed: {random_seed}. Return ONLY valid JSON with title, theme, and memory fields. Nothing else.",
+            },
         ]
 
         # Generate using the provider
@@ -161,11 +179,11 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
 
         # Extract JSON from response (might be wrapped in markdown code blocks)
         content = result.content.strip()
-        if content.startswith('```json'):
+        if content.startswith("```json"):
             content = content[7:]  # Remove ```json
-        if content.startswith('```'):
+        if content.startswith("```"):
             content = content[3:]  # Remove ```
-        if content.endswith('```'):
+        if content.endswith("```"):
             content = content[:-3]  # Remove trailing ```
         content = content.strip()
 
@@ -181,13 +199,20 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
             "memory": data.get("memory", ""),
         }
 
-        logger.info("Generated random world via %s [%s/%s]: %s", text_provider_name, selected_preset, selected_style, world_result['title'])
+        logger.info(
+            "Generated random world via %s [%s/%s]: %s",
+            text_provider_name,
+            selected_preset,
+            selected_style,
+            world_result["title"],
+        )
         return world_result
 
     except Exception as e:
         logger.warning("Random world generation failed, using fallback: %s", e)
         # Fallback worlds with balanced distribution
         import random
+
         fallbacks = [
             # Familiar concepts (50%)
             {
@@ -196,7 +221,7 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
                 "style_pack": "watercolor-dream",
                 "preset": "cozy-adventure",
                 "maturity_level": "general",
-                "memory": "Silverport sits at the crossroads of three continents, where exotic spices, enchanted goods, and rare artifacts change hands daily. The five great trading companies maintain a delicate balance of power, each with their own fleet, secrets, and ambitions. Young merchants apprentice under guild masters, learning not just commerce but navigation, diplomacy, and the art of spotting a cursed trinket from a genuine treasure."
+                "memory": "Silverport sits at the crossroads of three continents, where exotic spices, enchanted goods, and rare artifacts change hands daily. The five great trading companies maintain a delicate balance of power, each with their own fleet, secrets, and ambitions. Young merchants apprentice under guild masters, learning not just commerce but navigation, diplomacy, and the art of spotting a cursed trinket from a genuine treasure.",
             },
             {
                 "title": "Academy of Stars",
@@ -204,7 +229,7 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
                 "style_pack": "storybook-ink",
                 "preset": "epic-fantasy",
                 "maturity_level": "general",
-                "memory": "The Academy stands on a floating island, its towers reaching toward the sky. Students are sorted into four houses based on their primary element: Fire, Water, Earth, or Air. The Grand Library holds thousands of spellbooks, some helpful, some dangerous, and a few that are strictly forbidden. This year, strange magical disturbances suggest something ancient is awakening beneath the school."
+                "memory": "The Academy stands on a floating island, its towers reaching toward the sky. Students are sorted into four houses based on their primary element: Fire, Water, Earth, or Air. The Grand Library holds thousands of spellbooks, some helpful, some dangerous, and a few that are strictly forbidden. This year, strange magical disturbances suggest something ancient is awakening beneath the school.",
             },
             {
                 "title": "The Wandering Inn",
@@ -212,7 +237,7 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
                 "style_pack": "pixel-rpg",
                 "preset": "slice-of-life",
                 "maturity_level": "general",
-                "memory": "The Crossroads Inn never stays in one place. Each sunrise it materializes somewhere new—a snowy mountain pass, a desert oasis, a bustling city square. The innkeeper welcomes all travelers, whether they're adventurers, merchants, or refugees from collapsing worlds. Regular patrons have learned to follow the signs: a blue lantern, a crow's call, the smell of fresh bread. Inside, the food is always warm, the beds always comfortable, and strangers become friends over shared tales."
+                "memory": "The Crossroads Inn never stays in one place. Each sunrise it materializes somewhere new—a snowy mountain pass, a desert oasis, a bustling city square. The innkeeper welcomes all travelers, whether they're adventurers, merchants, or refugees from collapsing worlds. Regular patrons have learned to follow the signs: a blue lantern, a crow's call, the smell of fresh bread. Inside, the food is always warm, the beds always comfortable, and strangers become friends over shared tales.",
             },
             {
                 "title": "Starship Horizon",
@@ -220,9 +245,8 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
                 "style_pack": "lowpoly-iso",
                 "preset": "space-opera",
                 "maturity_level": "teen",
-                "memory": "The Horizon has been traveling for three generations, its 5,000 inhabitants living in rotating habitats while seeking a new Earth. The ship's crew discovers strange phenomena: abandoned alien stations, resource-rich asteroids, and signals that might be first contact. As resources dwindle and factions form, the captain must balance exploration with survival, all while the ship's AI begins displaying unexpected behaviors."
+                "memory": "The Horizon has been traveling for three generations, its 5,000 inhabitants living in rotating habitats while seeking a new Earth. The ship's crew discovers strange phenomena: abandoned alien stations, resource-rich asteroids, and signals that might be first contact. As resources dwindle and factions form, the captain must balance exploration with survival, all while the ship's AI begins displaying unexpected behaviors.",
             },
-
             # Interesting with a twist (30%)
             {
                 "title": "The Library of Lost Voices",
@@ -230,7 +254,7 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
                 "style_pack": "art-nouveau",
                 "preset": "whimsical-fairy-tale",
                 "maturity_level": "general",
-                "memory": "When a story is completely forgotten by the world, it appears in the Library—characters, settings, and all. The Archivists maintain this impossible place, helping faded heroes and villains find new readers before they dissolve entirely. But something is wrong: stories are vanishing faster than ever, and some characters are rewriting themselves, desperate to be remembered at any cost."
+                "memory": "When a story is completely forgotten by the world, it appears in the Library—characters, settings, and all. The Archivists maintain this impossible place, helping faded heroes and villains find new readers before they dissolve entirely. But something is wrong: stories are vanishing faster than ever, and some characters are rewriting themselves, desperate to be remembered at any cost.",
             },
             {
                 "title": "Resonance City",
@@ -238,9 +262,8 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
                 "style_pack": "comic-book",
                 "preset": "solarpunk-explorer",
                 "maturity_level": "teen",
-                "memory": "Resonance was built on a frequency anomaly where sound waves can reshape matter. Musicians aren't just artists—they're engineers, healers, and warriors. The city hums with constant melody, from the bass rumble of the foundry-orchestras to the delicate chimes of the healing wards. But beyond the city walls lies the Dead Zone, where all sound is swallowed by an expanding silence that erases whatever it touches."
+                "memory": "Resonance was built on a frequency anomaly where sound waves can reshape matter. Musicians aren't just artists—they're engineers, healers, and warriors. The city hums with constant melody, from the bass rumble of the foundry-orchestras to the delicate chimes of the healing wards. But beyond the city walls lies the Dead Zone, where all sound is swallowed by an expanding silence that erases whatever it touches.",
             },
-
             # Unusual (15%)
             {
                 "title": "The Gardeners",
@@ -248,9 +271,8 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
                 "style_pack": "watercolor-dream",
                 "preset": "cosmic-horror",
                 "maturity_level": "teen",
-                "memory": "The Gardeners move between worlds like farmers tending crops, pruning timelines, planting possibilities, and harvesting destinies. They exist outside causality, appearing as whatever form brings comfort. As an apprentice, you're learning to see reality as they do: a living, growing thing that needs care. But some Gardens are diseased, some have gone wild, and some are being invaded by something the Gardeners won't name."
+                "memory": "The Gardeners move between worlds like farmers tending crops, pruning timelines, planting possibilities, and harvesting destinies. They exist outside causality, appearing as whatever form brings comfort. As an apprentice, you're learning to see reality as they do: a living, growing thing that needs care. But some Gardens are diseased, some have gone wild, and some are being invaded by something the Gardeners won't name.",
             },
-
             # Outlandish (5%)
             {
                 "title": "The Dreaming City",
@@ -258,7 +280,7 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
                 "style_pack": "oil-painting",
                 "preset": "noir-mystery",
                 "maturity_level": "mature",
-                "memory": "Every night, millions of dreamers contribute to the City's existence—a skyscraper from Tokyo, a cafe from Paris, a park from memories of childhood. The permanent residents are those who've learned to never fully wake, navigating the shifting architecture and investigating crimes that blur the line between dream and reality. But recently, nightmares have been taking physical form, and some dreamers aren't waking up at all."
+                "memory": "Every night, millions of dreamers contribute to the City's existence—a skyscraper from Tokyo, a cafe from Paris, a park from memories of childhood. The permanent residents are those who've learned to never fully wake, navigating the shifting architecture and investigating crimes that blur the line between dream and reality. But recently, nightmares have been taking physical form, and some dreamers aren't waking up at all.",
             },
         ]
         return random.choice(fallbacks)

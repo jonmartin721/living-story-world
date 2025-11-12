@@ -1,28 +1,35 @@
 from __future__ import annotations
 
 import os
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
 from typing import Optional
 
-from ..settings import load_user_settings, save_user_settings, UserSettings
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+from ..settings import UserSettings, load_user_settings, save_user_settings
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 # Configuration for API keys: (settings_attr, env_var, display_name, prefix)
 API_KEY_CONFIG = {
-    'openai': ('openai_api_key', 'OPENAI_API_KEY', 'OpenAI', 'sk-'),
-    'together': ('together_api_key', 'TOGETHER_API_KEY', 'Together AI', None),
-    'huggingface': ('huggingface_api_key', 'HUGGINGFACE_API_KEY', 'HuggingFace', 'hf_'),
-    'groq': ('groq_api_key', 'GROQ_API_KEY', 'Groq', 'gsk_'),
-    'openrouter': ('openrouter_api_key', 'OPENROUTER_API_KEY', 'OpenRouter', 'sk-or-'),
-    'gemini': ('gemini_api_key', 'GEMINI_API_KEY', 'Gemini', None),
-    'replicate': ('replicate_api_token', 'REPLICATE_API_TOKEN', 'Replicate', 'r8_'),
-    'fal': ('fal_api_key', 'FAL_KEY', 'FAL', None),
+    "openai": ("openai_api_key", "OPENAI_API_KEY", "OpenAI", "sk-"),
+    "together": ("together_api_key", "TOGETHER_API_KEY", "Together AI", None),
+    "huggingface": ("huggingface_api_key", "HUGGINGFACE_API_KEY", "HuggingFace", "hf_"),
+    "groq": ("groq_api_key", "GROQ_API_KEY", "Groq", "gsk_"),
+    "openrouter": ("openrouter_api_key", "OPENROUTER_API_KEY", "OpenRouter", "sk-or-"),
+    "gemini": ("gemini_api_key", "GEMINI_API_KEY", "Gemini", None),
+    "replicate": ("replicate_api_token", "REPLICATE_API_TOKEN", "Replicate", "r8_"),
+    "fal": ("fal_api_key", "FAL_KEY", "FAL", None),
 }
 
 
-def validate_api_key(key: str, provider: str, prefix: Optional[str] = None, min_length: int = 20, max_length: int = 200) -> str:
+def validate_api_key(
+    key: str,
+    provider: str,
+    prefix: Optional[str] = None,
+    min_length: int = 20,
+    max_length: int = 200,
+) -> str:
     """Validate API key format.
 
     Args:
@@ -41,30 +48,33 @@ def validate_api_key(key: str, provider: str, prefix: Optional[str] = None, min_
     key = key.strip()
 
     if not key:
-        raise HTTPException(status_code=400, detail=f"{provider} API key cannot be empty")
+        raise HTTPException(
+            status_code=400, detail=f"{provider} API key cannot be empty"
+        )
 
     if len(key) < min_length:
         raise HTTPException(
             status_code=400,
-            detail=f"{provider} API key too short (minimum {min_length} characters)"
+            detail=f"{provider} API key too short (minimum {min_length} characters)",
         )
 
     if len(key) > max_length:
         raise HTTPException(
             status_code=400,
-            detail=f"{provider} API key too long (maximum {max_length} characters)"
+            detail=f"{provider} API key too long (maximum {max_length} characters)",
         )
 
     if prefix and not key.startswith(prefix):
         raise HTTPException(
-            status_code=400,
-            detail=f"{provider} API key must start with '{prefix}'"
+            status_code=400, detail=f"{provider} API key must start with '{prefix}'"
         )
 
     return key
 
 
-def check_api_key_exists(settings: UserSettings, settings_attr: str, env_var: str) -> bool:
+def check_api_key_exists(
+    settings: UserSettings, settings_attr: str, env_var: str
+) -> bool:
     """Check if an API key exists in settings or environment."""
     return bool(getattr(settings, settings_attr, None) or os.environ.get(env_var))
 
@@ -75,7 +85,7 @@ def set_api_key(
     settings_attr: str,
     env_var: str,
     display_name: str,
-    prefix: Optional[str]
+    prefix: Optional[str],
 ) -> None:
     """Update API key in settings and environment if value is provided."""
     if request_value is not None and request_value.strip():
@@ -148,7 +158,9 @@ async def get_settings():
     for key_id, (settings_attr, env_var, _, _) in API_KEY_CONFIG.items():
         has_key = check_api_key_exists(settings, settings_attr, env_var)
         # Map key_id to response field name
-        field_name = f"has_{key_id}_key" if key_id != 'replicate' else "has_replicate_token"
+        field_name = (
+            f"has_{key_id}_key" if key_id != "replicate" else "has_replicate_token"
+        )
         key_status[field_name] = has_key
 
     return SettingsResponse(
@@ -161,7 +173,7 @@ async def get_settings():
         default_text_model=settings.default_text_model,
         default_image_model=settings.default_image_model,
         reader_font_family=settings.reader_font_family,
-        reader_font_size=settings.reader_font_size
+        reader_font_size=settings.reader_font_size,
     )
 
 
@@ -178,9 +190,16 @@ async def update_settings(request: SettingsUpdateRequest):
         settings.image_provider = request.image_provider
 
     # Update API keys using configuration
-    for key_id, (settings_attr, env_var, display_name, prefix) in API_KEY_CONFIG.items():
+    for key_id, (
+        settings_attr,
+        env_var,
+        display_name,
+        prefix,
+    ) in API_KEY_CONFIG.items():
         request_value = getattr(request, settings_attr, None)
-        set_api_key(settings, request_value, settings_attr, env_var, display_name, prefix)
+        set_api_key(
+            settings, request_value, settings_attr, env_var, display_name, prefix
+        )
 
     # Update global instructions
     if request.global_instructions is not None:

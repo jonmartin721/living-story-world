@@ -193,3 +193,27 @@ input[type="submit"]:disabled {
 .shimmer {
     animation: shimmer 2s infinite;
 }
+
+/* Regenerating chapter styles */
+.regenerating-chapter {
+    opacity: 0.6 !important; /* Lower opacity for regenerating chapters */
+    position: relative;
+}
+
+.regenerating-chapter .shimmer {
+    display: none; /* Hide shimmer animation for regenerating chapters */
+}
+
+/* Progress indicator for regenerating chapters */
+.regenerating-progress {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    padding: 1rem;
+    min-width: 120px;
+    text-align: center;
+}

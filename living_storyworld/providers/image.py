@@ -10,8 +10,43 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
+logger = logging.getLogger(__name__)
 
-def _safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, timeout: int = 30) -> Path:
+
+def _validate_image_data(image_data: bytes) -> bool:
+    """Validate that image data is actually a valid image.
+
+    Uses PIL to verify the image data can be opened and is a valid image format.
+    Returns True if valid, False otherwise.
+    """
+    try:
+        import io
+
+        from PIL import Image
+
+        # Try to open the image with PIL
+        with Image.open(io.BytesIO(image_data)) as img:
+            # Verify the image can be loaded
+            img.verify()
+
+        # If verify succeeds, try to actually load it to ensure it's fully valid
+        with Image.open(io.BytesIO(image_data)) as img:
+            # This will raise an exception if the image is corrupted
+            img.load()
+
+        return True
+    except ImportError:
+        # PIL not available, skip validation
+        logging.warning("PIL not available, skipping image validation")
+        return True
+    except Exception as e:
+        logging.warning(f"Invalid image data detected: {e}")
+        return False
+
+
+def _safe_download_image(
+    url: str, output_path: Path, max_size_mb: int = 50, timeout: int = 30
+) -> Path:
     """Safely download an image with size and timeout limits.
 
     Security: Validates URL scheme, content type, and enforces size limits.
@@ -22,8 +57,10 @@ def _safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, tim
         raise RuntimeError("requests library required. Run: pip install requests")
 
     parsed = urlparse(url)
-    if parsed.scheme not in ('http', 'https'):
-        raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed.")
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(
+            f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed."
+        )
 
     # Stream download with limits
     try:
@@ -32,11 +69,11 @@ def _safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, tim
     except Exception as e:
         raise RuntimeError(f"Download failed: {e}")
 
-    content_type = response.headers.get('Content-Type', '')
-    if not content_type.startswith('image/'):
+    content_type = response.headers.get("Content-Type", "")
+    if not content_type.startswith("image/"):
         logging.warning(f"Unexpected content type: {content_type}")
 
-    content_length = int(response.headers.get('Content-Length', 0))
+    content_length = int(response.headers.get("Content-Length", 0))
     max_bytes = max_size_mb * 1024 * 1024
     if content_length > max_bytes:
         raise ValueError(f"File too large: {content_length} bytes (max: {max_bytes})")
@@ -46,7 +83,7 @@ def _safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, tim
     downloaded = 0
 
     try:
-        with output_path.open('wb') as f:
+        with output_path.open("wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
                 downloaded += len(chunk)
                 if downloaded > max_bytes:
@@ -63,6 +100,7 @@ def _safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, tim
 @dataclass
 class ImageGenerationResult:
     """Result from image generation."""
+
     image_path: Path
     provider: str
     model: str
@@ -126,7 +164,9 @@ class ReplicateProvider(ImageProvider):
     def __init__(self, api_key: Optional[str] = None):
         self.api_token = api_key or os.environ.get("REPLICATE_API_TOKEN")
         if not self.api_token:
-            raise RuntimeError("Replicate API token not found. Set REPLICATE_API_TOKEN environment variable or pass api_key parameter.")
+            raise RuntimeError(
+                "Replicate API token not found. Set REPLICATE_API_TOKEN environment variable or pass api_key parameter."
+            )
 
     def generate(
         self,
@@ -145,7 +185,9 @@ class ReplicateProvider(ImageProvider):
         try:
             import replicate
         except ImportError as e:
-            raise RuntimeError("Replicate SDK not installed. Run: pip install replicate>=1.0") from e
+            raise RuntimeError(
+                "Replicate SDK not installed. Run: pip install replicate>=1.0"
+            ) from e
 
         client = replicate.Client(api_token=self.api_token)
         model_name = model or self.get_default_model()
@@ -225,7 +267,9 @@ class HuggingFaceImageProvider(ImageProvider):
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("HUGGINGFACE_API_KEY")
         if not self.api_key:
-            raise RuntimeError("Hugging Face API key not found. Set HUGGINGFACE_API_KEY environment variable or pass api_key parameter.")
+            raise RuntimeError(
+                "Hugging Face API key not found. Set HUGGINGFACE_API_KEY environment variable or pass api_key parameter."
+            )
 
     def generate(
         self,
@@ -245,11 +289,11 @@ class HuggingFaceImageProvider(ImageProvider):
         response = requests.post(api_url, headers=headers, json=payload, stream=True)
         response.raise_for_status()
 
-        content_type = response.headers.get('Content-Type', '')
-        if content_type and not content_type.startswith('image/'):
+        content_type = response.headers.get("Content-Type", "")
+        if content_type and not content_type.startswith("image/"):
             raise RuntimeError(f"Unexpected content type: {content_type}")
 
-        content_length = int(response.headers.get('Content-Length', 0))
+        content_length = int(response.headers.get("Content-Length", 0))
         max_bytes = 50 * 1024 * 1024
         if content_length > max_bytes:
             raise ValueError(f"Response too large: {content_length} bytes (max: 50MB)")
@@ -258,7 +302,7 @@ class HuggingFaceImageProvider(ImageProvider):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         downloaded = 0
         try:
-            with output_path.open('wb') as f:
+            with output_path.open("wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     downloaded += len(chunk)
                     if downloaded > max_bytes:
@@ -313,59 +357,87 @@ class PollinationsProvider(ImageProvider):
         model_name = model or self.get_default_model()
 
         # Pollinations.ai simple API
-        # URL format: https://image.pollinations.ai/prompt/{prompt}?width={w}&height={h}&model={model}
+        # URL format:
+        # https://image.pollinations.ai/prompt/{prompt}?width={w}&height={h}&model={model}
 
         # Convert aspect ratio to dimensions
         width, height = self._aspect_ratio_to_dimensions(aspect_ratio)
 
-        # Use POST for long prompts to avoid URL length limits
-        # URL length limits typically ~2000 chars, use POST if prompt would exceed ~1500
+        # Pollinations.ai uses GET requests with the prompt in the URL path
+        # Pollinations.ai uses GET requests with the prompt in the URL path.
+        # The `requests` library can be tricky with URLs that have dynamic path segments
+        # and query parameters, so we construct the URL manually.
         import urllib.parse
-        encoded_prompt = urllib.parse.quote(prompt)
 
-        # Check if URL would be too long (conservative limit of 1500 chars)
-        test_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&model={model_name}&nologo=true"
+        # Truncate extremely long prompts if necessary (rarely needed)
+        max_prompt_length = 1000  # Conservative limit for URL safety
+        if len(prompt) > max_prompt_length:
+            logger.warning(
+                f"Prompt too long ({
+                    len(prompt)} chars), truncating to {max_prompt_length}"
+            )
+            prompt = prompt[:max_prompt_length]
+
+        # Manually construct the URL with the prompt in the path
+        encoded_prompt = urllib.parse.quote(prompt)
+        base_url = "https://image.pollinations.ai/prompt/"
+
+        import random
+        import time
+
+        # Add random seed to bypass Pollinations caching for regeneration
+        seed = f"{int(time.time())}-{random.randint(1000, 9999)}"
+        params = {
+            "width": width,
+            "height": height,
+            "model": model_name,
+            "nologo": "true",
+            "seed": seed,
+        }
+
+        # Build the final URL string
+        query_string = urllib.parse.urlencode(params)
+        url = f"{base_url}{encoded_prompt}?{query_string}"
 
         try:
-            if len(test_url) > 1500:
-                # Use POST for long prompts
-                url = "https://image.pollinations.ai/prompt"
-                params = {
-                    "width": width,
-                    "height": height,
-                    "model": model_name,
-                    "nologo": "true"
-                }
-                response = requests.post(url, json={"prompt": prompt}, params=params, stream=True, timeout=30)
-            else:
-                # Use GET for short prompts (simpler)
-                response = requests.get(test_url, stream=True, timeout=30)
+            # Always use GET for Pollinations
+            response = requests.get(url, stream=True, timeout=30)
 
             response.raise_for_status()
         except Exception as e:
             from ..exceptions import handle_api_error
+
             raise handle_api_error(e, "Pollinations") from e
 
-        content_type = response.headers.get('Content-Type', '')
-        if content_type and not content_type.startswith('image/'):
+        content_type = response.headers.get("Content-Type", "")
+        if content_type and not content_type.startswith("image/"):
             raise RuntimeError(f"Unexpected content type: {content_type}")
 
-        content_length = int(response.headers.get('Content-Length', 0))
+        content_length = int(response.headers.get("Content-Length", 0))
         max_bytes = 50 * 1024 * 1024
         if content_length > max_bytes:
             raise ValueError(f"Response too large: {content_length} bytes (max: 50MB)")
 
-        # Stream download with size check
+        # Download all data first for validation
         output_path.parent.mkdir(parents=True, exist_ok=True)
         downloaded = 0
+        image_data = bytearray()
+
         try:
-            with output_path.open('wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    downloaded += len(chunk)
-                    if downloaded > max_bytes:
-                        output_path.unlink(missing_ok=True)
-                        raise ValueError("Download exceeded size limit (50MB)")
-                    f.write(chunk)
+            for chunk in response.iter_content(chunk_size=8192):
+                downloaded += len(chunk)
+                if downloaded > max_bytes:
+                    raise ValueError("Download exceeded size limit (50MB)")
+                image_data.extend(chunk)
+
+            # Validate the image data before saving
+            if not _validate_image_data(bytes(image_data)):
+                raise RuntimeError("Downloaded data is not a valid image")
+
+            # Save validated image data
+            with output_path.open("wb") as f:
+                f.write(image_data)
+
         except Exception:
             output_path.unlink(missing_ok=True)
             raise
@@ -410,7 +482,9 @@ class FalAIProvider(ImageProvider):
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("FAL_KEY")
         if not self.api_key:
-            raise RuntimeError("Fal.ai API key not found. Set FAL_KEY environment variable or pass api_key parameter.")
+            raise RuntimeError(
+                "Fal.ai API key not found. Set FAL_KEY environment variable or pass api_key parameter."
+            )
 
     def generate(
         self,
@@ -492,7 +566,9 @@ class FalAIProvider(ImageProvider):
         return True
 
 
-def get_image_provider(provider_name: str, api_key: Optional[str] = None) -> ImageProvider:
+def get_image_provider(
+    provider_name: str, api_key: Optional[str] = None
+) -> ImageProvider:
     """Factory function to get an image provider by name.
 
     Args:

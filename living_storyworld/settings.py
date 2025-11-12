@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -14,14 +14,14 @@ load_dotenv()
 
 # Configuration mapping: settings_attr -> env_var
 ENV_VAR_MAPPING = {
-    'openai_api_key': 'OPENAI_API_KEY',
-    'together_api_key': 'TOGETHER_API_KEY',
-    'huggingface_api_key': 'HUGGINGFACE_API_KEY',
-    'groq_api_key': 'GROQ_API_KEY',
-    'gemini_api_key': 'GEMINI_API_KEY',
-    'openrouter_api_key': 'OPENROUTER_API_KEY',
-    'replicate_api_token': 'REPLICATE_API_TOKEN',
-    'fal_api_key': 'FAL_KEY',
+    "openai_api_key": "OPENAI_API_KEY",
+    "together_api_key": "TOGETHER_API_KEY",
+    "huggingface_api_key": "HUGGINGFACE_API_KEY",
+    "groq_api_key": "GROQ_API_KEY",
+    "gemini_api_key": "GEMINI_API_KEY",
+    "openrouter_api_key": "OPENROUTER_API_KEY",
+    "replicate_api_token": "REPLICATE_API_TOKEN",
+    "fal_api_key": "FAL_KEY",
 }
 
 
@@ -129,7 +129,9 @@ def ensure_provider_api_keys(settings: Optional[UserSettings] = None) -> None:
             os.environ[env_var] = key_value
 
 
-def get_api_key_for_provider(provider: str, settings: Optional[UserSettings] = None) -> Optional[str]:
+def get_api_key_for_provider(
+    provider: str, settings: Optional[UserSettings] = None
+) -> Optional[str]:
     """Get API key for a specific provider from settings or environment.
 
     Args:
@@ -174,10 +176,19 @@ def get_available_text_providers(settings: Optional[UserSettings] = None) -> lis
     s = settings or load_user_settings()
 
     available = []
-    text_providers = ["openai", "together", "huggingface", "groq", "gemini", "openrouter"]
+    text_providers = [
+        "openai",
+        "together",
+        "huggingface",
+        "groq",
+        "gemini",
+        "openrouter",
+    ]
 
     # Add primary provider first
-    if s.text_provider in text_providers and get_api_key_for_provider(s.text_provider, s):
+    if s.text_provider in text_providers and get_api_key_for_provider(
+        s.text_provider, s
+    ):
         available.append(s.text_provider)
 
     # Add other free/cheap providers
@@ -187,8 +198,11 @@ def get_available_text_providers(settings: Optional[UserSettings] = None) -> lis
 
     # Add remaining paid providers
     for provider in ["openai", "together", "openrouter", "huggingface"]:
-        if provider != s.text_provider and provider not in available and get_api_key_for_provider(provider, s):
+        if (
+            provider != s.text_provider
+            and provider not in available
+            and get_api_key_for_provider(provider, s)
+        ):
             available.append(provider)
 
     return available
-

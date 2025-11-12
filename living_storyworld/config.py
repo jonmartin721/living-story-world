@@ -7,7 +7,6 @@ from typing import Dict
 from .models import WorldConfig
 from .storage import read_json, write_json
 
-
 STYLE_PACKS: Dict[str, str] = {
     "storybook-ink": (
         "STYLE REQUIREMENT: Traditional storybook illustration with ink and wash technique. "
@@ -68,4 +67,3 @@ def save_config(path: Path, cfg: WorldConfig) -> None:
 def load_config(path: Path) -> WorldConfig:
     data = read_json(path, {})
     return WorldConfig(**data)
-

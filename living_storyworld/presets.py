@@ -184,4 +184,3 @@ PRESETS: Dict[str, Preset] = {
 }
 
 DEFAULT_PRESET = PRESETS["cozy-adventure"]
-

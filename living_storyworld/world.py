@@ -4,10 +4,12 @@ import logging
 from dataclasses import asdict
 from typing import Optional
 
-from .models import WorldConfig, WorldState, Character, Location, Chapter, Item, Choice
-from .storage import ensure_world_dirs, set_current_world, slugify, write_json, read_json
-from .settings import load_user_settings
+from .models import (Chapter, Character, Choice, Item, Location, WorldConfig,
+                     WorldState)
 from .providers.text import get_text_provider
+from .settings import load_user_settings
+from .storage import (ensure_world_dirs, read_json, set_current_world, slugify,
+                      write_json)
 
 
 def init_world(
@@ -21,7 +23,7 @@ def init_world(
     enable_choices: bool = False,
     memory: Optional[str] = None,
     authors_note: Optional[str] = None,
-    world_instructions: Optional[str] = None
+    world_instructions: Optional[str] = None,
 ) -> str:
     # Load user settings to get proper defaults
     settings = load_user_settings()
@@ -48,7 +50,7 @@ def init_world(
         enable_choices=enable_choices,
         memory=memory,
         authors_note=authors_note,
-        world_instructions=world_instructions
+        world_instructions=world_instructions,
     )
     state = WorldState(
         tick=0,
@@ -62,7 +64,8 @@ def init_world(
     write_json(dirs["base"] / "world.json", asdict(state))
     set_current_world(slug)
     # Minimal web index placeholder
-    (dirs["web"] / "index.html").write_text("""
+    (dirs["web"] / "index.html").write_text(
+        """
 <!doctype html>
 <html><head><meta charset='utf-8'><title>Living Storyworld</title>
 <style>body{font-family:system-ui, sans-serif;max-width:860px;margin:3rem auto;padding:0 1rem} img{max-width:100%;height:auto;border-radius:6px} .chapter{margin:2rem 0;padding:1rem;border:1px solid #eee;border-radius:8px}</style>
@@ -71,7 +74,8 @@ def init_world(
 <h1>Living Storyworld</h1>
 <p>Chapters will appear here after generation.</p>
 </body></html>
-""")
+"""
+    )
     return slug
 
 
@@ -110,7 +114,7 @@ def _deserialize_world_state(data: dict) -> WorldState:
         characters=characters,
         locations=locations,
         items=items,
-        chapters=chapters
+        chapters=chapters,
     )
 
 
@@ -130,8 +134,8 @@ def load_world(slug: str) -> tuple[WorldConfig, WorldState, dict]:
     try:
         # Handle backward compatibility for removed image_model field
         cfg_data_copy = cfg_data.copy()
-        if 'image_model' in cfg_data_copy:
-            del cfg_data_copy['image_model']
+        if "image_model" in cfg_data_copy:
+            del cfg_data_copy["image_model"]
         cfg = WorldConfig(**cfg_data_copy)
     except (TypeError, ValueError) as e:
         logging.error(f"Failed to validate world config for '{slug}': {e}")
@@ -151,7 +155,9 @@ def load_world(slug: str) -> tuple[WorldConfig, WorldState, dict]:
     return cfg, state, dirs
 
 
-def save_world(slug: str, cfg: WorldConfig, state: WorldState, dirs: Optional[dict] = None) -> None:
+def save_world(
+    slug: str, cfg: WorldConfig, state: WorldState, dirs: Optional[dict] = None
+) -> None:
     if dirs is None:
         dirs = ensure_world_dirs(slug)
     write_json(dirs["base"] / "config.json", asdict(cfg))
@@ -163,4 +169,3 @@ def tick_world(slug: str) -> int:
     state.tick += 1
     save_world(slug, cfg, state, dirs)
     return state.tick
-

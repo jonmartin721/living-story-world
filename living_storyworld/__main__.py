@@ -17,18 +17,20 @@ def main(argv: Optional[list[str]] = None) -> None:
     # Zero-args path: run setup wizard if needed, else launch TUI.
     if not ensure_api_key_from_settings():
         from living_storyworld.wizard import run_setup_wizard
+
         run_setup_wizard()
     # After setup, try to launch TUI.
     try:
         from living_storyworld.tui import run_tui
+
         run_tui()
     except Exception:
         # Fallback: minimal console wizard
         from living_storyworld.wizard import run_world_wizard
+
         print("Textual TUI unavailable; running console wizard.")
         run_world_wizard()
 
 
 if __name__ == "__main__":
     main()
-

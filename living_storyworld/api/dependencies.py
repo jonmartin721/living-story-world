@@ -7,17 +7,20 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Tuple
 
-from fastapi import HTTPException, Path as PathParam
+from fastapi import HTTPException
+from fastapi import Path as PathParam
 
+from ..models import WorldConfig, WorldState
 from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world
-from ..models import WorldConfig, WorldState
 
 # Thread executor for blocking operations
 executor = ThreadPoolExecutor(max_workers=4)
 
 
-def get_validated_world_slug(slug: str = PathParam(..., description="World slug")) -> Tuple[str, Path]:
+def get_validated_world_slug(
+    slug: str = PathParam(..., description="World slug")
+) -> Tuple[str, Path]:
     """Validate slug and check world exists.
 
     Args:
@@ -50,12 +53,12 @@ async def load_world_async(slug: str) -> Tuple[WorldConfig, WorldState, dict]:
     Returns:
         Tuple of (config, state, directories)
     """
-    return await asyncio.get_event_loop().run_in_executor(
-        executor, load_world, slug
-    )
+    return await asyncio.get_event_loop().run_in_executor(executor, load_world, slug)
 
 
-async def get_world_data(slug: str = PathParam(..., description="World slug")) -> Tuple[str, WorldConfig, WorldState, dict]:
+async def get_world_data(
+    slug: str = PathParam(..., description="World slug")
+) -> Tuple[str, WorldConfig, WorldState, dict]:
     """Validate slug and load world data.
 
     Combined dependency that validates the slug and loads world data asynchronously.

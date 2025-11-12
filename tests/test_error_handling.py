@@ -198,7 +198,7 @@ class TestErrorMessageConsoleOutput:
         import logging
         caplog.set_level(logging.ERROR)
 
-        error = RateLimitError("OpenAI")
+        RateLimitError("OpenAI")
 
         # Check that error was logged
         assert len(caplog.records) > 0
@@ -209,7 +209,7 @@ class TestErrorMessageConsoleOutput:
         import logging
         caplog.set_level(logging.INFO)
 
-        error = AuthenticationError("OpenAI")
+        AuthenticationError("OpenAI")
 
         # Should have both ERROR (user message) and INFO (help text) logs
         assert any(record.levelname == "ERROR" for record in caplog.records)
