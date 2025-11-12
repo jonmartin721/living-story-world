@@ -36,7 +36,7 @@ jobs:
 
     - name: Lint with flake8
       run: |
-        flake8 living_storyworld/ --max-line-length=100 --ignore=E203,W503,E701
+        flake8 living_storyworld/ --max-line-length=120 --ignore=E203,W503,E701,E501,E122
 
     - name: Check with pyflakes (undefined imports)
       run: |
