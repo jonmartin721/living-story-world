@@ -194,9 +194,7 @@ def cmd_build(args: argparse.Namespace) -> None:
             # Scene path is from our own generation, but escape anyway
             html.append(f"<img src='{html_lib.escape(it['scene'])}' alt='scene image'>")
         html.append(
-            f"<div class='meta'><a href='{
-                html_lib.escape(
-                    it['file'])}'>Read markdown</a></div>"
+            f"<div class='meta'><a href='{html_lib.escape(it['file'])}'>Read markdown</a></div>"
         )
         html.append("</div>")
     html.append("</body></html>")
