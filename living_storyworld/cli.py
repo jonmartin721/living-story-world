@@ -143,8 +143,7 @@ def cmd_build(args: argparse.Namespace) -> None:
             "scene": scene_for_chapter.get(num),
         })
 
-    # SECURITY: Escape HTML to prevent XSS
-    import html as html_lib
+        import html as html_lib
 
     html = [
         "<!doctype html>",

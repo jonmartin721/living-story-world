@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -10,6 +11,8 @@ from typing import Optional, Dict
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world, save_world
@@ -194,7 +197,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
 
         chapter = await text_future
         text_duration = time.time() - text_start
-        print(f"[TIMING] Text generation: {text_duration:.2f}s", flush=True)
+              logger.info("Text generation completed: %.2fs", text_duration)
 
         # Read chapter markdown for summary generation
         chapter_md = (dirs["base"] / "chapters" / chapter.filename).read_text(encoding="utf-8")
@@ -259,7 +262,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
 
             image_path = await image_future
             image_duration = time.time() - image_start
-            print(f"[TIMING] Image generation: {image_duration:.2f}s", flush=True)
+            logger.info("Image generation completed: %.2fs", image_duration)
 
             await queue.put({
                 "stage": "image",
@@ -277,7 +280,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         ai_summary = await summary_task
         chapter.ai_summary = ai_summary
         if ai_summary:
-            print(f"[INFO] Generated AI summary: {ai_summary[:50]}...", flush=True)
+            logger.debug("Generated AI summary: %s...", ai_summary[:50])
 
         # Add metadata to chapter
         from datetime import datetime
@@ -328,8 +331,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         import logging
         logging.exception(f"Chapter generation failed for job {job_id}")
 
-        # SECURITY: Log full details server-side but send generic error to client
-        error_msg = f"{type(e).__name__}: {str(e)}"
+                error_msg = f"{type(e).__name__}: {str(e)}"
         traceback_str = traceback.format_exc()
         logging.error(f"Full traceback: {traceback_str}")
 
@@ -339,7 +341,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             "error": "Chapter generation failed. Please check your settings and try again.",
             "job_id": job_id  # For support reference
         })
-        print(f"ERROR in chapter generation: {error_msg}")
+        logger.error("Chapter generation failed: %s", error_msg)
 
 
 @router.get("/{chapter_num}/content")
@@ -539,7 +541,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
 
         chapter = await text_future
         text_duration = time.time() - text_start
-        print(f"[TIMING] Text generation (reroll): {text_duration:.2f}s", flush=True)
+        logger.info("Text generation (reroll) completed: %.2fs", text_duration)
 
         # Override chapter number to match the one we're replacing
         chapter.number = chapter_num
@@ -602,7 +604,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
 
             image_path = await image_future
             image_duration = time.time() - image_start
-            print(f"[TIMING] Image generation (reroll): {image_duration:.2f}s", flush=True)
+            logger.info("Image generation (reroll) completed: %.2fs", image_duration)
 
             await queue.put({
                 "stage": "image",
@@ -651,8 +653,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
         import logging
         logging.exception(f"Chapter reroll failed for job {job_id}")
 
-        # SECURITY: Log full details server-side but send generic error to client
-        error_msg = f"{type(e).__name__}: {str(e)}"
+                error_msg = f"{type(e).__name__}: {str(e)}"
         traceback_str = traceback.format_exc()
         logging.error(f"Full traceback: {traceback_str}")
 
@@ -663,7 +664,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             "error_type": type(e).__name__,
             "job_id": job_id  # For support reference
         })
-        print(f"ERROR in chapter reroll: {error_msg}")
+        logger.error("Chapter reroll failed: %s", error_msg)
 
 
 @router.delete("/{chapter_num}")
@@ -706,7 +707,7 @@ async def delete_chapter(slug: str, chapter_num: int):
         pattern = f"scene-{chapter_num:04d}-*.png"
         for scene_file in scenes_dir.glob(pattern):
             scene_file.unlink()
-            print(f"[INFO] Deleted scene image: {scene_file.name}", flush=True)
+            logger.debug("Deleted scene image: %s", scene_file.name)
 
     # Remove chapter from state
     state.chapters.pop(chapter_index)

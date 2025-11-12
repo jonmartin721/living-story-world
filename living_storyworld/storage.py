@@ -37,10 +37,7 @@ def write_json(path: Path, data: Any) -> None:
 
 
 def read_json(path: Path, default: Optional[Any] = None) -> Any:
-    """Read JSON from file with error handling.
-
-    Returns default value if file doesn't exist or JSON is invalid.
-    """
+    """Read JSON from file with fallback to default."""
     if not path.exists():
         return default
 
@@ -67,18 +64,14 @@ def write_text(path: Path, text: str) -> None:
 
 
 def slugify(value: str) -> str:
-    """Convert a string to a safe filesystem slug.
-
-    Security: Prevents path traversal attacks by rejecting dangerous characters.
-    """
+    """Convert string to safe filesystem slug."""
     value = value.strip().lower()
     value = re.sub(r"[^a-z0-9\-\s]", "", value)
     value = re.sub(r"\s+", "-", value)
     value = re.sub(r"-+", "-", value)
     value = value.strip("-") or "world"
 
-    # SECURITY: Prevent path traversal attacks
-    if ".." in value or "/" in value or "\\" in value:
+        if ".." in value or "/" in value or "\\" in value:
         raise ValueError("Invalid slug: contains path traversal characters")
     if value.startswith("."):
         raise ValueError("Invalid slug: cannot start with dot")
@@ -89,24 +82,11 @@ def slugify(value: str) -> str:
 
 
 def validate_slug(slug: str) -> str:
-    """Validate a slug parameter from API/URL to prevent path traversal attacks.
-
-    Security: Strictly validates slugs to ensure they can't escape the worlds directory.
-
-    Args:
-        slug: The slug to validate
-
-    Returns:
-        The validated slug
-
-    Raises:
-        ValueError: If slug is invalid or contains dangerous characters
-    """
+    """Validate slug for filesystem safety."""
     if not slug:
         raise ValueError("Slug cannot be empty")
 
-    # SECURITY: Prevent path traversal
-    if ".." in slug or "/" in slug or "\\" in slug:
+        if ".." in slug or "/" in slug or "\\" in slug:
         raise ValueError("Invalid slug: contains path traversal characters")
     if slug.startswith(".") or slug.startswith("-"):
         raise ValueError("Invalid slug: cannot start with dot or dash")

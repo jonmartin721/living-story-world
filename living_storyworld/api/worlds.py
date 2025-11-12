@@ -101,8 +101,7 @@ async def create_world(request: WorldCreateRequest):
     import os
     import shutil
 
-    # SECURITY: Check world count limit to prevent resource exhaustion
-    existing_worlds = len(list(WORLDS_DIR.glob("*/"))) if WORLDS_DIR.exists() else 0
+        existing_worlds = len(list(WORLDS_DIR.glob("*/"))) if WORLDS_DIR.exists() else 0
     max_worlds = int(os.environ.get("MAX_WORLDS_PER_INSTANCE", "100"))
 
     if existing_worlds >= max_worlds:
@@ -111,8 +110,7 @@ async def create_world(request: WorldCreateRequest):
             detail=f"Maximum number of worlds ({max_worlds}) reached. Delete some worlds before creating new ones."
         )
 
-    # SECURITY: Check available disk space
-    try:
+        try:
         stat = shutil.disk_usage(WORLDS_DIR.parent if WORLDS_DIR.exists() else Path.home())
         min_free_mb = 100
         free_mb = stat.free / (1024 * 1024)

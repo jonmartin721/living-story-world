@@ -69,7 +69,7 @@ def check_api_key_exists(settings: UserSettings, settings_attr: str, env_var: st
     return bool(getattr(settings, settings_attr, None) or os.environ.get(env_var))
 
 
-def update_api_key_if_provided(
+def set_api_key(
     settings: UserSettings,
     request_value: Optional[str],
     settings_attr: str,
@@ -180,7 +180,7 @@ async def update_settings(request: SettingsUpdateRequest):
     # Update API keys using configuration
     for key_id, (settings_attr, env_var, display_name, prefix) in API_KEY_CONFIG.items():
         request_value = getattr(request, settings_attr, None)
-        update_api_key_if_provided(settings, request_value, settings_attr, env_var, display_name, prefix)
+        set_api_key(settings, request_value, settings_attr, env_var, display_name, prefix)
 
     # Update global instructions
     if request.global_instructions is not None:

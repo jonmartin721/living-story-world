@@ -27,14 +27,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        # SECURITY: Prevent MIME type sniffing
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        # SECURITY: Prevent clickjacking
-        response.headers["X-Frame-Options"] = "DENY"
-        # SECURITY: Enable XSS protection (legacy browsers)
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        # SECURITY: Content Security Policy to prevent XSS
-        response.headers["Content-Security-Policy"] = (
+                response.headers["X-Content-Type-Options"] = "nosniff"
+                response.headers["X-Frame-Options"] = "DENY"
+                response.headers["X-XSS-Protection"] = "1; mode=block"
+                response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
@@ -45,8 +41,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "base-uri 'self'; "
             "form-action 'self'"
         )
-        # SECURITY: Enforce HTTPS in production (max-age=1 year)
-        if os.environ.get("ENVIRONMENT") == "production":
+                if os.environ.get("ENVIRONMENT") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
@@ -58,7 +53,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# SECURITY: Configure CORS with environment-based origins
 # Format: comma-separated list of allowed origins
 # Default: localhost for development
 allowed_origins_str = os.environ.get(

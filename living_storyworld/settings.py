@@ -91,8 +91,7 @@ def save_user_settings(s: UserSettings) -> None:
     """
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    # SECURITY: Try to set restrictive permissions
-    try:
+        try:
         # Create with 0o600 if not exists
         if not CONFIG_PATH.exists():
             CONFIG_PATH.touch(mode=0o600)

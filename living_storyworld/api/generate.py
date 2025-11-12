@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/generate", tags=["generate"])
 
@@ -108,7 +111,7 @@ def _generate_random_world() -> dict:
 
         # If no API key for configured provider, fallback to OpenAI
         if not api_key:
-            print(f"[RANDOM WORLD] No API key for {text_provider_name}, falling back to OpenAI", flush=True)
+            logger.warning("No API key for %s, falling back to OpenAI", text_provider_name)
             text_provider_name = "openai"
             api_key = get_api_key_for_provider("openai", settings)
             model = "gpt-4o-mini"
@@ -178,11 +181,11 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
             "memory": data.get("memory", ""),
         }
 
-        print(f"[RANDOM WORLD] Generated via {text_provider_name} [{selected_preset}/{selected_style}]: {world_result['title']} - {world_result['theme'][:50]}...", flush=True)
+        logger.info("Generated random world via %s [%s/%s]: %s", text_provider_name, selected_preset, selected_style, world_result['title'])
         return world_result
 
     except Exception as e:
-        print(f"[RANDOM WORLD] API failed, using fallback: {e}", flush=True)
+        logger.warning("Random world generation failed, using fallback: %s", e)
         # Fallback worlds with balanced distribution
         import random
         fallbacks = [

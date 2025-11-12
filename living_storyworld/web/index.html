@@ -196,14 +196,14 @@
                                     </button>
                                     <button
                                         @click="showRegenerateDialog(chapter.number)"
-                                        :disabled="generating"
+                                        :disabled="generatingWorlds.has(currentWorldSlug)"
                                         class="px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                                         title="Regenerate chapter or image">
                                         🔄
                                     </button>
                                     <button
                                         @click="deleteChapter(chapter.number)"
-                                        :disabled="generating"
+                                        :disabled="generatingWorlds.has(currentWorldSlug)"
                                         class="px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                                         title="Delete chapter">
                                         🗑️
@@ -229,7 +229,7 @@
                             </template>
 
                             <!-- Shimmer Loader (shown during generation, in correct grid position) -->
-                            <div x-show="section.isRecent && generating" class="bg-gray-800 shadow rounded-lg overflow-hidden animate-pulse">
+                            <div x-show="section.isRecent && generatingWorlds.has(currentWorldSlug)" class="bg-gray-800 shadow rounded-lg overflow-hidden animate-pulse">
                                 <!-- Skeleton Image with Progress Indicator -->
                                 <div class="aspect-video bg-gray-700 relative">
                                     <div class="absolute inset-0 bg-gradient-to-r from-transparent via-gray-600 to-transparent shimmer"></div>
@@ -239,15 +239,15 @@
                                             <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
                                                 <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none" class="text-gray-600"></circle>
                                                 <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none"
-                                                        :stroke-dasharray="`${(2 * Math.PI * 28) * (progress.percent / 100)} ${2 * Math.PI * 28}`"
+                                                        :stroke-dasharray="`${(2 * Math.PI * 28) * ((worldProgress[currentWorldSlug]?.percent || 0) / 100)} ${2 * Math.PI * 28}`"
                                                         class="text-blue-400 transition-all duration-300"></circle>
                                             </svg>
                                             <div class="absolute inset-0 flex items-center justify-center">
-                                                <span class="text-white text-sm font-bold" x-text="Math.round(progress.percent) + '%'"></span>
+                                                <span class="text-white text-sm font-bold" x-text="Math.round(worldProgress[currentWorldSlug]?.percent || 0) + '%'"></span>
                                             </div>
                                         </div>
-                                        <div class="text-blue-300 text-sm font-medium px-4 text-center" x-text="progress.stage || 'Generating...'"></div>
-                                        <div class="text-gray-400 text-xs mt-1 px-4 text-center max-w-xs" x-text="progress.message"></div>
+                                        <div class="text-blue-300 text-sm font-medium px-4 text-center" x-text="worldProgress[currentWorldSlug]?.stage || 'Generating...'"></div>
+                                        <div class="text-gray-400 text-xs mt-1 px-4 text-center max-w-xs" x-text="worldProgress[currentWorldSlug]?.message || ''"></div>
                                     </div>
                                 </div>
 
@@ -289,7 +289,7 @@
                     </div>
 
                     <!-- First Chapter Generation Loader -->
-                    <div x-show="generating" class="bg-gray-800 shadow rounded-lg overflow-hidden animate-pulse">
+                    <div x-show="generatingWorlds.has(currentWorldSlug)" class="bg-gray-800 shadow rounded-lg overflow-hidden animate-pulse">
                         <!-- Skeleton Image with Progress Indicator -->
                         <div class="aspect-video bg-gray-700 relative">
                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-gray-600 to-transparent shimmer"></div>
@@ -299,15 +299,15 @@
                                     <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
                                         <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none" class="text-gray-600"></circle>
                                         <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none"
-                                                :stroke-dasharray="`${(2 * Math.PI * 28) * (progress.percent / 100)} ${2 * Math.PI * 28}`"
+                                                :stroke-dasharray="`${(2 * Math.PI * 28) * ((worldProgress[currentWorldSlug]?.percent || 0) / 100)} ${2 * Math.PI * 28}`"
                                                 class="text-blue-400 transition-all duration-300"></circle>
                                     </svg>
                                     <div class="absolute inset-0 flex items-center justify-center">
-                                        <span class="text-white text-sm font-bold" x-text="Math.round(progress.percent) + '%'"></span>
+                                        <span class="text-white text-sm font-bold" x-text="Math.round(worldProgress[currentWorldSlug]?.percent || 0) + '%'"></span>
                                     </div>
                                 </div>
-                                <div class="text-blue-300 text-sm font-medium px-4 text-center" x-text="progress.stage || 'Generating...'"></div>
-                                <div class="text-gray-400 text-xs mt-1 px-4 text-center max-w-xs" x-text="progress.message"></div>
+                                <div class="text-blue-300 text-sm font-medium px-4 text-center" x-text="worldProgress[currentWorldSlug]?.stage || 'Generating...'"></div>
+                                <div class="text-gray-400 text-xs mt-1 px-4 text-center max-w-xs" x-text="worldProgress[currentWorldSlug]?.message || ''"></div>
                             </div>
                         </div>
 
@@ -1175,7 +1175,7 @@
                                     <svg class="w-5 h-5 transform -rotate-90" viewBox="0 0 20 20">
                                         <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none" class="text-gray-400"></circle>
                                         <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" fill="none"
-                                                :stroke-dasharray="`${(2 * Math.PI * 8) * (progress.percent / 100)} ${2 * Math.PI * 8}`"
+                                                :stroke-dasharray="`${(2 * Math.PI * 8) * ((worldProgress[currentWorldSlug]?.percent || 0) / 100)} ${2 * Math.PI * 8}`"
                                                 class="text-white transition-all duration-300"></circle>
                                     </svg>
                                 </div>

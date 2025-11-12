@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -8,6 +9,8 @@ from typing import Dict, Optional, Tuple
 from .models import WorldConfig, WorldState, Chapter, Choice
 from .presets import PRESETS, DEFAULT_PRESET
 from .config import STYLE_PACKS
+
+logger = logging.getLogger(__name__)
 from .settings import load_user_settings, get_api_key_for_provider
 from .providers import get_text_provider
 
@@ -47,57 +50,22 @@ def _build_chapter_prompt(cfg: WorldConfig, state: WorldState, chapter_length: s
     if cfg.enable_choices:
         metadata_keys += (
             ", choices (array of 3 objects with {id, text, description}), story_health (object with {is_repetitive: bool, natural_ending_reached: bool, needs_fresh_direction: bool, notes: string}). "
-            "CHOICES MUST BE IMMEDIATE, SPONTANEOUS, IN-THE-MOMENT DECISIONS - not grand finalistic outcomes. "
-            "Focus on: micro-decisions, tactical choices, emotional reactions, small pivots. "
-            "Examples: 'Ask about the scar' vs 'Lie about where you were' vs 'Change the subject' OR 'Take the left tunnel' vs 'Wait and listen' vs 'Call out'. "
-            "AVOID: 'Embrace destiny', 'Face the final truth', 'Choose peace/war', 'Accept/reject fate', or any choice that sounds like a story ending. "
-            "Each choice should open new complications, not close the story. Use IDs like 'choice-1', 'choice-2', 'choice-3'."
+            "Choices should be immediate actions or reactions, not story endings. "
+            "Examples: ask questions, make decisions about current situation, take action in the moment. "
+            "Each choice should lead to new complications, not resolve everything."
         )
 
     sys_parts = [
-        "You are a narrative engine for a persistent storyworld. "
-        "Write evocative, tightly paced chapters that advance arcs within a coherent world. "
-        f"Always include a single HTML comment at the very top containing JSON metadata with keys: {metadata_keys} "
-        "Introduce new characters or locations when they serve the story naturally. "
+        f"Write a compelling chapter that advances the story. "
+        f"Include metadata as JSON comment with: {metadata_keys} "
         + preset.system_directives,
-        f"\n\nMaturity Level: {maturity_instruction}",
-        "\n\nACTION AND MOVEMENT: Prioritize physical action, exploration, and scene changes over static dialogue. "
-        "AVOID: Characters standing in one place talking for extended periods. Long conversations in single locations. Talking heads. "
-        "EMBRACE: Characters moving through spaces, traveling to new locations, discovering new areas, physical confrontations, chases, investigations, journeys. "
-        "Scene changes should happen frequently - shift locations at least 1-2 times per chapter unless there's a compelling dramatic reason to stay put. "
-        "Show characters DOING things - exploring ruins, navigating cities, climbing mountains, investigating mysteries, fleeing danger, searching for clues. "
-        "Dialogue should happen WHILE characters are in motion or engaged in activities. Use the environment actively.",
-        "\n\nSCOPE AND EXPLORATION: Think big. The world is vast and full of possibilities. "
-        "Characters should have freedom to travel, explore new regions, discover unexpected places, and encounter the wider world. "
-        "Don't confine stories to a single location unless the premise demands it. "
-        "Introduce new locations naturally - neighboring towns, distant lands, hidden places, dangerous territories. "
-        "Adventures should feel expansive, with room for geographical discovery and exploration. "
-        "Each chapter can venture into new territory, reveal new aspects of the world, or take characters somewhere unexpected.",
-        "\n\nCHARACTER DEPTH: Create complex, flawed, unpredictable characters with contradictory motivations. "
-        "AVOID: wholesome hand-holding, therapy-speak, everyone being kind/supportive, feelings circles, characters explaining their emotions. "
-        "EMBRACE: Moral ambiguity, selfishness, secrets, conflicting desires, manipulation, genuine antagonism, characters who lie, betray, make bad choices. "
-        "People should have edges - they can be cruel, calculating, desperate, broken, obsessed, or just deeply flawed. "
-        "Not everyone needs to be redeemed. Not every conflict needs resolution through communication. "
-        "Show character through ACTION and CONTRADICTION, not self-aware emotional monologues.",
-        "\n\nCHARACTER NAMING: When introducing new characters, avoid overused names from your training data. "
-        "Before choosing a name, mentally consider 3-5 different options and select the one that feels LESS common in typical fantasy/fiction. "
-        "AVOID: Elara, Roric, Kael, Lyra, Theron, Aria, Zephyr, Seraphina, Alaric, Rowan, and other heavily-used genre names. "
-        "PREFER: Names that feel fresh, grounded, or culturally specific to your world's setting. "
-        "Consider regional variations, historical inspiration, or invented names that sound natural but aren't overused. "
-        "Names should fit the world's tone but avoid the 'generic fantasy name' trap.",
-        "\n\nANTI-REPETITION (CRITICAL): Before writing, review the story progression context. "
-        "Identify patterns in recent chapters - recurring locations, similar plot beats, repeated conflicts, echoed scenes. "
-        "ACTIVELY AVOID these patterns. If the last 2-3 chapters took place in similar settings (taverns, forests, cities), GO SOMEWHERE DIFFERENT. "
-        "If recent chapters featured similar conflicts (arguments, negotiations, investigations), CHANGE THE BEAT entirely. "
-        "Push forward in time and space. Introduce unexpected complications. Shift tone and pacing. "
-        "The reader should feel MOMENTUM and PROGRESSION, not circular retreading. "
-        "Each chapter must meaningfully advance the story arc - new locations, new complications, new revelations, new characters. "
-        "VARIETY is essential: alternate between action/reflection, danger/respite, discovery/consequences, social/solitary scenes. "
-        "\n\nSTORY HEALTH MONITORING: In the metadata, honestly assess: "
-        "(1) Are you repeating beats/themes/locations from recent chapters? "
-        "(2) Has the story reached a natural conclusion? "
-        "(3) Does the narrative need fresh complications? "
-        "If repetitive or concluded, mark it clearly and either gracefully end OR inject unexpected complications to revitalize the narrative."
+        f"Maturity: {maturity_instruction}",
+        "Keep the story moving with action and exploration. Change locations regularly, avoid long conversations in one place. Characters should be doing things, not just talking.",
+        "Make the world feel big. Characters can travel to new places and discover unexpected territories. Each chapter should reveal something new about the world.",
+        "Write realistic characters with flaws and contradictions. People can be selfish, make bad choices, or have hidden motives. Not everyone gets redeemed.",
+        "Use fresh, memorable character names. Avoid the most common fantasy names.",
+        "Vary each chapter - if you've been in forests recently, go somewhere different. If there was a lot of talking, add more action. Keep the story progressing.",
+        "In metadata, note if the story feels repetitive or has reached a natural ending."
     ]
 
     # Add global instructions if present
@@ -296,7 +264,7 @@ def generate_chapter(
 
             result = provider.generate(messages, temperature=temp, model=model)
             md = result.content
-            print(f"[INFO] Generated chapter using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
+            logger.info("Generated chapter using %s (%s), cost: $%.4f", result.provider, result.model, result.estimated_cost)
             break  # Success, exit loop
 
         except Exception as e:
@@ -310,9 +278,9 @@ def generate_chapter(
                 # We have fallback options
                 remaining = [p for p in available_providers if p != provider_name]
                 if is_safety_block:
-                    print(f"[WARN] {provider_name} blocked content (safety filters). Trying fallback provider: {remaining[0] if remaining else 'none'}", flush=True)
+                    logger.warning("%s blocked content (safety filters). Trying fallback provider: %s", provider_name, remaining[0] if remaining else 'none')
                 else:
-                    print(f"[WARN] {provider_name} failed: {error_msg}. Trying fallback provider: {remaining[0] if remaining else 'none'}", flush=True)
+                    logger.warning("%s failed: %s. Trying fallback provider: %s", provider_name, error_msg, remaining[0] if remaining else 'none')
             else:
                 # No fallbacks available
                 if is_safety_block:
@@ -342,9 +310,9 @@ def generate_chapter(
 
             # Log warning if story health issues detected
             if is_repetitive or natural_ending or needs_fresh:
-                print(f"[STORY HEALTH] Repetitive: {is_repetitive}, Natural End: {natural_ending}, Needs Fresh: {needs_fresh}", flush=True)
+                logger.info("Story health - Repetitive: %s, Natural End: %s, Needs Fresh: %s", is_repetitive, natural_ending, needs_fresh)
                 if health_notes:
-                    print(f"[STORY HEALTH] Notes: {health_notes}", flush=True)
+                    logger.info("Story health notes: %s", health_notes)
 
     # Extract choices if present
     choices = []
@@ -443,7 +411,7 @@ def _register_new_entities(state: WorldState, new_characters: list, new_location
                         traits=char_data.get("traits", [])
                     )
                     state.characters[char_id] = char.__dict__
-                    print(f"[WORLD] Added new character: {char.name} ({char_id})", flush=True)
+                    logger.debug("Added new character: %s (%s)", char.name, char_id)
 
     # Add new locations
     if isinstance(new_locations, list):
@@ -458,7 +426,7 @@ def _register_new_entities(state: WorldState, new_characters: list, new_location
                         tags=loc_data.get("tags", [])
                     )
                     state.locations[loc_id] = loc.__dict__
-                    print(f"[WORLD] Added new location: {loc.name} ({loc_id})", flush=True)
+                    logger.debug("Added new location: %s (%s)", loc.name, loc_id)
 
 
 async def infer_choice_reasoning(
@@ -510,7 +478,7 @@ Reasoning:"""
             reasoning = reasoning[:197] + "..."
         return reasoning
     except Exception as e:
-        print(f"[WARN] Failed to infer choice reasoning: {e}", flush=True)
+        logger.warning("Failed to infer choice reasoning: %s", e)
         return f"The reader chose to {choice_text.lower()}"
 
 
@@ -567,5 +535,5 @@ Summary:"""
             summary = summary[:297] + "..."
         return summary
     except Exception as e:
-        print(f"[WARN] Failed to generate chapter summary: {e}", flush=True)
+        logger.warning("Failed to generate chapter summary: %s", e)
         return ""

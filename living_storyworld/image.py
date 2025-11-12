@@ -36,8 +36,7 @@ def safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, time
     except ImportError:
         raise RuntimeError("requests library required. Run: pip install requests")
 
-    # SECURITY: Validate URL scheme
-    parsed = urlparse(url)
+        parsed = urlparse(url)
     if parsed.scheme not in ('http', 'https'):
         raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed.")
 
@@ -50,13 +49,11 @@ def safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, time
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Download failed: {e}")
 
-    # SECURITY: Check content type
-    content_type = response.headers.get('Content-Type', '')
+        content_type = response.headers.get('Content-Type', '')
     if not content_type.startswith('image/'):
         logging.warning(f"Unexpected content type: {content_type} (expected image/*)")
 
-    # SECURITY: Check size
-    content_length = int(response.headers.get('Content-Length', 0))
+        content_length = int(response.headers.get('Content-Length', 0))
     max_bytes = max_size_mb * 1024 * 1024
     if content_length > max_bytes:
         raise ValueError(f"File too large: {content_length} bytes (max: {max_bytes})")
@@ -123,7 +120,7 @@ def generate_scene_image(
 
     # Check cache first
     if out.exists():
-        print(f"[INFO] Using cached image: {out.name}", flush=True)
+        logger.debug("Using cached image: %s", out.name)
         return out
 
     # Load settings to determine which provider to use
@@ -139,7 +136,7 @@ def generate_scene_image(
         aspect_ratio=aspect_ratio,
         model=image_model
     )
-    print(f"[INFO] Generated image using {result.provider} ({result.model}), cost: ${result.estimated_cost:.4f}", flush=True)
+    logger.info("Generated image using %s (%s), cost: $%.4f", result.provider, result.model, result.estimated_cost)
 
     _append_media_index(base_dir, {
         "type": "scene",

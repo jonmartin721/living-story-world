@@ -9,19 +9,7 @@ from typing import Optional
 
 
 def _init_api_key(env_var: str, provider_name: str, api_key: Optional[str] = None) -> str:
-    """Initialize API key from parameter or environment.
-
-    Args:
-        env_var: Environment variable name to check
-        provider_name: Human-readable provider name for error messages
-        api_key: Optional API key passed directly
-
-    Returns:
-        The API key
-
-    Raises:
-        RuntimeError: If no API key is found
-    """
+    """Get API key from parameter or environment variable."""
     key = api_key or os.environ.get(env_var)
     if not key:
         raise RuntimeError(
