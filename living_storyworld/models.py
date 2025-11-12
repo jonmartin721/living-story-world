@@ -60,7 +60,7 @@ class WorldConfig:
     slug: str
     theme: str
     style_pack: str = "storybook-ink"
-    text_model: str = "gpt-4o-mini"
+    text_model: str = "gemini-2.5-flash"  # Will be overridden by user's chosen provider during world creation
     image_model: str = "flux-dev"
     maturity_level: str = "general"  # general, teen, mature, explicit
     preset: str = "cozy-adventure"  # Narrative preset defines the vibe/tone

@@ -62,7 +62,6 @@ def cmd_chapter(args: argparse.Namespace) -> None:
         dirs["base"],
         cfg,
         state,
-        focus=args.focus,
         make_scene_image=not args.no_images,
     )
 

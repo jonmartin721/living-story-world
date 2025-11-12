@@ -71,7 +71,7 @@ def slugify(value: str) -> str:
     value = re.sub(r"-+", "-", value)
     value = value.strip("-") or "world"
 
-        if ".." in value or "/" in value or "\\" in value:
+    if ".." in value or "/" in value or "\\" in value:
         raise ValueError("Invalid slug: contains path traversal characters")
     if value.startswith("."):
         raise ValueError("Invalid slug: cannot start with dot")
@@ -86,7 +86,7 @@ def validate_slug(slug: str) -> str:
     if not slug:
         raise ValueError("Slug cannot be empty")
 
-        if ".." in slug or "/" in slug or "\\" in slug:
+    if ".." in slug or "/" in slug or "\\" in slug:
         raise ValueError("Invalid slug: contains path traversal characters")
     if slug.startswith(".") or slug.startswith("-"):
         raise ValueError("Invalid slug: cannot start with dot or dash")

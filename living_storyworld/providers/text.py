@@ -94,9 +94,9 @@ class OpenAICompatibleProvider(TextProvider):
 
         base_url = self.get_base_url()
         if base_url:
-            client = OpenAI(api_key=self.api_key, base_url=base_url)
+            client = OpenAI(api_key=self.api_key, base_url=base_url)  # pylint: disable=no-member
         else:
-            client = OpenAI(api_key=self.api_key)
+            client = OpenAI(api_key=self.api_key)  # pylint: disable=no-member
 
         model_name = model or self.get_default_model()
 

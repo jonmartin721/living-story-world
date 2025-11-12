@@ -6,6 +6,8 @@ from typing import Optional
 
 from .models import WorldConfig, WorldState, Character, Location, Chapter, Item, Choice
 from .storage import ensure_world_dirs, set_current_world, slugify, write_json, read_json
+from .settings import load_user_settings
+from .providers.text import get_text_provider
 
 
 def init_world(
@@ -21,6 +23,17 @@ def init_world(
     authors_note: Optional[str] = None,
     world_instructions: Optional[str] = None
 ) -> str:
+    # Load user settings to get proper defaults
+    settings = load_user_settings()
+
+    # Get the default text model from user's chosen provider
+    try:
+        text_provider = get_text_provider(settings.text_provider)
+        text_model = text_provider.get_default_model()
+    except Exception:
+        # Fallback to user's default model if provider creation fails
+        text_model = settings.default_text_model
+
     slug = slug or slugify(title)
     dirs = ensure_world_dirs(slug)
     cfg = WorldConfig(
@@ -28,6 +41,7 @@ def init_world(
         slug=slug,
         theme=theme,
         style_pack=style_pack,
+        text_model=text_model,
         image_model=image_model,
         maturity_level=maturity_level,
         preset=preset,

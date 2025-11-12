@@ -9,10 +9,10 @@ from typing import Dict, Optional, Tuple
 from .models import WorldConfig, WorldState, Chapter, Choice
 from .presets import PRESETS, DEFAULT_PRESET
 from .config import STYLE_PACKS
-
-logger = logging.getLogger(__name__)
 from .settings import load_user_settings, get_api_key_for_provider
 from .providers import get_text_provider
+
+logger = logging.getLogger(__name__)
 
 
 def _get_client():
@@ -248,19 +248,8 @@ def generate_chapter(
             # Build prompt and generate
             style, messages, temp = _build_chapter_prompt(cfg, state, chapter_length)
 
-            # Get appropriate model for this provider
-            if provider_name == "gemini":
-                model = "gemini-2.0-flash-exp"
-            elif provider_name == "groq":
-                model = "llama-3.3-70b-versatile"
-            elif provider_name == "openai":
-                model = "gpt-4o-mini"
-            elif provider_name == "together":
-                model = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
-            elif provider_name == "openrouter":
-                model = "meta-llama/llama-3.3-70b-instruct"
-            else:
-                model = settings.default_text_model
+            # Use provider's default model for consistency
+            model = provider.get_default_model()
 
             result = provider.generate(messages, temperature=temp, model=model)
             md = result.content

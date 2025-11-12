@@ -21,7 +21,7 @@ def _safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, tim
     except ImportError:
         raise RuntimeError("requests library required. Run: pip install requests")
 
-        parsed = urlparse(url)
+    parsed = urlparse(url)
     if parsed.scheme not in ('http', 'https'):
         raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed.")
 
@@ -32,11 +32,11 @@ def _safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, tim
     except Exception as e:
         raise RuntimeError(f"Download failed: {e}")
 
-        content_type = response.headers.get('Content-Type', '')
+    content_type = response.headers.get('Content-Type', '')
     if not content_type.startswith('image/'):
         logging.warning(f"Unexpected content type: {content_type}")
 
-        content_length = int(response.headers.get('Content-Length', 0))
+    content_length = int(response.headers.get('Content-Length', 0))
     max_bytes = max_size_mb * 1024 * 1024
     if content_length > max_bytes:
         raise ValueError(f"File too large: {content_length} bytes (max: {max_bytes})")
@@ -245,11 +245,11 @@ class HuggingFaceImageProvider(ImageProvider):
         response = requests.post(api_url, headers=headers, json=payload, stream=True)
         response.raise_for_status()
 
-                content_type = response.headers.get('Content-Type', '')
+        content_type = response.headers.get('Content-Type', '')
         if content_type and not content_type.startswith('image/'):
             raise RuntimeError(f"Unexpected content type: {content_type}")
 
-                content_length = int(response.headers.get('Content-Length', 0))
+        content_length = int(response.headers.get('Content-Length', 0))
         max_bytes = 50 * 1024 * 1024
         if content_length > max_bytes:
             raise ValueError(f"Response too large: {content_length} bytes (max: 50MB)")
@@ -327,11 +327,11 @@ class PollinationsProvider(ImageProvider):
         response = requests.get(url, stream=True, timeout=30)
         response.raise_for_status()
 
-                content_type = response.headers.get('Content-Type', '')
+        content_type = response.headers.get('Content-Type', '')
         if content_type and not content_type.startswith('image/'):
             raise RuntimeError(f"Unexpected content type: {content_type}")
 
-                content_length = int(response.headers.get('Content-Length', 0))
+        content_length = int(response.headers.get('Content-Length', 0))
         max_bytes = 50 * 1024 * 1024
         if content_length > max_bytes:
             raise ValueError(f"Response too large: {content_length} bytes (max: 50MB)")

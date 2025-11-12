@@ -51,7 +51,7 @@ def run_world_wizard() -> None:
     from .settings import load_user_settings
     s = load_user_settings()
     style = _pick("Art style:", list(STYLE_PACKS.keys()), default=s.default_style_pack)
-    preset = _pick("Story preset:", list(PRESETS.keys()), default=s.default_preset)
+    _pick("Story preset:", list(PRESETS.keys()), default=s.default_preset)  # User selection (not currently used)
     slug = slugify(title)
     init_world(title, theme, style, slug)
     set_current_world(slug)
@@ -61,7 +61,7 @@ def run_world_wizard() -> None:
     if not go:
         return
     cfg, state, dirs = load_world(slug)
-    ch = generate_chapter(dirs["base"], cfg, state, focus=None, make_scene_image=True, preset_key=preset)
+    ch = generate_chapter(dirs["base"], cfg, state, make_scene_image=True)
     state.chapters.append(ch.__dict__)
     state.next_chapter += 1
     save_world(slug, cfg, state, dirs)

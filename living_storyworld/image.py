@@ -11,6 +11,8 @@ from .config import STYLE_PACKS
 from .settings import load_user_settings, get_api_key_for_provider
 from .providers import get_image_provider
 
+logger = logging.getLogger(__name__)
+
 
 def safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, timeout: int = 30) -> Path:
     """Safely download an image with size and timeout limits.
@@ -36,7 +38,7 @@ def safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, time
     except ImportError:
         raise RuntimeError("requests library required. Run: pip install requests")
 
-        parsed = urlparse(url)
+    parsed = urlparse(url)
     if parsed.scheme not in ('http', 'https'):
         raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed.")
 
@@ -49,11 +51,11 @@ def safe_download_image(url: str, output_path: Path, max_size_mb: int = 50, time
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Download failed: {e}")
 
-        content_type = response.headers.get('Content-Type', '')
+    content_type = response.headers.get('Content-Type', '')
     if not content_type.startswith('image/'):
         logging.warning(f"Unexpected content type: {content_type} (expected image/*)")
 
-        content_length = int(response.headers.get('Content-Length', 0))
+    content_length = int(response.headers.get('Content-Length', 0))
     max_bytes = max_size_mb * 1024 * 1024
     if content_length > max_bytes:
         raise ValueError(f"File too large: {content_length} bytes (max: {max_bytes})")
@@ -128,15 +130,36 @@ def generate_scene_image(
     image_provider_name = settings.image_provider
     api_key = get_api_key_for_provider(image_provider_name, settings)
 
-    # Get the image provider and generate
-    provider = get_image_provider(image_provider_name, api_key=api_key)
-    result = provider.generate(
-        prompt=full_prompt,
-        output_path=out,
-        aspect_ratio=aspect_ratio,
-        model=image_model
-    )
-    logger.info("Generated image using %s (%s), cost: $%.4f", result.provider, result.model, result.estimated_cost)
+    # Try the user's chosen provider first, fallback to Pollinations if it fails
+    try:
+        provider = get_image_provider(image_provider_name, api_key=api_key)
+        result = provider.generate(
+            prompt=full_prompt,
+            output_path=out,
+            aspect_ratio=aspect_ratio,
+            model=image_model
+        )
+        logger.info("Generated image using %s (%s), cost: $%.4f", result.provider, result.model, result.estimated_cost)
+    except Exception as e:
+        # Fallback to Pollinations if the chosen provider fails
+        if image_provider_name != "pollinations":
+            logger.warning("Failed to generate with %s (%s), falling back to Pollinations: %s", image_provider_name, image_model, str(e))
+            try:
+                pollinations_provider = get_image_provider("pollinations", api_key=None)
+                result = pollinations_provider.generate(
+                    prompt=full_prompt,
+                    output_path=out,
+                    aspect_ratio=aspect_ratio,
+                    model="flux"  # Pollinations default
+                )
+                logger.info("Generated image using Pollinations fallback (%s), cost: $%.4f", result.model, result.estimated_cost)
+            except Exception as fallback_error:
+                logger.error("Both %s and Pollinations fallback failed: %s", image_provider_name, str(fallback_error))
+                raise RuntimeError(f"Image generation failed with both {image_provider_name} and Pollinations: {fallback_error}")
+        else:
+            # If already using Pollinations and it failed, just raise the original error
+            logger.error("Pollinations image generation failed: %s", str(e))
+            raise
 
     _append_media_index(base_dir, {
         "type": "scene",

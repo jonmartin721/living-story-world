@@ -25,7 +25,7 @@ class WorldCreateRequest(BaseModel):
     world_instructions: Optional[str] = Field(None, max_length=5000, description="World-specific instructions")
 
     @validator('title', 'theme', 'memory', 'authors_note', 'world_instructions')
-    def strip_whitespace(cls, v):
+    def strip_whitespace(cls, v):  # pylint: disable=no-self-argument
         return v.strip() if v else v
 
 
@@ -41,7 +41,7 @@ class WorldUpdateRequest(BaseModel):
     world_instructions: Optional[str] = Field(None, max_length=5000)
 
     @validator('title', 'theme', 'memory', 'authors_note', 'world_instructions')
-    def strip_whitespace(cls, v):
+    def strip_whitespace(cls, v):  # pylint: disable=no-self-argument
         return v.strip() if v else v
 
 
@@ -101,7 +101,7 @@ async def create_world(request: WorldCreateRequest):
     import os
     import shutil
 
-        existing_worlds = len(list(WORLDS_DIR.glob("*/"))) if WORLDS_DIR.exists() else 0
+    existing_worlds = len(list(WORLDS_DIR.glob("*/"))) if WORLDS_DIR.exists() else 0
     max_worlds = int(os.environ.get("MAX_WORLDS_PER_INSTANCE", "100"))
 
     if existing_worlds >= max_worlds:
@@ -110,7 +110,7 @@ async def create_world(request: WorldCreateRequest):
             detail=f"Maximum number of worlds ({max_worlds}) reached. Delete some worlds before creating new ones."
         )
 
-        try:
+    try:
         stat = shutil.disk_usage(WORLDS_DIR.parent if WORLDS_DIR.exists() else Path.home())
         min_free_mb = 100
         free_mb = stat.free / (1024 * 1024)

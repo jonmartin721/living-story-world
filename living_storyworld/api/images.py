@@ -22,7 +22,7 @@ class ImageGenerateRequest(BaseModel):
     prompt: Optional[str] = Field(None, max_length=2000, description="Image generation prompt")
 
     @validator('prompt')
-    def strip_whitespace(cls, v):
+    def strip_whitespace(cls, v):  # pylint: disable=no-self-argument
         return v.strip() if v else v
 
 

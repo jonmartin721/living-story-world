@@ -12,14 +12,13 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger(__name__)
-
 from ..storage import WORLDS_DIR, validate_slug
 from ..world import load_world, save_world
 from ..generator import generate_chapter, generate_chapter_summary
 from ..image import generate_scene_image
 from ..settings import load_user_settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/worlds/{slug}/chapters", tags=["chapters"])
 
 # Thread pool for running sync operations
@@ -170,8 +169,8 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
             request.chapter_length,
         )
 
-        # Send progress updates while waiting (estimated ~25-35 seconds for text generation)
-        estimated_duration = 33.0  # seconds (slowed by 10% to better match actual generation time)
+        # Send progress updates while waiting (estimated ~40 seconds for text generation)
+        estimated_duration = 40.0  # seconds
         start_percent = 10
         end_percent = 85
         update_interval = 0.5  # Update every 0.5 seconds
@@ -197,7 +196,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
 
         chapter = await text_future
         text_duration = time.time() - text_start
-              logger.info("Text generation completed: %.2fs", text_duration)
+        logger.info("Text generation completed: %.2fs", text_duration)
 
         # Read chapter markdown for summary generation
         chapter_md = (dirs["base"] / "chapters" / chapter.filename).read_text(encoding="utf-8")
@@ -236,8 +235,8 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
                 chapter.number
             )
 
-            # Send progress updates while waiting (flux-dev ~8-12s, flux-schnell ~2-4s)
-            estimated_image_duration = 10.0
+            # Send progress updates while waiting (estimated ~8 seconds)
+            estimated_image_duration = 8.0
             start_percent = 90
             end_percent = 93
             update_interval = 0.5
@@ -331,7 +330,7 @@ async def run_chapter_generation(slug: str, request: ChapterGenerateRequest, que
         import logging
         logging.exception(f"Chapter generation failed for job {job_id}")
 
-                error_msg = f"{type(e).__name__}: {str(e)}"
+        error_msg = f"{type(e).__name__}: {str(e)}"
         traceback_str = traceback.format_exc()
         logging.error(f"Full traceback: {traceback_str}")
 
@@ -516,7 +515,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
         )
 
         # Send progress updates while waiting
-        estimated_duration = 30.0
+        estimated_duration = 40.0
         start_percent = 10
         end_percent = 85
         update_interval = 0.5
@@ -579,7 +578,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
             )
 
             # Send progress updates while waiting
-            estimated_image_duration = 10.0
+            estimated_image_duration = 8.0
             start_percent = 90
             end_percent = 93
             update_interval = 0.5
@@ -653,7 +652,7 @@ async def run_chapter_reroll(slug: str, chapter_num: int, request: ChapterGenera
         import logging
         logging.exception(f"Chapter reroll failed for job {job_id}")
 
-                error_msg = f"{type(e).__name__}: {str(e)}"
+        error_msg = f"{type(e).__name__}: {str(e)}"
         traceback_str = traceback.format_exc()
         logging.error(f"Full traceback: {traceback_str}")
 

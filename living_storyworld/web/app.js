@@ -39,7 +39,7 @@ function app() {
             global_instructions: '',
             default_style_pack: 'storybook-ink',
             default_preset: 'cozy-adventure',
-            default_text_model: 'gpt-4o-mini',
+            default_text_model: 'gemini-2.5-flash',  // Will be overridden by user's chosen provider
             default_image_model: 'flux-dev',
             reader_font_family: 'Georgia',
             reader_font_size: 'medium'
@@ -891,7 +891,16 @@ function app() {
         async handleGenerateOrConfirm() {
             if (this.generatingWorlds.has(this.currentWorldSlug) || this.selectingChoice) return;
 
-            // If there's a pending choice, advance through confirmation stages
+            // Navigation priority: if viewing an older chapter, always navigate forward
+            if (this.viewingChapter?.number < this.currentWorld?.chapters?.length) {
+                const nextChapter = this.currentWorld.chapters.find(ch => ch.number === this.viewingChapter.number + 1);
+                if (nextChapter) {
+                    this.viewChapter(nextChapter, true);
+                }
+                return;
+            }
+
+            // If there's a pending choice on the current (latest) chapter, advance through confirmation stages
             if (this.hasUnselectedChoice()) {
                 if (this.choiceConfirmStage === 1) {
                     this.choiceConfirmStage = 2;
@@ -904,14 +913,7 @@ function app() {
             }
 
             // Normal generation flow
-            if (this.viewingChapter?.number < this.currentWorld?.chapters?.length) {
-                const nextChapter = this.currentWorld.chapters.find(ch => ch.number === this.viewingChapter.number + 1);
-                if (nextChapter) {
-                    this.viewChapter(nextChapter, true);
-                }
-            } else {
-                this.generateChapter();
-            }
+            this.generateChapter();
         },
 
         showRegenerateDialog(chapterNum) {

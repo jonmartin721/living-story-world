@@ -57,7 +57,7 @@ class UserSettings:
     # Default preferences
     default_style_pack: str = "storybook-ink"
     default_preset: str = "cozy-adventure"
-    default_text_model: str = "gemini-2.5-flash"  # Best free model for creative writing (2025)
+    default_text_model: str = "gemini-2.5-flash"  # Default for Gemini provider
     default_image_model: str = "flux"  # Pollinations default
     default_maturity_level: str = "general"
 
@@ -91,7 +91,7 @@ def save_user_settings(s: UserSettings) -> None:
     """
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
+    try:
         # Create with 0o600 if not exists
         if not CONFIG_PATH.exists():
             CONFIG_PATH.touch(mode=0o600)

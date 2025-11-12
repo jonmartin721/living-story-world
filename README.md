@@ -1,130 +1,133 @@
 # Living Storyworld
 
->A storybook created from your imagination, with infinite possibilities! Make decisions and steer the story, or sit back and enjoy a relaxing tale! Create evolving fictional worlds where each chapter builds on the last. 
+>NovelAI but chill
 
-Living Storyworld combines multiple LLM providers with AI image generation to produce coherent, ongoing narratives with custom scene illustrations. 
+Living Storyworld is a story generator that creates illustrated stories chapter by chapter. Each story builds on previous chapters, maintaining character and location continuity while letting you make choices that affect the narrative going forward.
 
-This project was inspired by text adventures, with a modern twist of simplified decision-making and creativity. I wanted to make something that could be both less and more than traditional text adventures, without the (powerful) burden that a service like NovelAI puts on you to be creative. 
+The project started as an experiment in combining modern AI models with classic text adventure mechanics. I wanted to see if we could have the narrative depth of a novel without requiring the creative effort that services like NovelAI demand from users. 
 
 ---
 
 ## Features
 
-- **Persistent World State** — Characters, locations, and narrative continuity maintained across chapters
-- **Multi-Provider Support** — Choose from OpenAI, Groq, Together AI, HuggingFace, OpenRouter for text; Replicate, Fal.ai, Pollinations for images. Free options available (rate-limited or requiring free API keys)
-- **Style Options** — Multiple art direction presets (storybook-ink, pixel-rpg, lowpoly-iso, watercolor-dream, and more)
-- **Narrative Presets** — 12+ genre/tone templates from cozy-adventure to cyberpunk-noir
-- **Modern Web Interface** — Full-featured GUI with real-time progress and chapter management
-- **Smart Caching** — Avoids duplicate API calls by hashing image prompts
-- **Random World Creation** — Fully randomized world with lore and direction prefilled
+- Stories remember characters and locations across chapters
+- Works with multiple AI providers (OpenAI, Groq, Together AI, etc.) for both text and images
+- Several visual styles for story illustrations
+- Genre presets for different story types (fantasy, mystery, sci-fi, etc.)
+- Web interface for managing worlds and generating chapters
+- Image caching to avoid redundant API calls
+- Random world generation with pre-built lore
 ---
 
 ## Quick Start
 
-Pre-built executables are available on the [Releases](https://github.com/jonmartin721/living-storyworld/releases) page. Just download and run! Alternatively, build and run from source:
-
-### Installation
+You can download pre-built executables from the [Releases](https://github.com/jonmartin721/living-storyworld/releases) page, or run from source:
 
 ```bash
-# Clone the repository
 git clone https://github.com/jonmartin721/living-storyworld.git
 cd living-storyworld
-
-# Set up virtual environment (recommended)
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-```
 
-### Launch the Web Interface
-
-```bash
+# Start the web interface
 python3 -m living_storyworld.cli web
 ```
 
-The web app will open automatically at `http://localhost:8001`.
+The web app will open at `http://localhost:8001`. First-time setup will walk you through configuring API keys - I recommend using Gemini (free tier) plus Pollinations for images to get started without costs.
 
-### Get Started
+![Setup wizard for initial configuration](screenshots/setup-wizard.png)
 
-1. **Setup Wizard** — On first launch, a guided setup wizard helps you configure API keys and select providers (free options available)
-2. **Create a World** — Use "New World" to design your own, or try "Random World" for instant generation with pre-filled lore
-3. **Generate Chapters** — Click "Generate Next Chapter" to continue the story with real-time progress indicators
-4. **Make Choices** — When presented with story choices, select one and lock it in to influence the narrative direction
+Once you're in, create a new world by clicking "New" (or use the random generator) and start generating chapters. You can make choices at key points to steer the story direction.
 
-The web interface provides full world management, chapter generation with live progress, and comprehensive settings. Access the setup wizard anytime via Console → "Start Setup Wizard".
+## Interface & Workflow
+
+The web interface provides a clean, distraction-free environment for managing your story worlds:
+
+![Main interface showing world management](screenshots/main-page.png)
+
+Creating a new world is simple - just give it a title and theme, or let the generator randomize one for you:
+
+![New world creation dialog](screenshots/new-world-dialog.png)
+
+First-time setup is straightforward. The settings panel lets you configure API keys for various AI providers:
+
+![API keys configuration](screenshots/api-keys-settings.png)
+
+As you read through chapters, you'll encounter choice points that let you influence how the story unfolds:
+
+![Interactive choice moments](screenshots/make-choices.png)
+
+The reading mode provides a clean, focused view for enjoying your generated chapters:
+
+![Clean reading interface](screenshots/reading-mode.png)
 
 ---
 
 ## Visual Styles
 
-- **storybook-ink** — Ink and wash illustration
-- **pixel-rpg** — 16-bit SNES-style pixel art
-- **lowpoly-iso** — Low-poly isometric diorama
-- **watercolor-dream** — Soft watercolor painting
-- **noir-sketch** — High-contrast ink sketch
-- **art-nouveau** — Art Nouveau poster illustration
-- **comic-book** — Classic American comic book style
-- **oil-painting** — Classical oil painting (Old Masters)
+Available illustration styles:
+- `storybook-ink` - Ink and wash illustrations
+- `pixel-rpg` - 16-bit pixel art style
+- `lowpoly-iso` - Isometric low-poly scenes
+- `watercolor-dream` - Soft watercolor paintings
+- `noir-sketch` - High contrast ink drawings
+- `art-nouveau` - Art Nouveau poster style
+- `comic-book` - Classic comic book look
+- `oil-painting` - Classical oil paintings
 
 ---
 
 ## Narrative Presets
 
-- **cozy-adventure** — Warm, character-driven journeys with gentle stakes. Ideal for small-town mysteries, friendly quests, and wholesome discovery where relationships and atmosphere matter more than danger.
-- **epic-fantasy** — Grand scope, high stakes, and sweeping worldbuilding. Use for multi-act sagas with kingdoms, prophecy, magic systems, and large-cast conflicts.
-- **solarpunk-explorer** — Optimistic, eco-forward exploration and community-building. Focuses on sustainable tech, collaborative solutions, and bright, hopeful futures.
-- **whimsical-fairy-tale** — Lyrical, symbolic stories with moral beats and charming oddities. Perfect for modern fairy tales, enchanted forests, and small moral dilemmas wrapped in charm.
-- **noir-mystery** — Cynical narration, sharp dialogue, and morally gray detectives. Best for urban crime, investigation-led chapters, and mood-driven tension.
-- **gothic-horror** — Brooding atmosphere, tragic secrets, and slow-burn dread. Use for haunted estates, cursed lineages, and character-driven psychological terror.
-- **cosmic-horror** — Existential dread, incomprehensible forces, and diminishing sanity. Fit for stories that emphasize insignificance and the unknown over physical threats.
-- **cyberpunk-noir** — Neon-soaked streets, corp power plays, and hacker intrigue. Tone is gritty, stylish, and focused on socio-technical conflict and moral ambiguity.
-- **slice-of-life** — Quiet, everyday moments with emotional grounding. Great for character studies, relationship arcs, and low-stakes realism.
-- **historical-intrigue** — Period detail, political maneuvering, and authenticity-first narration. Use for court drama, espionage, and stories rooted in real or alternate histories.
-- **post-apocalyptic** — Survival, rebuilding, and societal remnants. Range from harsh survivalist tone to hopeful reconstruction depending on world state.
-- **space-opera** — Fast-paced interstellar adventure with grand set pieces. Ideal for fleet actions, exotic worlds, and heroic/operatic character arcs.
+Story genres to set the tone:
+- `cozy-adventure` - Character-driven stories with gentle stakes
+- `epic-fantasy` - High fantasy with kingdoms, magic, and large conflicts
+- `solarpunk-explorer` - Hopeful eco-futurism and community building
+- `whimsical-fairy-tale` - Modern fairy tales with charm and moral elements
+- `noir-mystery` - Urban crime stories with cynical detectives
+- `gothic-horror` - Atmospheric horror with family secrets and dread
+- `cosmic-horror` - Existential stories about incomprehensible forces
+- `cyberpunk-noir` - Near-future tech noir with corporate intrigue
+- `slice-of-life` - Everyday moments and character relationships
+- `historical-intrigue` - Period stories with political maneuvering
+- `post-apocalyptic` - Survival and rebuilding after societal collapse
+- `space-opera` - Grand interstellar adventures
 
 ---
 
 ## Architecture
 
-FastAPI backend with pluggable text/image providers. Worlds stored as JSON with generated markdown chapters and PNG scene illustrations. Data models track persistent state across characters, locations, and narrative history.
+The project uses FastAPI for the web backend with a plugin system for different AI providers. Each world is stored as JSON files with markdown chapters and PNG illustrations. The system tracks character and location state across chapters to maintain narrative consistency.
 
 ---
 
-## API Keys & Pricing
+## API Keys & Setup
 
-### Recommended Setup (Free Tier)
+I recommend using Gemini 2.5 Flash (free tier available) with Pollinations for images to get started for free!. The setup wizard will walk you through this configuration.
 
-- **Gemini** — 2.5 Flash model with generous free tier ([get key](https://aistudio.google.com/apikey))
-- **Pollinations** — Free image generation (no key required)
-
-Using Gemini 2.5 Flash and Pollinations, everything is completely free. The setup wizard automatically recommends this configuration.
-
-### Security Notes
-
-- API keys stored locally with `600` permissions
-- Web server binds to `127.0.0.1` (localhost only)
-- No authentication — do not expose to internet
-- Slug validation prevents path traversal attacks
-- Image downloads enforce size limits and timeouts
+**Security notes:**
+- API keys are stored locally with restricted permissions
+- The web server runs on localhost only
+- No authentication is built-in (don't expose this to the internet)
+- Basic security measures are in place for file operations
 
 ---
 
 ## Contributing
 
-Contributions welcome! Areas for expansion:
+Some areas I'd like to explore:
+- More visual styles and story genres
+- Character and location portraits
+- Better ways to handle story endings
+- Improved visual transitions between chapters
+- Theming "Read" mode
+- Adding background art for each world
+- Handling cases where AI models refuse to generate content
 
-- Additional style packs and narrative presets.
-- Character/location portrait generation.
-- World art shown for each world behind chapters.
-- Better visual transitions between chapters.
-- Themed reading mode for different worlds, or in Settings.
-- How can we end stories naturally or let readers do it in a way that isn't limiting or too abrupt?
-- Handling models refusing for safety concerns (happens occasionally).
+Pull requests are welcome for bug fixes or small improvements like the above. For larger features, it's probably best to open an issue first to discuss the approach.
 
-I'd love to see new improvements, feel free to suggest and open a PR! Contributions are very welcome.
+Enjoy!
 
 ---
 
