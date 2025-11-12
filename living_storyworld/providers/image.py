@@ -373,8 +373,7 @@ class PollinationsProvider(ImageProvider):
         max_prompt_length = 1000  # Conservative limit for URL safety
         if len(prompt) > max_prompt_length:
             logger.warning(
-                f"Prompt too long ({
-                    len(prompt)} chars), truncating to {max_prompt_length}"
+                f"Prompt too long ({len(prompt)} chars), truncating to {max_prompt_length}"
             )
             prompt = prompt[:max_prompt_length]
 

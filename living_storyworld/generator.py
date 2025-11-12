@@ -214,8 +214,7 @@ def _build_chapter_prompt(
     user_parts.extend(
         [
             f"Write Chapter {state.next_chapter}:\n",
-            f"Start with a unique chapter title as H1 (do NOT include 'Chapter {
-            state.next_chapter}' in the title - just the evocative name). ",
+            f"Start with a unique chapter title as H1 (do NOT include 'Chapter {state.next_chapter}' in the title - just the evocative name). ",
             f"Then write {min_words}-{max_words} words of rich prose emphasizing physical action, movement through spaces, and scene changes. ",
             "PUSH THE STORY FORWARD - introduce new complications, visit different locations, advance the timeline, reveal new information. ",
             "Avoid repeating locations or beats from recent chapters. Each chapter should feel like PROGRESS. ",

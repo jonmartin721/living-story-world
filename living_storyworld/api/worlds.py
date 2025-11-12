@@ -132,8 +132,7 @@ async def create_world(request: WorldCreateRequest):
         if free_mb < min_free_mb:
             raise HTTPException(
                 status_code=507,
-                detail=f"Insufficient disk space ({
-                    free_mb:.0f}MB free, need {min_free_mb}MB minimum)",
+                detail=f"Insufficient disk space ({free_mb:.0f}MB free, need {min_free_mb}MB minimum)",
             )
     except Exception as e:
         # Log but don't block on disk check failure

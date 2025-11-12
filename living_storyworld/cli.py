@@ -181,9 +181,7 @@ def cmd_build(args: argparse.Namespace) -> None:
         + "</title>",
         "<style>body{font-family:system-ui, sans-serif;max-width:920px;margin:3rem auto;padding:0 1rem} img{max-width:100%;height:auto;border-radius:6px} .chapter{margin:2rem 0;padding:1rem;border:1px solid #eee;border-radius:8px} .title{margin:0 0 .5rem;font-size:1.1rem;font-weight:600} .meta{color:#666;font-size:.9rem}</style>",
         "</head><body>",
-        f"<h1>{
-            html_lib.escape(
-                cfg.title)}</h1>",
+        f"<h1>{html_lib.escape(cfg.title)}</h1>",
     ]
     if not items:
         html.append(

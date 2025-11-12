@@ -305,8 +305,7 @@ def handle_api_error(error: Exception, provider: str) -> LivingStoryworldError:
                 return ContentPolicyError(provider, details)
             return APIError(
                 provider,
-                f"Invalid request: {
-                    details or 'Unknown error'}",
+                f"Invalid request: {details or 'Unknown error'}",
                 status_code=400,
                 user_message=f"Invalid request to {provider}",
                 help_text="Check your request parameters",

@@ -508,10 +508,7 @@ class GeminiProvider(TextProvider):
         if messages and messages[0]["role"] == "system":
             system_content = messages[0]["content"]
             if len(gemini_messages) > 1:
-                gemini_messages[1]["parts"][
-                    0
-                ] = f"{system_content}\n\n{
-                    gemini_messages[1]['parts'][0]}"
+                gemini_messages[1]["parts"][0] = f"{system_content}\n\n{gemini_messages[1]['parts'][0]}"
                 gemini_messages = gemini_messages[1:]  # Remove the system message
 
         response = model_instance.generate_content(
