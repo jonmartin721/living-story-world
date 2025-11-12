@@ -141,6 +141,8 @@ class OpenAIProvider(TextProvider):
         temperature: float = 1.0,
         model: Optional[str] = None,
     ) -> TextGenerationResult:
+        from ..exceptions import handle_api_error, InvalidModelError
+
         # VALIDATION: Temperature bounds
         if not 0.0 <= temperature <= 2.0:
             raise ValueError(f"Temperature must be between 0.0 and 2.0, got {temperature}")
@@ -155,16 +157,17 @@ class OpenAIProvider(TextProvider):
 
         # VALIDATION: Model name
         if model_name not in self.ALLOWED_MODELS:
-            raise ValueError(
-                f"Unknown OpenAI model: {model_name}. "
-                f"Allowed: {', '.join(sorted(self.ALLOWED_MODELS))}"
-            )
+            raise InvalidModelError("OpenAI", model_name, list(self.ALLOWED_MODELS))
 
-        resp = client.chat.completions.create(
-            model=model_name,
-            messages=messages,  # type: ignore
-            temperature=temperature,
-        )
+        try:
+            resp = client.chat.completions.create(
+                model=model_name,
+                messages=messages,  # type: ignore
+                temperature=temperature,
+            )
+        except Exception as e:
+            # Convert to user-friendly error
+            raise handle_api_error(e, "OpenAI") from e
 
         content = resp.choices[0].message.content or ""
         cost = self.estimate_cost(messages, model_name)

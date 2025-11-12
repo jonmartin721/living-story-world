@@ -326,21 +326,25 @@ class PollinationsProvider(ImageProvider):
         # Check if URL would be too long (conservative limit of 1500 chars)
         test_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&model={model_name}&nologo=true"
 
-        if len(test_url) > 1500:
-            # Use POST for long prompts
-            url = "https://image.pollinations.ai/prompt"
-            params = {
-                "width": width,
-                "height": height,
-                "model": model_name,
-                "nologo": "true"
-            }
-            response = requests.post(url, json={"prompt": prompt}, params=params, stream=True, timeout=30)
-        else:
-            # Use GET for short prompts (simpler)
-            response = requests.get(test_url, stream=True, timeout=30)
+        try:
+            if len(test_url) > 1500:
+                # Use POST for long prompts
+                url = "https://image.pollinations.ai/prompt"
+                params = {
+                    "width": width,
+                    "height": height,
+                    "model": model_name,
+                    "nologo": "true"
+                }
+                response = requests.post(url, json={"prompt": prompt}, params=params, stream=True, timeout=30)
+            else:
+                # Use GET for short prompts (simpler)
+                response = requests.get(test_url, stream=True, timeout=30)
 
-        response.raise_for_status()
+            response.raise_for_status()
+        except Exception as e:
+            from ..exceptions import handle_api_error
+            raise handle_api_error(e, "Pollinations") from e
 
         content_type = response.headers.get('Content-Type', '')
         if content_type and not content_type.startswith('image/'):
