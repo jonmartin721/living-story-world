@@ -318,13 +318,28 @@ class PollinationsProvider(ImageProvider):
         # Convert aspect ratio to dimensions
         width, height = self._aspect_ratio_to_dimensions(aspect_ratio)
 
-        # URL encode the prompt
+        # Use POST for long prompts to avoid URL length limits
+        # URL length limits typically ~2000 chars, use POST if prompt would exceed ~1500
         import urllib.parse
         encoded_prompt = urllib.parse.quote(prompt)
 
-        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&model={model_name}&nologo=true"
+        # Check if URL would be too long (conservative limit of 1500 chars)
+        test_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&model={model_name}&nologo=true"
 
-        response = requests.get(url, stream=True, timeout=30)
+        if len(test_url) > 1500:
+            # Use POST for long prompts
+            url = "https://image.pollinations.ai/prompt"
+            params = {
+                "width": width,
+                "height": height,
+                "model": model_name,
+                "nologo": "true"
+            }
+            response = requests.post(url, json={"prompt": prompt}, params=params, stream=True, timeout=30)
+        else:
+            # Use GET for short prompts (simpler)
+            response = requests.get(test_url, stream=True, timeout=30)
+
         response.raise_for_status()
 
         content_type = response.headers.get('Content-Type', '')
