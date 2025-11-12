@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from ..image import generate_scene_image
 from .dependencies import get_validated_world_slug, load_world_async
@@ -23,8 +23,9 @@ class ImageGenerateRequest(BaseModel):
         None, max_length=2000, description="Image generation prompt"
     )
 
-    @validator("prompt")
-    def strip_whitespace(cls, v):  # pylint: disable=no-self-argument
+    @field_validator("prompt")
+    @classmethod
+    def strip_whitespace(cls, v):
         return v.strip() if v else v
 
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from ..storage import WORLDS_DIR, get_current_world, set_current_world
 from ..world import init_world, load_world
@@ -33,8 +33,9 @@ class WorldCreateRequest(BaseModel):
         None, max_length=5000, description="World-specific instructions"
     )
 
-    @validator("title", "theme", "memory", "authors_note", "world_instructions")
-    def strip_whitespace(cls, v):  # pylint: disable=no-self-argument
+    @field_validator("title", "theme", "memory", "authors_note", "world_instructions")
+    @classmethod
+    def strip_whitespace(cls, v):
         return v.strip() if v else v
 
 
@@ -49,8 +50,9 @@ class WorldUpdateRequest(BaseModel):
     authors_note: Optional[str] = Field(None, max_length=5000)
     world_instructions: Optional[str] = Field(None, max_length=5000)
 
-    @validator("title", "theme", "memory", "authors_note", "world_instructions")
-    def strip_whitespace(cls, v):  # pylint: disable=no-self-argument
+    @field_validator("title", "theme", "memory", "authors_note", "world_instructions")
+    @classmethod
+    def strip_whitespace(cls, v):
         return v.strip() if v else v
 
 

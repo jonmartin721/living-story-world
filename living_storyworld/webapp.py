@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 import os
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -53,11 +55,71 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup
+    from .settings import load_user_settings
+    from .storage import WORLDS_DIR
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+    # Suppress httpx INFO logs to reduce noise during API calls
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    settings = load_user_settings()
+
+    # Warn about missing API keys
+    warnings = []
+    if not settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
+        warnings.append("OpenAI API key not configured")
+    if not settings.replicate_api_token and not os.environ.get("REPLICATE_API_TOKEN"):
+        warnings.append("Replicate API token not configured")
+
+    if warnings:
+        for warning in warnings:
+            logging.warning(f"CONFIG: {warning}")
+        logging.info(
+            "Some API keys are missing. Configure them via /api/settings or environment variables."
+        )
+
+    # Check writable directories
+    try:
+        WORLDS_DIR.mkdir(parents=True, exist_ok=True)
+        test_file = WORLDS_DIR / ".write_test"
+        test_file.write_text("test")
+        test_file.unlink()
+        logging.info(f"WORLDS_DIR is writable: {WORLDS_DIR}")
+    except Exception as e:
+        logging.error(f"WORLDS_DIR not writable: {e}")
+        raise RuntimeError(f"Cannot write to worlds directory: {e}")
+
+    logging.info("Configuration validation complete")
+
+    # Get allowed origins for logging
+    allowed_origins_str = os.environ.get(
+        "ALLOWED_ORIGINS",
+        "http://localhost:8001,http://127.0.0.1:8001,http://localhost:9999,http://127.0.0.1:9999",
+    )
+    allowed_origins_list = [
+        origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()
+    ]
+    logging.info(f"Allowed CORS origins: {', '.join(allowed_origins_list)}")
+
+    yield
+
+    # Shutdown (if needed in the future)
+
+
 # Create FastAPI app
 app = FastAPI(
     title="Living Storyworld",
     description="Web interface for Living Storyworld narrative generator",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Format: comma-separated list of allowed origins
@@ -116,52 +178,6 @@ async def index():
     if html_path.exists():
         return FileResponse(html_path)
     return {"message": "Living Storyworld API", "docs": "/docs"}
-
-
-@app.on_event("startup")
-async def validate_configuration():
-    """Validate configuration on startup."""
-    import logging
-
-    from .settings import load_user_settings
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-
-    # Suppress httpx INFO logs to reduce noise during API calls
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-
-    settings = load_user_settings()
-
-    # Warn about missing API keys
-    warnings = []
-    if not settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
-        warnings.append("OpenAI API key not configured")
-    if not settings.replicate_api_token and not os.environ.get("REPLICATE_API_TOKEN"):
-        warnings.append("Replicate API token not configured")
-
-    if warnings:
-        for warning in warnings:
-            logging.warning(f"CONFIG: {warning}")
-        logging.info(
-            "Some API keys are missing. Configure them via /api/settings or environment variables."
-        )
-
-    # Check writable directories
-    try:
-        WORLDS_DIR.mkdir(parents=True, exist_ok=True)
-        test_file = WORLDS_DIR / ".write_test"
-        test_file.write_text("test")
-        test_file.unlink()
-        logging.info(f"WORLDS_DIR is writable: {WORLDS_DIR}")
-    except Exception as e:
-        logging.error(f"WORLDS_DIR not writable: {e}")
-        raise RuntimeError(f"Cannot write to worlds directory: {e}")
-
-    logging.info("Configuration validation complete")
-    logging.info(f"Allowed CORS origins: {', '.join(allowed_origins)}")
 
 
 @app.get("/api/health")
