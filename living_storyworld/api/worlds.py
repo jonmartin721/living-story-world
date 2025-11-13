@@ -261,7 +261,6 @@ async def update_world(
 
     cfg, state, dirs = load_world(slug)
 
-    # Update fields if provided
     if request.title is not None:
         cfg.title = request.title
     if request.theme is not None:

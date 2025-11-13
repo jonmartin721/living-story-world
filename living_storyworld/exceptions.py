@@ -142,9 +142,10 @@ class ServerError(APIError):
         if details:
             message += f": {details}"
 
-        user_message = f"{provider} is experiencing issues (error {status_code})"
+        user_message = f"{provider}'s servers are down (error {status_code})"
         help_text = (
-            "Try again in a few minutes, or temporarily use a different provider"
+            f"This is a temporary issue with {provider}, not with Living Storyworld. "
+            f"Please try generating again in a few minutes, or temporarily switch to a different provider in Settings."
         )
 
         super().__init__(
@@ -161,9 +162,10 @@ class TimeoutError(APIError):
 
     def __init__(self, provider: str, timeout: int):
         message = f"{provider} request timed out after {timeout}s"
-        user_message = f"Request to {provider} timed out"
+        user_message = f"{provider} is responding slowly (timeout after {timeout}s)"
         help_text = (
-            "The provider took too long to respond. Try again, or use a faster model."
+            f"{provider} took too long to respond. This usually means their servers are overloaded. "
+            f"Please try again in a few minutes, or switch to a different provider."
         )
 
         super().__init__(
@@ -182,8 +184,12 @@ class NetworkError(APIError):
         if details:
             message += f": {details}"
 
-        user_message = f"Cannot connect to {provider}"
-        help_text = "Check your internet connection and try again"
+        user_message = f"Cannot connect to {provider}'s servers"
+        help_text = (
+            f"{provider}'s servers may be experiencing connectivity issues or downtime. "
+            f"Please try again in a few minutes, or temporarily switch to a different provider. "
+            f"If the problem persists, check your internet connection."
+        )
 
         super().__init__(
             provider=provider,

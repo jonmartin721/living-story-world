@@ -99,7 +99,6 @@ async def lifespan(app: FastAPI):
 
     logging.info("Configuration validation complete")
 
-    # Get allowed origins for logging
     allowed_origins_str = os.environ.get(
         "ALLOWED_ORIGINS",
         "http://localhost:8001,http://127.0.0.1:8001,http://localhost:9999,http://127.0.0.1:9999",
@@ -111,10 +110,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown (if needed in the future)
 
-
-# Create FastAPI app
 app = FastAPI(
     title="Living Storyworld",
     description="Web interface for Living Storyworld narrative generator",
@@ -151,13 +147,8 @@ app.include_router(images.router)
 app.include_router(settings.router)
 app.include_router(generate.router)
 
-# Serve world media files
-# SECURITY WARNING: This serves ALL world files without authentication.
-# In a production deployment with multiple users, implement access control
-# to prevent unauthorized access to private worlds. Consider:
-# - User authentication/authorization
-# - Per-world access tokens
-# - Serving files through controlled endpoints instead of StaticFiles
+# TODO: This serves ALL world files without auth - fine for single-user but needs
+# rethinking for multi-tenant. Maybe use signed URLs or session-based access control?
 from .storage import WORLDS_DIR  # noqa: E402
 
 if WORLDS_DIR.exists():

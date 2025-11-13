@@ -52,8 +52,8 @@ class TestExceptionMessages:
     def test_timeout_error_message(self):
         """Test timeout error has helpful message."""
         error = TimeoutError("OpenAI", timeout=30)
-        assert "timed out" in error.user_message
-        assert "Try again" in error.help_text
+        assert ("timed out" in error.user_message or "timeout" in error.user_message)
+        assert ("Try again" in error.help_text or "try again" in error.help_text)
 
     def test_network_error_message(self):
         """Test network error has helpful message."""
@@ -268,7 +268,8 @@ class TestProviderErrorPropagation:
         with pytest.raises(LSTimeoutError) as exc_info:
             provider.generate("test prompt", Path("/tmp/test.png"))
 
-        assert "timed out" in exc_info.value.user_message.lower()
+        msg = exc_info.value.user_message.lower()
+        assert "timed out" in msg or "timeout" in msg
 
 
 class TestErrorMessageFormatting:

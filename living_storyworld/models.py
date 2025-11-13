@@ -47,6 +47,7 @@ class Chapter:
     summary: Optional[str] = None
     ai_summary: Optional[str] = None  # AI-generated concise summary for continuity
     scene_prompt: Optional[str] = None
+    image_prompt: Optional[str] = None  # Concise prompt optimized for image generation
     characters_in_scene: List[str] = field(default_factory=list)
     choices: List[Choice] = field(default_factory=list)
     selected_choice_id: Optional[str] = None

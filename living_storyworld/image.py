@@ -129,7 +129,6 @@ def generate_scene_image(
     import random
     import time
 
-    # Add timestamp and random component when bypassing cache to ensure uniqueness
     cache_suffix = (
         f"-{int(time.time())}-{random.randint(1000, 9999)}" if bypass_cache else ""
     )
@@ -145,20 +144,17 @@ def generate_scene_image(
         )
     )
 
-    # Check cache first (unless bypassing)
     if not bypass_cache and out.exists():
         logger.debug("Using cached image: %s", out.name)
         return out
 
-    # Load settings to determine which provider to use
     settings = load_user_settings()
     image_provider_name = settings.image_provider
     api_key = get_api_key_for_provider(image_provider_name, settings)
 
-    # Try the user's chosen provider first, fallback to Pollinations if it fails
     try:
         provider = get_image_provider(image_provider_name, api_key=api_key)
-        result = provider.generate(
+        image_result = provider.generate(
             prompt=full_prompt,
             output_path=out,
             aspect_ratio=aspect_ratio,
@@ -166,9 +162,9 @@ def generate_scene_image(
         )
         logger.info(
             "Generated image using %s (%s), cost: $%.4f",
-            result.provider,
-            result.model,
-            result.estimated_cost,
+            image_result.provider,
+            image_result.model,
+            image_result.estimated_cost,
         )
     except Exception as e:
         # Fallback to Pollinations if the chosen provider fails

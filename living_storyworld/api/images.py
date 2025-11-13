@@ -46,7 +46,8 @@ async def generate_image(
         # Pull prompt from chapter record
         for ch in state.chapters:
             if ch.number == chapter_num:
-                prompt = ch.scene_prompt
+                # Prefer concise image_prompt, fallback to scene_prompt for backward compatibility
+                prompt = ch.image_prompt if hasattr(ch, 'image_prompt') and ch.image_prompt else ch.scene_prompt
                 break
 
     if not prompt:
@@ -73,7 +74,6 @@ async def generate_image(
         True,  # bypass_cache - always bypass when regenerating via API
     )
 
-    # Update chapter's scene path and metadata in world state if this is for a specific chapter
     if chapter_num is not None:
         for ch in state.chapters:
             if ch.number == chapter_num:
@@ -81,17 +81,12 @@ async def generate_image(
 
                 from ..settings import load_user_settings
 
-                # Update scene path
                 ch.scene = f"/worlds/{slug}/media/scenes/{image_path.name}"
-
-                # Update generation metadata
                 ch.generated_at = time.strftime("%Y-%m-%d %I:%M:%S %p")
 
-                # Update model used information
                 settings = load_user_settings()
                 ch.image_model_used = settings.default_image_model
 
-                # Save the updated world state
                 from ..world import save_world
 
                 save_world(slug, cfg, state, dirs)

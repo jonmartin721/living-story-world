@@ -92,7 +92,8 @@ def save_user_settings(s: UserSettings) -> None:
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Create with 0o600 if not exists
+        # Using 0o600 for security but this doesn't work great on Windows
+        # TODO: investigate better cross-platform solution
         if not CONFIG_PATH.exists():
             CONFIG_PATH.touch(mode=0o600)
         CONFIG_PATH.chmod(0o600)

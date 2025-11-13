@@ -28,11 +28,9 @@ def _get_client():
 def _build_chapter_prompt(
     cfg: WorldConfig, state: WorldState, chapter_length: str = "medium"
 ) -> Tuple[str, list[dict], float]:
-    # textual art bible for images
     style = STYLE_PACKS.get(cfg.style_pack, STYLE_PACKS["storybook-ink"])
     preset = PRESETS.get(cfg.preset, DEFAULT_PRESET)
 
-    # Load global instructions from user settings
     settings = load_user_settings()
     global_instructions = settings.global_instructions or ""
 
@@ -47,13 +45,13 @@ def _build_chapter_prompt(
         cfg.maturity_level, maturity_guidance["general"]
     )
 
-    # Build system message with global + world-specific instructions
     metadata_keys = (
-        "scene_prompt (string describing a wide scene illustration), characters_in_scene (string array), "
+        "scene_prompt (string describing a wide scene illustration), "
+        "image_prompt (concise 1-2 sentence visual description for image generation, max 150 chars, focus on key visual elements only), "
+        "characters_in_scene (string array), "
         "summary (string), new_characters (array of {id, name, description}), new_locations (array of {id, name, description})"
     )
 
-    # Add choices instruction if enabled
     if cfg.enable_choices:
         metadata_keys += (
             ", choices (array of 3 objects with {id, text, description}), story_health (object with {is_repetitive: bool, natural_ending_reached: bool, needs_fresh_direction: bool, notes: string}). "
@@ -75,20 +73,18 @@ def _build_chapter_prompt(
         "In metadata, note if the story feels repetitive or has reached a natural ending.",
     ]
 
-    # Add global instructions if present
     if global_instructions:
         sys_parts.append(f"\n\nGlobal Instructions: {global_instructions}")
 
-    # Add world-specific instructions if present
     if cfg.world_instructions:
         sys_parts.append(f"\n\nWorld Instructions: {cfg.world_instructions}")
 
     sys = "".join(sys_parts)
 
-    # Build efficient story context using stored summaries
+    # Context window management is naive - just using recent chapters
+    # TODO: should probably do smarter summarization for very long stories but this works for now
     story_context = []
     if state.chapters:
-        # Get summaries from recent chapters (last 3-4 for focused context without over-anchoring)
         recent_chapters = (
             state.chapters[-4:] if len(state.chapters) >= 4 else state.chapters
         )
@@ -112,7 +108,6 @@ def _build_chapter_prompt(
 
             story_context.append("\n".join(chapter_info))
 
-        # Create a chained story progression with broader strokes
         if len(state.chapters) > 4:
             # For longer stories, include brief arc summary
             older_summary = []
@@ -136,24 +131,20 @@ def _build_chapter_prompt(
         "known_locations": list(state.locations.keys()),
     }
 
-    # Build user message with memory and author's note
     user_parts = []
 
-    # Add memory/lore first (always in context)
     if cfg.memory:
         user_parts.append(f"Memory/Lore:\n{cfg.memory}\n\n")
 
     user_parts.append("World brief: " + json.dumps(world_brief) + "\n\n")
 
-    # Add comprehensive story context for continuity
     if story_context:
         user_parts.append("Story progression:\n" + "\n\n".join(story_context) + "\n\n")
 
-    # Add author's note (strategic placement for style guidance)
+    # Strategic placement - author's note goes here to influence style without overwhelming context
     if cfg.authors_note:
         user_parts.append(f"Author's Note: {cfg.authors_note}\n\n")
 
-    # Add previous choice context LAST (strongest signal - most recent in context)
     if cfg.enable_choices and state.chapters:
         prev_chapter = state.chapters[-1]
         if prev_chapter.selected_choice_id and prev_chapter.choices:
@@ -172,7 +163,6 @@ def _build_chapter_prompt(
                 choice_context += "This choice MUST be the central driver of this chapter. Build the narrative directly from the consequences and implications of this decision. Any optional focus/nudges above are secondary to honoring this choice.\n\n"
                 user_parts.append(choice_context)
 
-    # Variable chapter length with random variation
     import random
 
     length_config = {
@@ -181,13 +171,11 @@ def _build_chapter_prompt(
         "long": (1600, 2400),  # 4x short
     }
     min_words, max_words = length_config.get(chapter_length, length_config["medium"])
-    # Add ±10% random variation for natural feel
-    variation = random.uniform(0.9, 1.1)
+    variation = random.uniform(0.9, 1.1)  # ±10% variance to keep it feeling organic
     min_words = int(min_words * variation)
     max_words = int(max_words * variation)
 
-    # Build metadata format string
-    metadata_format = '<!-- {"scene_prompt": string, "characters_in_scene": [string], "summary": string, '
+    metadata_format = '<!-- {"scene_prompt": string, "image_prompt": string, "characters_in_scene": [string], "summary": string, '
     metadata_format += '"new_characters": [{id, name, description}], "new_locations": [{id, name, description}]'
     if cfg.enable_choices:
         metadata_format += (
@@ -196,7 +184,6 @@ def _build_chapter_prompt(
         metadata_format += '"story_health": {"is_repetitive": bool, "natural_ending_reached": bool, "needs_fresh_direction": bool, "notes": string}'
     metadata_format += "} -->\n"
 
-    # Special instructions for first chapter
     if state.next_chapter == 1:
         user_parts.append(
             "\n\nFIRST CHAPTER GUIDANCE:\n"
@@ -258,7 +245,6 @@ def generate_chapter(
     make_scene_image: bool = True,
     chapter_length: str = "medium",
 ) -> Chapter:
-    # Load settings and get available providers for fallback
     from .settings import get_available_text_providers
 
     settings = load_user_settings()
@@ -269,34 +255,30 @@ def generate_chapter(
             "No text providers configured. Please add API keys in Settings."
         )
 
-    # Try each available provider until one succeeds
     last_error = None
     for provider_name in available_providers:
         try:
             api_key = get_api_key_for_provider(provider_name, settings)
             provider = get_text_provider(provider_name, api_key=api_key)
 
-            # Build prompt and generate
             style, messages, temp = _build_chapter_prompt(cfg, state, chapter_length)
 
-            # Use provider's default model for consistency
             model = provider.get_default_model()
 
-            result = provider.generate(messages, temperature=temp, model=model)
-            md = result.content
+            chapter_result = provider.generate(messages, temperature=temp, model=model)
+            md = chapter_result.content
             logger.info(
                 "Generated chapter using %s (%s), cost: $%.4f",
-                result.provider,
-                result.model,
-                result.estimated_cost,
+                chapter_result.provider,
+                chapter_result.model,
+                chapter_result.estimated_cost,
             )
-            break  # Success, exit loop
+            break
 
         except Exception as e:
             last_error = e
             error_msg = str(e)
 
-            # Check if this was a safety filter issue
             is_safety_block = (
                 "safety filter" in error_msg.lower() or "blocked" in error_msg.lower()
             )
@@ -318,7 +300,6 @@ def generate_chapter(
                         remaining[0] if remaining else "none",
                     )
             else:
-                # No fallbacks available
                 if is_safety_block:
                     raise ValueError(
                         f"Content blocked by {provider_name}'s safety filters. Try regenerating or configure additional text providers in Settings for automatic fallback."
@@ -326,7 +307,6 @@ def generate_chapter(
                 raise
 
     else:
-        # All providers failed
         providers_tried = ", ".join(available_providers)
         raise ValueError(
             f"All text providers failed ({providers_tried}). Last error: {last_error}. Configure additional providers in Settings for better reliability."
@@ -334,6 +314,7 @@ def generate_chapter(
 
     meta = _parse_meta(md)
     scene_prompt = str(meta.get("scene_prompt", "")) if isinstance(meta, dict) else ""
+    image_prompt = str(meta.get("image_prompt", "")) if isinstance(meta, dict) else ""
     summary = str(meta.get("summary", "")) if isinstance(meta, dict) else None
     characters_in_scene = (
         meta.get("characters_in_scene", []) if isinstance(meta, dict) else []
@@ -341,7 +322,7 @@ def generate_chapter(
     if not isinstance(characters_in_scene, list):
         characters_in_scene = []
 
-    # Extract and log story health if present
+    # TODO: This story health detection is pretty basic - could use more sophisticated repetition detection
     if isinstance(meta, dict) and "story_health" in meta:
         story_health = meta.get("story_health", {})
         if isinstance(story_health, dict):
@@ -350,7 +331,6 @@ def generate_chapter(
             needs_fresh = story_health.get("needs_fresh_direction", False)
             health_notes = story_health.get("notes", "")
 
-            # Log warning if story health issues detected
             if is_repetitive or natural_ending or needs_fresh:
                 logger.info(
                     "Story health - Repetitive: %s, Natural End: %s, Needs Fresh: %s",
@@ -361,7 +341,6 @@ def generate_chapter(
                 if health_notes:
                     logger.info("Story health notes: %s", health_notes)
 
-    # Extract choices if present
     choices = []
     if isinstance(meta, dict) and "choices" in meta:
         choices_data = meta.get("choices", [])
@@ -380,7 +359,6 @@ def generate_chapter(
                         )
                     )
 
-    # Extract and register new entities
     new_characters = meta.get("new_characters", []) if isinstance(meta, dict) else []
     new_locations = meta.get("new_locations", []) if isinstance(meta, dict) else []
 
@@ -391,12 +369,10 @@ def generate_chapter(
     chapter_path = base_dir / "chapters" / filename
     chapter_path.write_text(md, encoding="utf-8")
 
-    # Capture actual model used for text generation
     actual_text_model = model
-    if hasattr(result, "model"):
-        actual_text_model = result.model
+    if hasattr(chapter_result, "model"):
+        actual_text_model = chapter_result.model
 
-    # Create chapter object
     ch = Chapter(
         number=num,
         title=_extract_title(md) or f"Chapter {num}",
@@ -404,17 +380,17 @@ def generate_chapter(
         summary=summary,
         ai_summary=None,  # Will be set after AI summary generation
         scene_prompt=scene_prompt,
+        image_prompt=image_prompt,
         characters_in_scene=[str(c) for c in characters_in_scene],
         choices=choices,
         text_model_used=actual_text_model,
     )
 
-    # AI summary will be generated separately in parallel with image generation
     ch.ai_summary = None
 
-    # Optionally queue scene image generation marker (actual pixel gen in image module)
-    if make_scene_image and scene_prompt:
-        _write_scene_request(base_dir, num, cfg.style_pack, scene_prompt)
+    if make_scene_image and (image_prompt or scene_prompt):
+        prompt_for_image = image_prompt if image_prompt else scene_prompt
+        _write_scene_request(base_dir, num, cfg.style_pack, prompt_for_image)
 
     return ch
 
@@ -425,7 +401,6 @@ def _extract_title(md: str) -> Optional[str]:
     for line in md.splitlines():
         if line.strip().startswith("# "):
             title = line.strip("# ").strip()
-            # Strip "Chapter X:" or "Chapter X -" prefix if present
             title = re.sub(r"^Chapter\s+\d+\s*[:\-]\s*", "", title, flags=re.IGNORECASE)
             return title
     return None
@@ -535,9 +510,8 @@ Reasoning:"""
     ]
 
     try:
-        result = provider.generate(messages, temperature=0.7, model=text_model)
-        reasoning = result.content.strip()
-        # Limit to reasonable length
+        reasoning_result = provider.generate(messages, temperature=0.7, model=text_model)
+        reasoning = reasoning_result.content.strip()
         if len(reasoning) > 200:
             reasoning = reasoning[:197] + "..."
         return reasoning
@@ -593,9 +567,8 @@ Summary:"""
     ]
 
     try:
-        result = provider.generate(messages, temperature=0.3, model=text_model)
-        summary = result.content.strip()
-        # Limit to reasonable length
+        summary_result = provider.generate(messages, temperature=0.3, model=text_model)
+        summary = summary_result.content.strip()
         if len(summary) > 300:
             summary = summary[:297] + "..."
         return summary

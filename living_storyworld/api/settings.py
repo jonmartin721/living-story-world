@@ -182,14 +182,12 @@ async def update_settings(request: SettingsUpdateRequest):
     """Update user settings"""
     settings = load_user_settings()
 
-    # Update provider selections
     if request.text_provider is not None:
         settings.text_provider = request.text_provider
 
     if request.image_provider is not None:
         settings.image_provider = request.image_provider
 
-    # Update API keys using configuration
     for key_id, (
         settings_attr,
         env_var,
@@ -201,11 +199,9 @@ async def update_settings(request: SettingsUpdateRequest):
             settings, request_value, settings_attr, env_var, display_name, prefix
         )
 
-    # Update global instructions
     if request.global_instructions is not None:
         settings.global_instructions = request.global_instructions
 
-    # Update defaults
     if request.default_style_pack is not None:
         settings.default_style_pack = request.default_style_pack
 
@@ -218,7 +214,6 @@ async def update_settings(request: SettingsUpdateRequest):
     if request.default_image_model is not None:
         settings.default_image_model = request.default_image_model
 
-    # Update reader preferences
     if request.reader_font_family is not None:
         settings.reader_font_family = request.reader_font_family
 

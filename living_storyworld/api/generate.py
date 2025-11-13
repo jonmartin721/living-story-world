@@ -187,16 +187,15 @@ Make everything cohesive with the selected preset and engaging. Most concepts sh
             content = content[:-3]  # Remove trailing ```
         content = content.strip()
 
-        data = json.loads(content)
+        world_config = json.loads(content)
 
-        # Build result using pre-selected values for preset, style, and maturity
         world_result = {
-            "title": data.get("title", "Untitled World"),
-            "theme": data.get("theme", "A world of mystery and wonder"),
+            "title": world_config.get("title", "Untitled World"),
+            "theme": world_config.get("theme", "A world of mystery and wonder"),
             "style_pack": selected_style,
             "preset": selected_preset,
             "maturity_level": selected_maturity,
-            "memory": data.get("memory", ""),
+            "memory": world_config.get("memory", ""),
         }
 
         logger.info(

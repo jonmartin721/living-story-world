@@ -27,7 +27,9 @@ The project started as an experiment in combining modern AI models with classic 
 
 ## Quick Start
 
-I highly recommend downloading pre-built executables from the [Releases](https://github.com/jonmartin721/living-storyworld/releases) page, or run from source:
+I highly recommend downloading pre-built executables from the [Releases](https://github.com/jonmartin721/living-storyworld/releases) 
+
+If you'd really like to build it or contribute, run from source:
 
 ```bash
 git clone https://github.com/jonmartin721/living-storyworld.git
@@ -48,23 +50,38 @@ Once you're in, create a new world by clicking "New" (or use the random generato
 
 ## Interface & Workflow
 
-Here's the main interface:
+### 1. First-Time Setup
 
-![Main interface showing world management](screenshots/main-page.png)
+When you first launch Living Storyworld, you'll see a setup wizard that guides you through configuring your API keys. You'll need at least one text provider (we recommend Gemini's free tier) and optionally an image provider (Pollinations is free and requires no key).
 
-Creating a new world is simple - just give it a title and theme, or let the generator randomize one for you:
+![Setup wizard for initial configuration](screenshots/setup-wizard.png)
 
-![New world creation dialog](screenshots/new-world-dialog.png)
-
-First-time setup is straightforward. The settings panel lets you configure API keys for various AI providers:
+You can always return to settings later to add more providers or change your defaults:
 
 ![API keys configuration](screenshots/api-keys-settings.png)
 
-The reading mode provides a clean, focused view for enjoying your generated chapters:
+### 2. World Management
+
+The main interface shows all your story worlds in one place. Each world card displays recent chapters with their illustrations, making it easy to jump back into any story.
+
+![Main interface showing world management](screenshots/main-page.png)
+
+### 3. Creating a New World
+
+Click "New World" to start a fresh story. You can manually set the title, theme, genre, and art style, or use the random generator to create unique combinations instantly!
+
+![New world creation dialog](screenshots/new-world-dialog.png)
+
+### 4. Reading & Making Choices
+
+When reading chapters, you'll get a simple and distraction-free view optimized for enjoying your generated story. The interface shows the chapter illustration, narrative text, and your choices.
 
 ![Clean reading interface](screenshots/reading-mode.png)
 
-As you read through chapters in this view, you'll encounter choice points that let you influence how the story unfolds:
+At key moments in the story, you'll be presented with choices that influence how the narrative unfolds. Select an option to guide the direction of the next chapter.
+
+These are PERMANENT! Choose carefully.
+
 ![Interactive choice moments](screenshots/make-choices.png)
 
 ---
@@ -85,7 +102,7 @@ Available illustration styles:
 ---
 
 ## Narrative Presets
-These affect pacing, how the story is told, maturity level, and random world generation. 
+These affect pacing, how the story is told, maturity level, and random world generation. These have a large effect on your story!
 
 Story genres to set the tone:
 - `cozy-adventure` - Character-driven stories with gentle stakes
@@ -136,6 +153,8 @@ Some areas I'd like to explore:
 - Handling cases where AI models refuse to generate content
 
 PRs are welcome for bug fixes, improvements, and new features! I look forward to seeing what the community comes up with.
+
+**Found a bug?** Please [open an issue](https://github.com/jonmartin721/living-story-world/issues) on GitHub with details about what happened and how to reproduce it.
 
 Enjoy!
 

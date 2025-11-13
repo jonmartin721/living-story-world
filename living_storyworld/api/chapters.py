@@ -70,12 +70,10 @@ async def start_chapter_generation(slug: str, request: ChapterGenerateRequest):
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
-    # Create job
     job_id = str(uuid.uuid4())
     queue = asyncio.Queue()
     active_jobs[job_id] = queue
 
-    # Start background task
     asyncio.create_task(run_chapter_generation(slug, request, queue, job_id))
 
     return {"job_id": job_id}
@@ -107,7 +105,6 @@ async def stream_chapter_progress(slug: str, job_id: str):
                 else:
                     yield f"event: progress\ndata: {json.dumps(update)}\n\n"
         finally:
-            # Clean up job
             if job_id in active_jobs:
                 del active_jobs[job_id]
 
@@ -124,10 +121,8 @@ async def run_chapter_generation(
     try:
         loop = asyncio.get_event_loop()
 
-        # Send initial progress
         await queue.put({"stage": "init", "percent": 5, "message": "Loading world..."})
 
-        # Load world (sync operation in executor)
         cfg, state, dirs = await loop.run_in_executor(executor, load_world, slug)
 
         await queue.put(
@@ -138,7 +133,6 @@ async def run_chapter_generation(
             }
         )
 
-        # Auto-select a choice if the previous chapter has unselected choices
         if cfg.enable_choices and state.chapters:
             prev_chapter = state.chapters[-1]
             if prev_chapter.choices and not prev_chapter.selected_choice_id:
@@ -154,19 +148,15 @@ async def run_chapter_generation(
                     }
                 )
 
-                # Update previous chapter with the auto-selection
                 prev_chapter.selected_choice_id = selected_choice.id
                 prev_chapter.choice_reasoning = None
 
-                # Save the updated state
                 await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
 
-        # Generate text with smooth progress updates
         await queue.put(
             {"stage": "text", "percent": 10, "message": "Generating chapter text..."}
         )
 
-        # Start text generation in background
         text_start = time.time()
         text_future = loop.run_in_executor(
             executor,
@@ -178,11 +168,10 @@ async def run_chapter_generation(
             request.chapter_length,
         )
 
-        # Send progress updates while waiting (estimated ~40 seconds for text generation)
-        estimated_duration = 40.0  # seconds
+        estimated_duration = 40.0
         start_percent = 10
         end_percent = 85
-        update_interval = 0.5  # Update every 0.5 seconds
+        update_interval = 0.5
 
         while not text_future.done():
             elapsed = time.time() - text_start
@@ -232,7 +221,7 @@ async def run_chapter_generation(
         # Generate image if needed
         image_path = None
         actual_image_model = None
-        if not request.no_images and chapter.scene_prompt:
+        if not request.no_images and (chapter.image_prompt or chapter.scene_prompt):
             settings = get_cached_settings()
             actual_image_model = settings.default_image_model
 
@@ -245,6 +234,8 @@ async def run_chapter_generation(
             )
 
             # Start image generation in background
+            # Prefer concise image_prompt, fallback to scene_prompt for backward compatibility
+            prompt_for_image = chapter.image_prompt if chapter.image_prompt else chapter.scene_prompt
             image_start = time.time()
             image_future = loop.run_in_executor(
                 executor,
@@ -252,11 +243,10 @@ async def run_chapter_generation(
                 dirs["base"],
                 actual_image_model,
                 cfg.style_pack,
-                chapter.scene_prompt,
+                prompt_for_image,
                 chapter.number,
             )
 
-            # Send progress updates while waiting (estimated ~8 seconds)
             estimated_image_duration = 8.0
             start_percent = 90
             end_percent = 93
@@ -321,7 +311,6 @@ async def run_chapter_generation(
         if actual_image_model:
             chapter.image_model_used = actual_image_model
 
-        # Update state
         await queue.put(
             {"stage": "saving", "percent": 95, "message": "Saving world state..."}
         )
@@ -331,7 +320,6 @@ async def run_chapter_generation(
 
         await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
 
-        # Build response
         from dataclasses import asdict
 
         chapter_data = {
@@ -340,6 +328,7 @@ async def run_chapter_generation(
             "filename": chapter.filename,
             "summary": chapter.summary,
             "scene_prompt": chapter.scene_prompt,
+            "image_prompt": chapter.image_prompt,
             "characters_in_scene": chapter.characters_in_scene,
             "choices": [asdict(c) for c in chapter.choices] if chapter.choices else [],
             "selected_choice_id": chapter.selected_choice_id,
@@ -613,7 +602,7 @@ async def run_chapter_reroll(
         # Generate image if needed
         image_path = None
         regen_image_model = None
-        if not request.no_images and chapter.scene_prompt:
+        if not request.no_images and (chapter.image_prompt or chapter.scene_prompt):
             settings = get_cached_settings()
             regen_image_model = settings.default_image_model
 
@@ -626,6 +615,8 @@ async def run_chapter_reroll(
             )
 
             # Start image generation with smooth progress
+            # Prefer concise image_prompt, fallback to scene_prompt for backward compatibility
+            prompt_for_image = chapter.image_prompt if chapter.image_prompt else chapter.scene_prompt
             image_start = time.time()
             image_future = loop.run_in_executor(
                 executor,
@@ -633,7 +624,7 @@ async def run_chapter_reroll(
                 dirs["base"],
                 regen_image_model,
                 cfg.style_pack,
-                chapter.scene_prompt,
+                prompt_for_image,
                 chapter.number,
                 "16:9",  # aspect_ratio
                 True,  # bypass_cache - always bypass when regenerating
@@ -731,6 +722,7 @@ async def run_chapter_reroll(
             "filename": chapter.filename,
             "summary": chapter.summary,
             "scene_prompt": chapter.scene_prompt,
+            "image_prompt": chapter.image_prompt,
             "characters_in_scene": chapter.characters_in_scene,
             "choices": [asdict(c) for c in chapter.choices] if chapter.choices else [],
             "selected_choice_id": old_chapter_dict.get(

@@ -86,6 +86,7 @@ def validate_slug(slug: str) -> str:
     if not slug:
         raise ValueError("Slug cannot be empty")
 
+    # Prevent path traversal - yeah it's paranoid but better safe than sorry
     if ".." in slug or "/" in slug or "\\" in slug:
         raise ValueError("Invalid slug: contains path traversal characters")
     if slug.startswith(".") or slug.startswith("-"):
