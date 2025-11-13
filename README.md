@@ -143,18 +143,9 @@ The setup wizard will walk you through this configuration. You MUST use an API k
 
 ## Contributing
 
-Some areas I'd like to explore:
-- More visual styles and story genres
-- Character and location portraits
-- Better ways to handle story endings
-- Improved visual transitions between chapters
-- Theming "Read" mode
-- Adding background art for each world
-- Handling cases where AI models refuse to generate content
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
 
-PRs are welcome for bug fixes, improvements, and new features! I look forward to seeing what the community comes up with.
-
-**Found a bug?** Please [open an issue](https://github.com/jonmartin721/living-story-world/issues) on GitHub with details about what happened and how to reproduce it.
+**Found a bug?** Please [open an issue](https://github.com/jonmartin721/living-story-world/issues) on GitHub.
 
 Enjoy!
 
@@ -162,6 +153,4 @@ Enjoy!
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
-
----
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
