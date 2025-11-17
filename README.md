@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/jonmartin721/living-story-world?style=flat-square)](https://github.com/jonmartin721/living-story-world/releases)
 [![Tests](https://img.shields.io/github/actions/workflow/status/jonmartin721/living-story-world/test.yml?branch=main&label=tests&style=flat-square)](https://github.com/jonmartin721/living-story-world/actions)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue?style=flat-square)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/dynamic/toml?url=https://raw.githubusercontent.com/jonmartin721/living-story-world/main/pyproject.toml&query=project.requires-python&label=python&style=flat-square&color=blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/jonmartin721/living-story-world?style=flat-square)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-ruff-black?style=flat-square)](https://github.com/astral-sh/ruff)
 
