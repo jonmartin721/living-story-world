@@ -26,7 +26,6 @@ class TestWebappStartup:
         """Security headers middleware is configured."""
         from living_storyworld.webapp import app
 
-        [m.cls.__name__ for m in app.user_middleware]
         # Check we have custom middleware
         assert len(app.user_middleware) > 0
 

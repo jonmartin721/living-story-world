@@ -202,12 +202,9 @@ class TestTextProviderGeneration:
             assert result.content == "Gemini generated text"
             assert result.provider == "gemini"
 
-    @pytest.mark.skipif(
-        not __import__("importlib").util.find_spec("groq"),
-        reason="Groq SDK not installed"
-    )
     def test_groq_generate_success(self):
         """Groq provider generates text."""
+        pytest.importorskip("groq")
         provider = GroqProvider(api_key="gsk-test")
 
         mock_response = Mock()
@@ -311,10 +308,20 @@ class TestImageProviderGeneration:
         provider = PollinationsProvider()
         output_path = tmp_path / "test.png"
 
-        with patch("living_storyworld.image.safe_download_image") as mock_download:
-            mock_download.return_value = output_path
-            output_path.write_bytes(b"fake image")
+        # Minimal valid 1x1 PNG image (67 bytes)
+        valid_png_bytes = (
+            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
+            b'\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01'
+            b'\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
+        )
 
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {"content-type": "image/png", "content-length": str(len(valid_png_bytes))}
+        mock_response.iter_content = lambda chunk_size: [valid_png_bytes]
+
+        with patch("requests.get", return_value=mock_response):
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             result = provider.generate("A sunset", output_path, aspect_ratio="16:9")
 
             assert isinstance(result, ImageGenerationResult)
