@@ -220,6 +220,7 @@ def generate_scene_image(
 
 def _append_media_index(base_dir: Path, entry: dict) -> None:
     idx = base_dir / "media" / "index.json"
+    idx.parent.mkdir(parents=True, exist_ok=True)
     data = []
     if idx.exists():
         try:

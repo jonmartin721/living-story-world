@@ -74,7 +74,10 @@ def load_user_settings() -> UserSettings:
     try:
         if CONFIG_PATH.exists():
             data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-            return UserSettings(**data)
+            # Filter out unknown fields to support forward compatibility
+            valid_fields = {f.name for f in UserSettings.__dataclass_fields__.values()}
+            filtered_data = {k: v for k, v in data.items() if k in valid_fields}
+            return UserSettings(**filtered_data)
     except json.JSONDecodeError as e:
         logging.warning(f"Failed to parse settings file {CONFIG_PATH}: {e}")
     except Exception as e:
