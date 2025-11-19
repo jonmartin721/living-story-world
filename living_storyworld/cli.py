@@ -11,10 +11,8 @@ from .config import STYLE_PACKS
 from .generator import generate_chapter
 from .image import generate_scene_image
 from .presets import PRESETS
-from .settings import (ensure_api_key_from_settings, load_user_settings,
-                       save_user_settings)
-from .storage import (WORLDS_DIR, get_current_world, read_json,
-                      set_current_world, slugify)
+from .settings import ensure_api_key_from_settings, load_user_settings, save_user_settings
+from .storage import WORLDS_DIR, get_current_world, read_json, set_current_world, slugify
 from .tui import run_tui
 from .world import init_world, load_world, save_world, tick_world
 

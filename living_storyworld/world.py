@@ -4,12 +4,10 @@ import logging
 from dataclasses import asdict
 from typing import Optional
 
-from .models import (Chapter, Character, Choice, Item, Location, WorldConfig,
-                     WorldState)
+from .models import Chapter, Character, Choice, Item, Location, WorldConfig, WorldState
 from .providers.text import get_text_provider
 from .settings import load_user_settings
-from .storage import (ensure_world_dirs, read_json, set_current_world, slugify,
-                      write_json)
+from .storage import ensure_world_dirs, read_json, set_current_world, slugify, write_json
 
 
 def init_world(
