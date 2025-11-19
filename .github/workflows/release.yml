@@ -10,8 +10,33 @@ permissions:
   contents: write
 
 jobs:
+  check-changelog:
+    name: Verify Changelog Updated
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Check if changelog contains version
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo "ERROR: CHANGELOG.md does not contain an entry for version $VERSION"
+            echo "Please add a changelog entry before creating a release."
+            echo ""
+            echo "Expected format:"
+            echo "## [$VERSION] - $(date +%Y-%m-%d)"
+            exit 1
+          fi
+          echo "✓ Changelog contains entry for version $VERSION"
+
   test:
     name: Run Tests
+    needs: check-changelog
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
