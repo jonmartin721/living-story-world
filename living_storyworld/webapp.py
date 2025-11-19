@@ -20,7 +20,7 @@ def get_base_path() -> Path:
     """Get base path for bundled app (PyInstaller) or development."""
     if getattr(sys, "frozen", False):
         # Running in PyInstaller bundle
-        return Path(sys._MEIPASS)
+        return Path(sys._MEIPASS)  # type: ignore[attr-defined]
     else:
         # Running in normal Python
         return Path(__file__).parent

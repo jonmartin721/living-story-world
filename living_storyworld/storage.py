@@ -29,8 +29,8 @@ def ensure_world_dirs(slug: str) -> Dict[str, Path]:
 
 
 def write_json(path: Path, data: Any) -> None:
-    if is_dataclass(data):
-        data = asdict(data)
+    if is_dataclass(data) and not isinstance(data, type):
+        data = asdict(data)  # type: ignore[arg-type]
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)

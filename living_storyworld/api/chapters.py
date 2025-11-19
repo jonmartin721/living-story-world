@@ -71,7 +71,7 @@ async def start_chapter_generation(slug: str, request: ChapterGenerateRequest):
         raise HTTPException(status_code=404, detail="World not found")
 
     job_id = str(uuid.uuid4())
-    queue = asyncio.Queue()
+    queue: asyncio.Queue[str] = asyncio.Queue()
     active_jobs[job_id] = queue
 
     asyncio.create_task(run_chapter_generation(slug, request, queue, job_id))
@@ -482,7 +482,7 @@ async def reroll_chapter(
 
     # Start regeneration job
     job_id = str(uuid.uuid4())
-    queue = asyncio.Queue()
+    queue: asyncio.Queue[str] = asyncio.Queue()
     active_jobs[job_id] = queue
 
     # Use default options if not provided
