@@ -40,16 +40,15 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 npm install --prefix frontend
-npm run build --prefix frontend
 
 # Start the web interface
-python3 -m living_storyworld.cli web
+npm run start
 ```
 
 To run the full local verification pass from the repo root:
 
 ```bash
-python scripts/verify.py
+npm run verify
 ```
 
 The web app will open at `http://localhost:8001`. First-time setup will walk you through configuring API keys—I recommend using Gemini 2.5 Flash (free tier) plus Pollinations for images to get started without costs.
