@@ -8,10 +8,14 @@ from typing import Optional
 from rich import print
 
 from .config import STYLE_PACKS
-from .generator import generate_chapter
+from .generator import generate_chapter, resolve_image_model
 from .image import generate_scene_image
 from .presets import PRESETS
-from .settings import ensure_api_key_from_settings, load_user_settings, save_user_settings
+from .settings import (
+    get_available_text_providers,
+    load_user_settings,
+    save_user_settings,
+)
 from .storage import WORLDS_DIR, get_current_world, read_json, set_current_world, slugify
 from .tui import run_tui
 from .world import init_world, load_world, save_world, tick_world
@@ -55,15 +59,14 @@ def cmd_chapter(args: argparse.Namespace) -> None:
         raise SystemExit(
             "[yellow]No world chosen.[/] Use --world or `story use <slug>`. "
         )
-    # Ensure API key available
-    if not ensure_api_key_from_settings():
+    settings = load_user_settings()
+    if not get_available_text_providers(settings):
         print(
-            "[red]OpenAI API key missing.[/] Run `story setup` first or export OPENAI_API_KEY."
+            "[red]No text providers configured.[/] Add an API key in `story setup` or Settings."
         )
         raise SystemExit(2)
     cfg, state, dirs = load_world(slug)
 
-    # Generate markdown via OpenAI
     ch = generate_chapter(
         dirs["base"],
         cfg,
@@ -71,23 +74,22 @@ def cmd_chapter(args: argparse.Namespace) -> None:
         make_scene_image=not args.no_images,
     )
 
-    # Update state
-    state.chapters.append(ch.__dict__)
-    state.next_chapter += 1
     save_world(slug, cfg, state, dirs)
     print(
         f"Wrote chapter [bold]{ch.number}[/]: [white]{ch.title}[/] -> [blue]{ch.filename}[/]"
     )
 
-    # Optionally generate the scene image immediately if a prompt exists
-    if not args.no_images and ch.scene_prompt:
+    if not args.no_images and (ch.image_prompt or ch.scene_prompt):
+        image_model = resolve_image_model(cfg, settings)
         out = generate_scene_image(
             dirs["base"],
-            cfg.image_model,
+            image_model,
             cfg.style_pack,
-            ch.scene_prompt,
+            ch.image_prompt or ch.scene_prompt or "",
             chapter_num=ch.number,
         )
+        ch.image_model_used = image_model
+        save_world(slug, cfg, state, dirs)
         print(f"Generated scene image -> [green]{out.relative_to(dirs['base'])}[/]")
 
 
@@ -97,11 +99,6 @@ def cmd_image(args: argparse.Namespace) -> None:
         raise SystemExit(
             "[yellow]No world chosen.[/] Use --world or `story use <slug>`. "
         )
-    if not ensure_api_key_from_settings():
-        print(
-            "[red]OpenAI API key missing.[/] Run `story setup` first or export OPENAI_API_KEY."
-        )
-        raise SystemExit(2)
     cfg, state, dirs = load_world(slug)
     if args.kind == "scene":
         if not args.prompt and args.chapter is None:
@@ -113,13 +110,14 @@ def cmd_image(args: argparse.Namespace) -> None:
         if chap_num is not None and not prompt:
             # Try to pull from chapter record
             for c in state.chapters:
-                if c.get("number") == chap_num:
-                    prompt = c.get("scene_prompt")
+                if c.number == chap_num:
+                    prompt = c.image_prompt or c.scene_prompt
                     break
         if not prompt:
             raise SystemExit("[yellow]No prompt found[/] for the requested chapter.")
+        image_model = resolve_image_model(cfg, load_user_settings())
         out = generate_scene_image(
-            dirs["base"], cfg.image_model, cfg.style_pack, prompt, chapter_num=chap_num
+            dirs["base"], image_model, cfg.style_pack, prompt, chapter_num=chap_num
         )
         print(f"Generated scene image -> [green]{out.relative_to(dirs['base'])}[/]")
     else:
@@ -268,7 +266,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     sp.add_argument("--world", help="World slug (optional; defaults to current)")
     sp.set_defaults(func=cmd_tick)
 
-    sp = sub.add_parser("chapter", help="Generate the next chapter using OpenAI")
+    sp = sub.add_parser("chapter", help="Generate the next chapter")
     sp.add_argument("--world", help="World slug (optional; defaults to current)")
     sp.add_argument("--focus", help="Optional focus (character/location/goal)")
     sp.add_argument(

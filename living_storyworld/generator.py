@@ -7,22 +7,19 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 from .config import STYLE_PACKS
-from .models import Chapter, Choice, WorldConfig, WorldState
+from .models import (
+    Chapter,
+    Choice,
+    GeneratedChapterDraft,
+    ResolvedGenerationSettings,
+    WorldConfig,
+    WorldState,
+)
 from .presets import DEFAULT_PRESET, PRESETS
 from .providers import get_text_provider
 from .settings import get_api_key_for_provider, load_user_settings
 
 logger = logging.getLogger(__name__)
-
-
-def _get_client():
-    try:
-        from openai import OpenAI  # type: ignore
-    except Exception as e:
-        raise RuntimeError(
-            "OpenAI SDK not installed. Run: pip install openai>=1.0"
-        ) from e
-    return OpenAI()
 
 
 def _build_chapter_prompt(
@@ -34,7 +31,6 @@ def _build_chapter_prompt(
     settings = load_user_settings()
     global_instructions = settings.global_instructions or ""
 
-    # Maturity level guidance
     maturity_guidance = {
         "general": "Write family-friendly content suitable for all ages. Keep themes light and appropriate.",
         "teen": "Write young adult fiction. Include tension, conflict, and emotional depth appropriate for teen readers.",
@@ -81,8 +77,6 @@ def _build_chapter_prompt(
 
     sys = "".join(sys_parts)
 
-    # Context window management is naive - just using recent chapters
-    # TODO: should probably do smarter summarization for very long stories but this works for now
     story_context = []
     if state.chapters:
         recent_chapters = (
@@ -92,13 +86,11 @@ def _build_chapter_prompt(
         for ch in recent_chapters:
             chapter_info = [f"Chapter {ch.number}: {ch.title}"]
 
-            # Use lighter summaries to avoid over-anchoring on recent events
-            if hasattr(ch, "ai_summary") and ch.ai_summary:
-                chapter_info.append(f"{ch.ai_summary}")
+            if ch.ai_summary:
+                chapter_info.append(ch.ai_summary)
             elif ch.summary:
-                chapter_info.append(f"{ch.summary}")
+                chapter_info.append(ch.summary)
 
-            # Include the selected choice for continuity, but skip reasoning to reduce anchor weight
             if ch.selected_choice_id and ch.choices:
                 selected_choice = next(
                     (c for c in ch.choices if c.id == ch.selected_choice_id), None
@@ -109,17 +101,13 @@ def _build_chapter_prompt(
             story_context.append("\n".join(chapter_info))
 
         if len(state.chapters) > 4:
-            # For longer stories, include brief arc summary
             older_summary = []
-            for ch in state.chapters[-8:-4]:  # Earlier chapters
-                if hasattr(ch, "ai_summary") and ch.ai_summary:
-                    # Just title and key beat, no details
-                    older_summary.append(f"Ch {ch.number} ({ch.title})")
-                elif ch.summary:
+            for ch in state.chapters[-8:-4]:
+                if ch.ai_summary or ch.summary:
                     older_summary.append(f"Ch {ch.number} ({ch.title})")
             if older_summary:
                 story_context.insert(
-                    0, "Earlier progression: " + " → ".join(older_summary)
+                    0, "Earlier progression: " + " -> ".join(older_summary)
                 )
 
     world_brief = {
@@ -141,7 +129,6 @@ def _build_chapter_prompt(
     if story_context:
         user_parts.append("Story progression:\n" + "\n\n".join(story_context) + "\n\n")
 
-    # Strategic placement - author's note goes here to influence style without overwhelming context
     if cfg.authors_note:
         user_parts.append(f"Author's Note: {cfg.authors_note}\n\n")
 
@@ -166,12 +153,12 @@ def _build_chapter_prompt(
     import random
 
     length_config = {
-        "short": (400, 600),  # Base length
-        "medium": (800, 1200),  # 2x short
-        "long": (1600, 2400),  # 4x short
+        "short": (400, 600),
+        "medium": (800, 1200),
+        "long": (1600, 2400),
     }
     min_words, max_words = length_config.get(chapter_length, length_config["medium"])
-    variation = random.uniform(0.9, 1.1)  # ±10% variance to keep it feeling organic
+    variation = random.uniform(0.9, 1.1)
     min_words = int(min_words * variation)
     max_words = int(max_words * variation)
 
@@ -228,181 +215,187 @@ def _build_chapter_prompt(
 
 
 def _parse_meta(md_text: str) -> Dict[str, object]:
-    # Expect: <!-- {...} --> at the top
-    m = re.search(r"<!--\s*(\{.*?\})\s*-->", md_text, re.DOTALL)
-    if not m:
+    match = re.search(r"<!--\s*(\{.*?\})\s*-->", md_text, re.DOTALL)
+    if not match:
         return {}
     try:
-        return json.loads(m.group(1))
+        return json.loads(match.group(1))
     except Exception:
         return {}
 
 
-def generate_chapter(
-    base_dir: Path,
-    cfg: WorldConfig,
-    state: WorldState,
-    make_scene_image: bool = True,
-    chapter_length: str = "medium",
-) -> Chapter:
+def resolve_generation_settings(
+    cfg: WorldConfig, settings=None
+) -> ResolvedGenerationSettings:
     from .settings import get_available_text_providers
 
-    settings = load_user_settings()
-    available_providers = get_available_text_providers(settings)
+    user_settings = settings or load_user_settings()
+    text_provider_order = get_available_text_providers(user_settings)
+    preferred_text_model = (
+        cfg.text_model
+        or getattr(user_settings, "default_text_model", None)
+    )
+    preferred_image_model = (
+        cfg.image_model
+        or getattr(user_settings, "default_image_model", None)
+    )
 
-    if not available_providers:
+    return ResolvedGenerationSettings(
+        text_provider=user_settings.text_provider,
+        image_provider=user_settings.image_provider,
+        text_provider_order=text_provider_order,
+        preferred_text_model=preferred_text_model,
+        preferred_image_model=preferred_image_model,
+    )
+
+
+def _resolve_text_model(
+    provider,
+    cfg: WorldConfig,
+    settings,
+    resolved_settings: ResolvedGenerationSettings,
+) -> str:
+    return (
+        resolved_settings.preferred_text_model
+        or cfg.text_model
+        or getattr(settings, "default_text_model", None)
+        or provider.get_default_model()
+    )
+
+
+def resolve_image_model(
+    cfg: WorldConfig, settings=None, provider_name: Optional[str] = None
+) -> str:
+    user_settings = settings or load_user_settings()
+    image_provider_name = provider_name or user_settings.image_provider
+    provider = None
+    try:
+        from .providers import get_image_provider
+
+        provider = get_image_provider(
+            image_provider_name,
+            api_key=get_api_key_for_provider(image_provider_name, user_settings),
+        )
+    except Exception:
+        provider = None
+    return (
+        cfg.image_model
+        or getattr(user_settings, "default_image_model", None)
+        or (provider.get_default_model() if provider else None)
+        or "flux"
+    )
+
+
+def _generate_text_with_fallback(
+    messages: list[dict[str, str]],
+    cfg: WorldConfig,
+    temperature: float,
+    *,
+    settings=None,
+    resolved_settings: Optional[ResolvedGenerationSettings] = None,
+) -> tuple[str, str, str]:
+    user_settings = settings or load_user_settings()
+    resolved = resolved_settings or resolve_generation_settings(cfg, user_settings)
+
+    if not resolved.text_provider_order:
         raise ValueError(
             "No text providers configured. Please add API keys in Settings."
         )
 
-    last_error = None
-    for provider_name in available_providers:
+    last_error: Optional[Exception] = None
+    for provider_name in resolved.text_provider_order:
         try:
-            api_key = get_api_key_for_provider(provider_name, settings)
+            api_key = get_api_key_for_provider(provider_name, user_settings)
             provider = get_text_provider(provider_name, api_key=api_key)
-
-            style, messages, temp = _build_chapter_prompt(cfg, state, chapter_length)
-
-            model = provider.get_default_model()
-
-            chapter_result = provider.generate(messages, temperature=temp, model=model)
-            md = chapter_result.content
+            model = _resolve_text_model(provider, cfg, user_settings, resolved)
+            result = provider.generate(messages, temperature=temperature, model=model)
             logger.info(
-                "Generated chapter using %s (%s), cost: $%.4f",
-                chapter_result.provider,
-                chapter_result.model,
-                chapter_result.estimated_cost,
+                "Generated text using %s (%s), cost: $%.4f",
+                result.provider,
+                result.model,
+                result.estimated_cost,
             )
-            break
-
-        except Exception as e:
-            last_error = e
-            error_msg = str(e)
-
+            return result.content, result.provider, result.model
+        except Exception as exc:
+            last_error = exc
+            error_msg = str(exc)
             is_safety_block = (
                 "safety filter" in error_msg.lower() or "blocked" in error_msg.lower()
             )
-
-            if len(available_providers) > 1:
-                # We have fallback options
-                remaining = [p for p in available_providers if p != provider_name]
-                if is_safety_block:
-                    logger.warning(
-                        "%s blocked content (safety filters). Trying fallback provider: %s",
-                        provider_name,
-                        remaining[0] if remaining else "none",
-                    )
-                else:
-                    logger.warning(
-                        "%s failed: %s. Trying fallback provider: %s",
-                        provider_name,
-                        error_msg,
-                        remaining[0] if remaining else "none",
-                    )
-            else:
+            if len(resolved.text_provider_order) == 1:
                 if is_safety_block:
                     raise ValueError(
                         f"Content blocked by {provider_name}'s safety filters. Try regenerating or configure additional text providers in Settings for automatic fallback."
-                    )
+                    ) from exc
                 raise
+            logger.warning("%s failed: %s", provider_name, error_msg)
 
-    else:
-        providers_tried = ", ".join(available_providers)
-        raise ValueError(
-            f"All text providers failed ({providers_tried}). Last error: {last_error}. Configure additional providers in Settings for better reliability."
-        )
-
-    meta = _parse_meta(md)
-    scene_prompt = str(meta.get("scene_prompt", "")) if isinstance(meta, dict) else ""
-    image_prompt = str(meta.get("image_prompt", "")) if isinstance(meta, dict) else ""
-    summary = str(meta.get("summary", "")) if isinstance(meta, dict) else None
-    characters_in_scene = (
-        meta.get("characters_in_scene", []) if isinstance(meta, dict) else []
+    providers_tried = ", ".join(resolved.text_provider_order)
+    raise ValueError(
+        f"All text providers failed ({providers_tried}). Last error: {last_error}. Configure additional providers in Settings for better reliability."
     )
+
+
+def generate_chapter_draft(
+    cfg: WorldConfig,
+    state: WorldState,
+    chapter_length: str = "medium",
+    *,
+    settings=None,
+    resolved_settings: Optional[ResolvedGenerationSettings] = None,
+) -> GeneratedChapterDraft:
+    user_settings = settings or load_user_settings()
+    resolved = resolved_settings or resolve_generation_settings(cfg, user_settings)
+    _, messages, temperature = _build_chapter_prompt(cfg, state, chapter_length)
+    markdown, provider_name, model_name = _generate_text_with_fallback(
+        messages,
+        cfg,
+        temperature,
+        settings=user_settings,
+        resolved_settings=resolved,
+    )
+
+    meta = _parse_meta(markdown)
+    characters_in_scene = meta.get("characters_in_scene", []) if meta else []
     if not isinstance(characters_in_scene, list):
         characters_in_scene = []
 
-    # TODO: This story health detection is pretty basic - could use more sophisticated repetition detection
-    if isinstance(meta, dict) and "story_health" in meta:
-        story_health = meta.get("story_health", {})
-        if isinstance(story_health, dict):
-            is_repetitive = story_health.get("is_repetitive", False)
-            natural_ending = story_health.get("natural_ending_reached", False)
-            needs_fresh = story_health.get("needs_fresh_direction", False)
-            health_notes = story_health.get("notes", "")
-
-            if is_repetitive or natural_ending or needs_fresh:
-                logger.info(
-                    "Story health - Repetitive: %s, Natural End: %s, Needs Fresh: %s",
-                    is_repetitive,
-                    natural_ending,
-                    needs_fresh,
-                )
-                if health_notes:
-                    logger.info("Story health notes: %s", health_notes)
-
     choices = []
-    if isinstance(meta, dict) and "choices" in meta:
-        choices_data = meta.get("choices", [])
-        if isinstance(choices_data, list):
-            for choice_dict in choices_data:
-                if (
-                    isinstance(choice_dict, dict)
-                    and "id" in choice_dict
-                    and "text" in choice_dict
-                ):
-                    choices.append(
-                        Choice(
-                            id=str(choice_dict["id"]),
-                            text=str(choice_dict["text"]),
-                            description=str(choice_dict.get("description", "")),
-                        )
-                    )
+    for choice_data in meta.get("choices", []) if isinstance(meta, dict) else []:
+        if (
+            isinstance(choice_data, dict)
+            and "id" in choice_data
+            and "text" in choice_data
+        ):
+            choices.append(Choice.from_dict(choice_data))
 
-    new_characters = meta.get("new_characters", []) if isinstance(meta, dict) else []
-    new_locations = meta.get("new_locations", []) if isinstance(meta, dict) else []
-
-    _register_new_entities(state, new_characters, new_locations)
-
-    num = state.next_chapter
-    filename = f"chapter-{num:04d}.md"
-    chapter_path = base_dir / "chapters" / filename
-    chapter_path.write_text(md, encoding="utf-8")
-
-    actual_text_model = model
-    if hasattr(chapter_result, "model"):
-        actual_text_model = chapter_result.model
-
-    ch = Chapter(
-        number=num,
-        title=_extract_title(md) or f"Chapter {num}",
-        filename=filename,
-        summary=summary,
-        ai_summary=None,  # Will be set after AI summary generation
-        scene_prompt=scene_prompt,
-        image_prompt=image_prompt,
-        characters_in_scene=[str(c) for c in characters_in_scene],
+    return GeneratedChapterDraft(
+        markdown=markdown,
+        title=_extract_title(markdown) or f"Chapter {state.next_chapter}",
+        summary=str(meta.get("summary", "")) or None if isinstance(meta, dict) else None,
+        scene_prompt=str(meta.get("scene_prompt", "")) or None
+        if isinstance(meta, dict)
+        else None,
+        image_prompt=str(meta.get("image_prompt", "")) or None
+        if isinstance(meta, dict)
+        else None,
+        characters_in_scene=[str(character) for character in characters_in_scene],
         choices=choices,
-        text_model_used=actual_text_model,
+        text_model_used=model_name,
+        text_provider_used=provider_name,
+        new_characters=meta.get("new_characters", []) if isinstance(meta, dict) else [],
+        new_locations=meta.get("new_locations", []) if isinstance(meta, dict) else [],
+        metadata=meta if isinstance(meta, dict) else {},
     )
-
-    ch.ai_summary = None
-
-    if make_scene_image and (image_prompt or scene_prompt):
-        prompt_for_image = image_prompt if image_prompt else scene_prompt
-        _write_scene_request(base_dir, num, cfg.style_pack, prompt_for_image)
-
-    return ch
 
 
 def _extract_title(md: str) -> Optional[str]:
-    import re
-
     for line in md.splitlines():
         if line.strip().startswith("# "):
             title = line.strip("# ").strip()
-            title = re.sub(r"^Chapter\s+\d+\s*[:\-]\s*", "", title, flags=re.IGNORECASE)
-            return title
+            return re.sub(
+                r"^Chapter\s+\d+\s*[:\-]\s*", "", title, flags=re.IGNORECASE
+            )
     return None
 
 
@@ -429,10 +422,8 @@ def _write_scene_request(
 def _register_new_entities(
     state: WorldState, new_characters: list, new_locations: list
 ) -> None:
-    """Register new characters and locations from chapter metadata into world state."""
     from .models import Character, Location
 
-    # Add new characters
     if isinstance(new_characters, list):
         for char_data in new_characters:
             if (
@@ -442,57 +433,135 @@ def _register_new_entities(
             ):
                 char_id = str(char_data["id"])
                 if char_id not in state.characters:
-                    char = Character(
+                    state.characters[char_id] = Character(
                         id=char_id,
                         name=str(char_data.get("name", char_id)),
-                        description=str(char_data.get("description", "")),
-                        epithet=str(char_data.get("epithet", "")),
-                        traits=char_data.get("traits", []),
+                        description=str(char_data.get("description", "")) or None,
+                        epithet=str(char_data.get("epithet", "")) or None,
+                        traits=list(char_data.get("traits", [])),
                     )
-                    state.characters[char_id] = char.__dict__
-                    logger.debug("Added new character: %s (%s)", char.name, char_id)
 
-    # Add new locations
     if isinstance(new_locations, list):
         for loc_data in new_locations:
             if isinstance(loc_data, dict) and "id" in loc_data and "name" in loc_data:
                 loc_id = str(loc_data["id"])
                 if loc_id not in state.locations:
-                    loc = Location(
+                    state.locations[loc_id] = Location(
                         id=loc_id,
                         name=str(loc_data.get("name", loc_id)),
-                        description=str(loc_data.get("description", "")),
-                        tags=loc_data.get("tags", []),
+                        description=str(loc_data.get("description", "")) or None,
+                        tags=list(loc_data.get("tags", [])),
                     )
-                    state.locations[loc_id] = loc.__dict__
-                    logger.debug("Added new location: %s (%s)", loc.name, loc_id)
+
+
+def persist_generated_chapter(
+    base_dir: Path,
+    cfg: WorldConfig,
+    state: WorldState,
+    draft: GeneratedChapterDraft,
+    chapter_number: int,
+    *,
+    filename: Optional[str] = None,
+    chapter_index: Optional[int] = None,
+    write_scene_request: bool = True,
+) -> Chapter:
+    _register_new_entities(state, draft.new_characters, draft.new_locations)
+
+    chapter_filename = filename or f"chapter-{chapter_number:04d}.md"
+    chapter_path = base_dir / "chapters" / chapter_filename
+    chapter_path.parent.mkdir(parents=True, exist_ok=True)
+    chapter_path.write_text(draft.markdown, encoding="utf-8")
+
+    chapter = Chapter(
+        number=chapter_number,
+        title=draft.title,
+        filename=chapter_filename,
+        summary=draft.summary,
+        scene_prompt=draft.scene_prompt,
+        image_prompt=draft.image_prompt,
+        characters_in_scene=list(draft.characters_in_scene),
+        choices=list(draft.choices),
+        text_model_used=draft.text_model_used,
+    )
+
+    if write_scene_request and (draft.image_prompt or draft.scene_prompt):
+        _write_scene_request(
+            base_dir,
+            chapter_number,
+            cfg.style_pack,
+            draft.image_prompt or draft.scene_prompt or "",
+        )
+
+    if chapter_index is None:
+        state.chapters.append(chapter)
+        state.next_chapter = max(state.next_chapter, chapter_number + 1)
+    else:
+        state.chapters[chapter_index] = chapter
+
+    return chapter
+
+
+def generate_chapter(
+    base_dir: Path,
+    cfg: WorldConfig,
+    state: WorldState,
+    make_scene_image: bool = True,
+    chapter_length: str = "medium",
+) -> Chapter:
+    draft = generate_chapter_draft(cfg, state, chapter_length=chapter_length)
+    return persist_generated_chapter(
+        base_dir,
+        cfg,
+        state,
+        draft,
+        state.next_chapter,
+        write_scene_request=make_scene_image,
+    )
+
+
+def find_latest_scene_path(base_dir: Path, slug: str, chapter_number: int) -> Optional[str]:
+    scenes_dir = base_dir / "media" / "scenes"
+    if not scenes_dir.exists():
+        return None
+    pattern = f"scene-{chapter_number:04d}-*.png"
+    scene_files = sorted(
+        scenes_dir.glob(pattern), key=lambda path: path.stat().st_mtime, reverse=True
+    )
+    if not scene_files:
+        return None
+    return f"/worlds/{slug}/media/scenes/{scene_files[0].name}"
+
+
+def serialize_chapter_response(
+    slug: str,
+    chapter: Chapter,
+    *,
+    scene: Optional[str] = None,
+) -> dict:
+    return {
+        "number": chapter.number,
+        "title": chapter.title,
+        "filename": chapter.filename,
+        "summary": chapter.summary,
+        "scene_prompt": chapter.scene_prompt,
+        "image_prompt": chapter.image_prompt,
+        "characters_in_scene": list(chapter.characters_in_scene),
+        "choices": [choice.to_dict() for choice in chapter.choices],
+        "selected_choice_id": chapter.selected_choice_id,
+        "choice_reasoning": chapter.choice_reasoning,
+        "generated_at": chapter.generated_at,
+        "text_model_used": chapter.text_model_used,
+        "image_model_used": chapter.image_model_used,
+        "scene": scene,
+        "ai_summary": chapter.ai_summary,
+    }
 
 
 async def infer_choice_reasoning(
     choice_text: str, chapter_summary: str, world_theme: str, cfg: WorldConfig
 ) -> str:
-    """Use LLM to infer why the reader chose this option.
-
-    Args:
-        choice_text: The text of the selected choice
-        chapter_summary: Summary of the chapter where the choice was made
-        world_theme: The overall theme of the world
-        cfg: World configuration for model settings
-
-    Returns:
-        A 1-2 sentence explanation of the narrative intent behind the choice
-    """
     settings = load_user_settings()
-    text_provider_name = settings.text_provider
-    api_key = get_api_key_for_provider(text_provider_name, settings)
-    text_model = settings.default_text_model
-
-    try:
-        provider = get_text_provider(text_provider_name, api_key=api_key)
-    except Exception:
-        # If provider fails, return a generic reasoning
-        return f"The reader chose to {choice_text.lower()}"
-
+    resolved_settings = resolve_generation_settings(cfg, settings)
     prompt = f"""Given this story context and reader's choice, infer in 1-2 sentences why the reader might have chosen this option. Focus on narrative intent and character motivation.
 
 Story Theme: {world_theme}
@@ -510,45 +579,28 @@ Reasoning:"""
     ]
 
     try:
-        reasoning_result = provider.generate(messages, temperature=0.7, model=text_model)
-        reasoning = reasoning_result.content.strip()
+        reasoning, _, _ = _generate_text_with_fallback(
+            messages,
+            cfg,
+            0.7,
+            settings=settings,
+            resolved_settings=resolved_settings,
+        )
+        reasoning = reasoning.strip()
         if len(reasoning) > 200:
             reasoning = reasoning[:197] + "..."
         return reasoning
-    except Exception as e:
-        logger.warning("Failed to infer choice reasoning: %s", e)
+    except Exception as exc:
+        logger.warning("Failed to infer choice reasoning: %s", exc)
         return f"The reader chose to {choice_text.lower()}"
 
 
 async def generate_chapter_summary(chapter_content: str, cfg: WorldConfig) -> str:
-    """Use LLM to generate a concise summary of chapter events for story continuity.
-
-    Args:
-        chapter_content: The full text content of the chapter
-        cfg: World configuration for model settings
-
-    Returns:
-        A 2-3 sentence summary of key events and developments
-    """
     settings = load_user_settings()
-    text_provider_name = settings.text_provider
-    api_key = get_api_key_for_provider(text_provider_name, settings)
-    text_model = settings.default_text_model
+    resolved_settings = resolve_generation_settings(cfg, settings)
 
-    try:
-        provider = get_text_provider(text_provider_name, api_key=api_key)
-    except Exception:
-        # If provider fails, return empty summary
-        return ""
-
-    # Extract just the story content (remove HTML/metadata)
-    import re
-
-    # Remove HTML metadata comments
     content_clean = re.sub(r"<!--.*?-->", "", chapter_content, flags=re.DOTALL)
-    # Remove HTML tags
     content_clean = re.sub(r"<[^>]+>", "", content_clean)
-    # Get first ~1000 characters for context
     content_sample = content_clean[:1000]
 
     prompt = f"""Generate a concise 2-3 sentence summary of this chapter's key events and plot developments for story continuity. Focus on what actually happens and any important changes.
@@ -567,11 +619,17 @@ Summary:"""
     ]
 
     try:
-        summary_result = provider.generate(messages, temperature=0.3, model=text_model)
-        summary = summary_result.content.strip()
+        summary, _, _ = _generate_text_with_fallback(
+            messages,
+            cfg,
+            0.3,
+            settings=settings,
+            resolved_settings=resolved_settings,
+        )
+        summary = summary.strip()
         if len(summary) > 300:
             summary = summary[:297] + "..."
         return summary
-    except Exception as e:
-        logger.warning("Failed to generate chapter summary: %s", e)
+    except Exception as exc:
+        logger.warning("Failed to generate chapter summary: %s", exc)
         return ""

@@ -8,6 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
+from ..generator import resolve_image_model
 from ..image import generate_scene_image
 from .dependencies import get_validated_world_slug, load_world_async
 
@@ -59,7 +60,7 @@ async def generate_image(
     from ..settings import load_user_settings
 
     settings = load_user_settings()
-    image_model = settings.default_image_model
+    image_model = resolve_image_model(cfg, settings)
 
     loop = asyncio.get_event_loop()
     image_path = await loop.run_in_executor(
@@ -79,13 +80,8 @@ async def generate_image(
             if ch.number == chapter_num:
                 import time
 
-                from ..settings import load_user_settings
-
-                ch.scene = f"/worlds/{slug}/media/scenes/{image_path.name}"
                 ch.generated_at = time.strftime("%Y-%m-%d %I:%M:%S %p")
-
-                settings = load_user_settings()
-                ch.image_model_used = settings.default_image_model
+                ch.image_model_used = image_model
 
                 from ..world import save_world
 

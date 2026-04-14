@@ -389,8 +389,8 @@ class TestRegisterNewEntities:
         _register_new_entities(state, new_characters, [])
 
         assert "char-1" in state.characters
-        assert state.characters["char-1"]["name"] == "Hero"
-        assert state.characters["char-1"]["description"] == "A brave warrior"
+        assert state.characters["char-1"].name == "Hero"
+        assert state.characters["char-1"].description == "A brave warrior"
 
     def test_register_new_location(self):
         """Test registering a new location."""
@@ -405,7 +405,7 @@ class TestRegisterNewEntities:
         _register_new_entities(state, [], new_locations)
 
         assert "loc-1" in state.locations
-        assert state.locations["loc-1"]["name"] == "Dark Forest"
+        assert state.locations["loc-1"].name == "Dark Forest"
 
     def test_skip_existing_entities(self):
         """Test that existing entities are not overwritten."""
@@ -420,7 +420,7 @@ class TestRegisterNewEntities:
         _register_new_entities(state, new_characters, [])
 
         # Should not be overwritten
-        assert state.characters["char-1"]["name"] == "Original"
+        assert state.characters["char-1"].name == "Original"
 
     def test_register_invalid_data(self):
         """Test that invalid entity data is skipped."""
