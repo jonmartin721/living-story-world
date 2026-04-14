@@ -76,3 +76,29 @@ jobs:
       with:
         name: coverage-report
         path: htmlcov/
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+
+    - name: Run frontend tests
+      working-directory: frontend
+      run: npm test
+
+    - name: Build frontend
+      working-directory: frontend
+      run: npm run build
