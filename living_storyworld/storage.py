@@ -4,11 +4,22 @@ import json
 import logging
 import os
 import re
+import sys
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-ROOT = Path(os.getcwd())
+
+def resolve_storage_root() -> Path:
+    configured_root = os.environ.get("LIVING_STORYWORLD_ROOT")
+    if configured_root:
+        return Path(configured_root).expanduser().resolve()
+    if getattr(sys, "frozen", False):
+        return Path.cwd().resolve()
+    return Path(__file__).resolve().parent.parent
+
+
+ROOT = resolve_storage_root()
 WORLDS_DIR = ROOT / "worlds"
 CURRENT_FILE = ROOT / ".lsw_current"
 

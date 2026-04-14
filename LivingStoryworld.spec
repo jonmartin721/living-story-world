@@ -28,6 +28,7 @@ hiddenimports = [
     'living_storyworld.api.settings',
     'living_storyworld.api.generate',
     'living_storyworld.api.dependencies',
+    'living_storyworld.chapter_jobs',
     'living_storyworld.providers',
     'living_storyworld.providers.text',
     'living_storyworld.providers.image',

@@ -4,7 +4,7 @@ from getpass import getpass
 from typing import Optional
 
 from .config import STYLE_PACKS
-from .generator import generate_chapter
+from .generator import generate_chapter, resolve_image_model
 from .image import generate_scene_image
 from .presets import PRESETS
 from .settings import load_user_settings, save_user_settings
@@ -75,17 +75,18 @@ def run_world_wizard() -> None:
         return
     cfg, state, dirs = load_world(slug)
     ch = generate_chapter(dirs["base"], cfg, state, make_scene_image=True)
-    state.chapters.append(ch.__dict__)
-    state.next_chapter += 1
     save_world(slug, cfg, state, dirs)
-    if ch.scene_prompt:
+    if ch.image_prompt or ch.scene_prompt:
+        image_model = resolve_image_model(cfg, load_user_settings())
         out = generate_scene_image(
             dirs["base"],
-            cfg.image_model,
+            image_model,
             cfg.style_pack,
-            ch.scene_prompt,
+            ch.image_prompt or ch.scene_prompt or "",
             chapter_num=ch.number,
         )
+        ch.image_model_used = image_model
+        save_world(slug, cfg, state, dirs)
         print(f"Generated scene image -> {out.relative_to(dirs['base'])}")
     print(f"Wrote chapter {ch.number}: {ch.title}")
     # Offer viewer build

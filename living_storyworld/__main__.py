@@ -5,7 +5,7 @@ from typing import Optional
 
 # Absolute imports for PyInstaller compatibility
 from living_storyworld.cli import main as cli_main
-from living_storyworld.settings import ensure_api_key_from_settings
+from living_storyworld.settings import get_available_text_providers, load_user_settings
 
 
 def main(argv: Optional[list[str]] = None) -> None:
@@ -15,7 +15,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         cli_main(argv)
         return
     # Zero-args path: run setup wizard if needed, else launch TUI.
-    if not ensure_api_key_from_settings():
+    if not get_available_text_providers(load_user_settings()):
         from living_storyworld.wizard import run_setup_wizard
 
         run_setup_wizard()

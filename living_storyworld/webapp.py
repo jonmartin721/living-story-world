@@ -39,8 +39,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data:; "
             "connect-src 'self'; "
             "font-src 'self'; "
@@ -151,8 +151,7 @@ app.include_router(generate.router)
 # rethinking for multi-tenant. Maybe use signed URLs or session-based access control?
 from .storage import WORLDS_DIR  # noqa: E402
 
-if WORLDS_DIR.exists():
-    app.mount("/worlds", StaticFiles(directory=str(WORLDS_DIR)), name="worlds")
+app.mount("/worlds", StaticFiles(directory=str(WORLDS_DIR), check_dir=False), name="worlds")
 
 # Serve frontend static files
 web_dir = get_base_path() / "web"

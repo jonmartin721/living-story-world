@@ -39,9 +39,16 @@ cd living-storyworld
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+npm install --prefix frontend
 
 # Start the web interface
-python3 -m living_storyworld.cli web
+npm run start
+```
+
+To run the full local verification pass from the repo root:
+
+```bash
+npm run verify
 ```
 
 The web app will open at `http://localhost:8001`. First-time setup will walk you through configuring API keys—I recommend using Gemini 2.5 Flash (free tier) plus Pollinations for images to get started without costs.
@@ -295,6 +302,21 @@ python3 -m living_storyworld.cli web --no-browser --port 8001
 
 # Interactive TUI (terminal interface)
 python3 -m living_storyworld.cli play
+```
+
+## Frontend Development
+
+The FastAPI app serves built assets from `living_storyworld/web/`, and that directory is generated from the React/Vite app in `frontend/`.
+
+```bash
+# Install once
+npm install --prefix frontend
+
+# Run frontend tests
+npm test --prefix frontend
+
+# Build the production UI into living_storyworld/web/
+npm run build --prefix frontend
 ```
 
 ---

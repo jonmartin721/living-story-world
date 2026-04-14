@@ -6,6 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
+from ..generator import find_latest_scene_path, serialize_chapter_response
 from ..storage import WORLDS_DIR, get_current_world, set_current_world
 from ..world import init_world, load_world
 from .dependencies import get_validated_world_slug
@@ -62,6 +63,7 @@ class WorldResponse(BaseModel):
     theme: str
     style_pack: str
     text_model: str
+    image_model: str
     maturity_level: str
     preset: str
     enable_choices: bool
@@ -90,6 +92,7 @@ async def list_worlds():
                         theme=cfg.theme,
                         style_pack=cfg.style_pack,
                         text_model=cfg.text_model,
+                        image_model=cfg.image_model,
                         maturity_level=getattr(cfg, "maturity_level", "general"),
                         preset=getattr(cfg, "preset", "cozy-adventure"),
                         enable_choices=getattr(cfg, "enable_choices", False),
@@ -160,6 +163,7 @@ async def create_world(request: WorldCreateRequest):
         theme=cfg.theme,
         style_pack=cfg.style_pack,
         text_model=cfg.text_model,
+        image_model=cfg.image_model,
         maturity_level=cfg.maturity_level,
         preset=cfg.preset,
         enable_choices=cfg.enable_choices,
@@ -178,43 +182,14 @@ async def get_world(world_info: tuple[str, Path] = Depends(get_validated_world_s
     slug, world_path = world_info
     cfg, state, dirs = load_world(slug)
 
-    # Load media index for scene images
-    from ..storage import read_json
-
-    media_idx = read_json(dirs["base"] / "media" / "index.json", [])
-    scene_for_chapter = {}
-    for m in media_idx:
-        if m.get("type") == "scene" and m.get("chapter"):
-            scene_for_chapter[m["chapter"]] = f"/worlds/{slug}/" + m["file"]
-
-    chapters = []
-    for ch in state.chapters:
-        # Convert Choice dataclass objects to dicts
-        choices_data = []
-        for choice in ch.choices:
-            choices_data.append(
-                {
-                    "id": choice.id,
-                    "text": choice.text,
-                    "description": choice.description,
-                }
-            )
-
-        chapters.append(
-            {
-                "number": ch.number,
-                "title": ch.title,
-                "filename": ch.filename,
-                "summary": ch.summary,
-                "scene": scene_for_chapter.get(ch.number),
-                "characters_in_scene": ch.characters_in_scene,
-                "choices": choices_data,
-                "selected_choice_id": ch.selected_choice_id,
-                "generated_at": getattr(ch, "generated_at", None),
-                "text_model_used": getattr(ch, "text_model_used", None),
-                "image_model_used": getattr(ch, "image_model_used", None),
-            }
+    chapters = [
+        serialize_chapter_response(
+            slug,
+            chapter,
+            scene=find_latest_scene_path(dirs["base"], slug, chapter.number),
         )
+        for chapter in state.chapters
+    ]
 
     return {
         "config": {
@@ -223,6 +198,7 @@ async def get_world(world_info: tuple[str, Path] = Depends(get_validated_world_s
             "theme": cfg.theme,
             "style_pack": cfg.style_pack,
             "text_model": cfg.text_model,
+            "image_model": cfg.image_model,
             "maturity_level": getattr(cfg, "maturity_level", "general"),
             "preset": getattr(cfg, "preset", "cozy-adventure"),
             "enable_choices": getattr(cfg, "enable_choices", False),
@@ -233,8 +209,12 @@ async def get_world(world_info: tuple[str, Path] = Depends(get_validated_world_s
         "state": {
             "tick": state.tick,
             "next_chapter": state.next_chapter,
-            "characters": state.characters,
-            "locations": state.locations,
+            "characters": {
+                key: character.to_dict() for key, character in state.characters.items()
+            },
+            "locations": {
+                key: location.to_dict() for key, location in state.locations.items()
+            },
         },
         "chapters": chapters,
         "is_current": slug == get_current_world(),
@@ -289,6 +269,8 @@ async def update_world(
             "slug": cfg.slug,
             "theme": cfg.theme,
             "style_pack": cfg.style_pack,
+            "text_model": cfg.text_model,
+            "image_model": cfg.image_model,
             "maturity_level": getattr(cfg, "maturity_level", "general"),
             "preset": getattr(cfg, "preset", "cozy-adventure"),
             "enable_choices": getattr(cfg, "enable_choices", False),

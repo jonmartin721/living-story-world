@@ -1,5 +1,6 @@
 """Tests for API error handling and user-friendly error messages."""
 
+import httpx
 import pytest
 from unittest.mock import Mock, patch
 from living_storyworld.exceptions import (
@@ -163,31 +164,31 @@ class TestRequestsErrorHandling:
 class TestOpenAIErrorHandling:
     """Test conversion of OpenAI SDK errors."""
 
-    @pytest.mark.skipif(True, reason="Requires OpenAI SDK - tested in integration")
     def test_handle_openai_rate_limit(self):
         """Test OpenAI rate limit error."""
-        try:
-            from openai import RateLimitError as OpenAIRateLimit
+        from openai import RateLimitError as OpenAIRateLimit
 
-            error = OpenAIRateLimit("Rate limit exceeded")
-            converted = handle_api_error(error, "OpenAI")
+        response = httpx.Response(
+            429, request=httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+        )
+        error = OpenAIRateLimit("Rate limit exceeded", response=response, body=None)
+        converted = handle_api_error(error, "OpenAI")
 
-            assert isinstance(converted, RateLimitError)
-        except ImportError:
-            pytest.skip("OpenAI SDK not installed")
+        assert isinstance(converted, RateLimitError)
+        assert converted.provider == "OpenAI"
 
-    @pytest.mark.skipif(True, reason="Requires OpenAI SDK - tested in integration")
     def test_handle_openai_auth_error(self):
         """Test OpenAI authentication error."""
-        try:
-            from openai import AuthenticationError as OpenAIAuthError
+        from openai import AuthenticationError as OpenAIAuthError
 
-            error = OpenAIAuthError("Invalid API key")
-            converted = handle_api_error(error, "OpenAI")
+        response = httpx.Response(
+            401, request=httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+        )
+        error = OpenAIAuthError("Invalid API key", response=response, body=None)
+        converted = handle_api_error(error, "OpenAI")
 
-            assert isinstance(converted, AuthenticationError)
-        except ImportError:
-            pytest.skip("OpenAI SDK not installed")
+        assert isinstance(converted, AuthenticationError)
+        assert converted.provider == "OpenAI"
 
 
 class TestErrorMessageConsoleOutput:

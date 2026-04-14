@@ -54,6 +54,8 @@ dmypy.json
 .env
 .env.*
 .envrc
+node_modules/
+frontend/node_modules/
 venv/
 .venv/
 ENV/
