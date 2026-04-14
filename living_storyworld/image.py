@@ -73,12 +73,10 @@ def safe_download_image(
             for chunk in response.iter_content(chunk_size=8192):
                 downloaded += len(chunk)
                 if downloaded > max_bytes:
-                    # Clean up partial file
-                    output_path.unlink(missing_ok=True)
                     raise ValueError(f"Download exceeded size limit ({max_size_mb} MB)")
                 f.write(chunk)
     except Exception:
-        # Clean up partial file on any error
+        # Clean up partial file after the file handle has been closed.
         output_path.unlink(missing_ok=True)
         raise
 
