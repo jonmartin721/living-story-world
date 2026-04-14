@@ -46,6 +46,12 @@ npm run build --prefix frontend
 python3 -m living_storyworld.cli web
 ```
 
+To run the full local verification pass from the repo root:
+
+```bash
+python scripts/verify.py
+```
+
 The web app will open at `http://localhost:8001`. First-time setup will walk you through configuring API keys—I recommend using Gemini 2.5 Flash (free tier) plus Pollinations for images to get started without costs.
 
 ![Setup wizard for initial configuration](screenshots/setup-wizard.png)
