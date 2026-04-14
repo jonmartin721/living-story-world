@@ -12,6 +12,11 @@ type StreamOptions = {
   onError?: (message: string) => void;
 };
 
+function readEventData(event: Event): string | null {
+  const maybeMessage = event as Partial<MessageEvent<string>>;
+  return typeof maybeMessage.data === "string" ? maybeMessage.data : null;
+}
+
 export function useEventStream(path: string | null, options: StreamOptions = {}) {
   const onCompleteRef = useRef(options.onComplete);
   const onErrorRef = useRef(options.onError);
@@ -33,7 +38,22 @@ export function useEventStream(path: string | null, options: StreamOptions = {})
     }
 
     const source = new EventSource(path);
+    let settled = false;
     setState({ status: "streaming", progress: null, error: null });
+
+    const closeWithError = (message: string) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      onErrorRef.current?.(message);
+      setState((previous) => ({
+        status: "error",
+        progress: previous.progress,
+        error: message,
+      }));
+      source.close();
+    };
 
     source.addEventListener("progress", (event) => {
       const progress = JSON.parse((event as MessageEvent<string>).data) as JobProgress;
@@ -41,6 +61,7 @@ export function useEventStream(path: string | null, options: StreamOptions = {})
     });
 
     source.addEventListener("complete", (event) => {
+      settled = true;
       const chapter = JSON.parse((event as MessageEvent<string>).data) as ChapterSummary;
       void onCompleteRef.current?.(chapter);
       setState((previous) => ({
@@ -52,24 +73,22 @@ export function useEventStream(path: string | null, options: StreamOptions = {})
     });
 
     source.addEventListener("error", (event) => {
-      const payload = JSON.parse((event as MessageEvent<string>).data) as { error: string };
-      onErrorRef.current?.(payload.error);
-      setState((previous) => ({
-        status: "error",
-        progress: previous.progress,
-        error: payload.error,
-      }));
-      source.close();
+      const data = readEventData(event);
+      if (!data) {
+        closeWithError("Connection lost while streaming progress.");
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(data) as { error?: string };
+        closeWithError(payload.error ?? "Connection lost while streaming progress.");
+      } catch {
+        closeWithError("Connection lost while streaming progress.");
+      }
     });
 
     source.onerror = () => {
-      onErrorRef.current?.("Connection lost while streaming progress.");
-      setState((previous) => ({
-        status: "error",
-        progress: previous.progress,
-        error: "Connection lost while streaming progress.",
-      }));
-      source.close();
+      closeWithError("Connection lost while streaming progress.");
     };
 
     return () => source.close();

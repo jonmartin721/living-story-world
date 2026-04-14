@@ -151,8 +151,7 @@ app.include_router(generate.router)
 # rethinking for multi-tenant. Maybe use signed URLs or session-based access control?
 from .storage import WORLDS_DIR  # noqa: E402
 
-WORLDS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/worlds", StaticFiles(directory=str(WORLDS_DIR)), name="worlds")
+app.mount("/worlds", StaticFiles(directory=str(WORLDS_DIR), check_dir=False), name="worlds")
 
 # Serve frontend static files
 web_dir = get_base_path() / "web"

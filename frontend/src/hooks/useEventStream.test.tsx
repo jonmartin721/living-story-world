@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { useEventStream } from "./useEventStream";
 
 class MockEventSource {
-  listeners = new Map<string, Set<(event: MessageEvent<string>) => void>>();
+  listeners = new Map<string, Set<(event: Event) => void>>();
   onerror: (() => void) | null = null;
 
   constructor(public readonly url: string) {
@@ -11,7 +11,7 @@ class MockEventSource {
 
   static instances: MockEventSource[] = [];
 
-  addEventListener(type: string, listener: (event: MessageEvent<string>) => void) {
+  addEventListener(type: string, listener: (event: Event) => void) {
     const current = this.listeners.get(type) ?? new Set();
     current.add(listener);
     this.listeners.set(type, current);
@@ -20,6 +20,10 @@ class MockEventSource {
   emit(type: string, data: unknown) {
     const message = { data: JSON.stringify(data) } as MessageEvent<string>;
     this.listeners.get(type)?.forEach((listener) => listener(message));
+  }
+
+  emitNativeError() {
+    this.listeners.get("error")?.forEach((listener) => listener(new Event("error")));
   }
 
   close() {}
@@ -84,5 +88,19 @@ describe("useEventStream", () => {
 
     await waitFor(() => expect(screen.getByText("Rerolling...")).toBeInTheDocument());
     await waitFor(() => expect(onError).toHaveBeenCalledWith("Reroll failed"));
+  });
+
+  it("falls back cleanly for native transport errors", async () => {
+    const onError = vi.fn();
+    render(<Harness label="transport" onError={onError} />);
+
+    const source = MockEventSource.instances[0];
+    act(() => {
+      source.emitNativeError();
+    });
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith("Connection lost while streaming progress."),
+    );
   });
 });

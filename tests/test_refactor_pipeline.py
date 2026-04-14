@@ -1,7 +1,7 @@
 import asyncio
 import importlib
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -9,6 +9,7 @@ from living_storyworld.api.chapters import ChapterGenerateRequest
 from living_storyworld.chapter_jobs import run_chapter_job
 from living_storyworld.generator import (
     GeneratedChapterDraft,
+    _generate_text_with_fallback,
     resolve_generation_settings,
 )
 from living_storyworld.models import Chapter, Choice, WorldConfig, WorldState
@@ -40,6 +41,58 @@ def test_resolve_generation_settings_prefers_world_models(sample_world_config):
     assert resolved.text_provider_order == ["gemini", "openai"]
     assert resolved.preferred_text_model == sample_world_config.text_model
     assert resolved.preferred_image_model == sample_world_config.image_model
+
+
+def test_text_fallback_uses_provider_default_model_for_secondary_provider(
+    sample_world_config,
+):
+    settings = UserSettings(
+        text_provider="openai",
+        default_text_model="gpt-4o-mini",
+    )
+    messages = [{"role": "user", "content": "Hello"}]
+
+    primary_provider = MagicMock()
+    secondary_provider = MagicMock()
+    primary_provider.generate.side_effect = RuntimeError("primary failed")
+    primary_provider.get_default_model.return_value = "gpt-5-mini"
+    secondary_provider.generate.return_value = type(
+        "Result",
+        (),
+        {
+            "content": "fallback worked",
+            "provider": "gemini",
+            "model": "gemini-2.5-flash",
+            "estimated_cost": 0.0,
+        },
+    )()
+    secondary_provider.get_default_model.return_value = "gemini-2.5-flash"
+
+    with patch(
+        "living_storyworld.generator.get_text_provider",
+        side_effect=[primary_provider, secondary_provider],
+    ), patch(
+        "living_storyworld.generator.get_api_key_for_provider",
+        return_value="test-key",
+    ), patch(
+        "living_storyworld.settings.get_available_text_providers",
+        return_value=["openai", "gemini"],
+    ):
+        content, provider_name, model_name = _generate_text_with_fallback(
+            messages,
+            sample_world_config,
+            0.7,
+            settings=settings,
+        )
+
+    assert content == "fallback worked"
+    assert provider_name == "gemini"
+    assert model_name == "gemini-2.5-flash"
+    secondary_provider.generate.assert_called_once_with(
+        messages,
+        temperature=0.7,
+        model="gemini-2.5-flash",
+    )
 
 
 def test_load_and_save_world_preserves_image_model(tmp_path):

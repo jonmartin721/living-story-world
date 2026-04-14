@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api/worlds/{slug}/chapters", tags=["chapters"])
 
 executor = ThreadPoolExecutor(max_workers=4)
 active_jobs: Dict[str, asyncio.Queue] = {}
+active_slug_jobs: Dict[str, str] = {}
 
 _settings_cache = None
 _settings_cache_time = 0
@@ -48,6 +49,41 @@ class ChoiceSelectionRequest(BaseModel):
     )
 
 
+def _claim_job_slot(slug: str) -> None:
+    existing_job_id = active_slug_jobs.get(slug)
+    if not existing_job_id:
+        return
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "error": f"A chapter job is already running for '{slug}'.",
+            "job_id": existing_job_id,
+        },
+    )
+
+
+async def _run_job_with_cleanup(
+    slug: str,
+    request: ChapterGenerateRequest,
+    queue: asyncio.Queue,
+    job_id: str,
+    *,
+    chapter_num: Optional[int] = None,
+) -> None:
+    try:
+        await run_chapter_job(
+            slug,
+            request,
+            queue,
+            job_id,
+            executor,
+            chapter_num=chapter_num,
+        )
+    finally:
+        if active_slug_jobs.get(slug) == job_id:
+            active_slug_jobs.pop(slug, None)
+
+
 @router.post("")
 async def start_chapter_generation(slug: str, request: ChapterGenerateRequest):
     try:
@@ -58,10 +94,12 @@ async def start_chapter_generation(slug: str, request: ChapterGenerateRequest):
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
+    _claim_job_slot(slug)
     job_id = str(uuid.uuid4())
     queue: asyncio.Queue = asyncio.Queue()
     active_jobs[job_id] = queue
-    asyncio.create_task(run_chapter_job(slug, request, queue, job_id, executor))
+    active_slug_jobs[slug] = job_id
+    asyncio.create_task(_run_job_with_cleanup(slug, request, queue, job_id))
     return {"job_id": job_id}
 
 
@@ -103,7 +141,8 @@ async def get_chapter_content(slug: str, chapter_num: int):
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
-    _, state, dirs = load_world(slug)
+    loop = asyncio.get_event_loop()
+    _, state, dirs = await loop.run_in_executor(executor, load_world, slug)
     chapter_file = next(
         (chapter.filename for chapter in state.chapters if chapter.number == chapter_num),
         None,
@@ -115,7 +154,8 @@ async def get_chapter_content(slug: str, chapter_num: int):
     if not chapter_path.exists():
         raise HTTPException(status_code=404, detail="Chapter file not found")
 
-    return {"content": chapter_path.read_text(encoding="utf-8")}
+    content = await loop.run_in_executor(executor, chapter_path.read_text, "utf-8")
+    return {"content": content}
 
 
 @router.post("/{chapter_num}/select-choice")
@@ -175,16 +215,17 @@ async def reroll_chapter(
     if not (WORLDS_DIR / slug).exists():
         raise HTTPException(status_code=404, detail="World not found")
 
+    _claim_job_slot(slug)
     job_id = str(uuid.uuid4())
     queue: asyncio.Queue = asyncio.Queue()
     active_jobs[job_id] = queue
+    active_slug_jobs[slug] = job_id
     asyncio.create_task(
-        run_chapter_job(
+        _run_job_with_cleanup(
             slug,
             request or ChapterGenerateRequest(),
             queue,
             job_id,
-            executor,
             chapter_num=chapter_num,
         )
     )
@@ -215,15 +256,21 @@ async def delete_chapter(slug: str, chapter_num: int):
     if chapter_index is None or chapter is None:
         raise HTTPException(status_code=404, detail="Chapter not found")
 
-    chapter_path = dirs["base"] / "chapters" / chapter.filename
-    if chapter_path.exists():
-        chapter_path.unlink()
-
-    scenes_dir = dirs["base"] / "media" / "scenes"
-    if scenes_dir.exists():
-        for scene_file in scenes_dir.glob(f"scene-{chapter_num:04d}-*.png"):
-            scene_file.unlink()
+    await loop.run_in_executor(
+        executor, _delete_chapter_assets, dirs["base"], chapter.filename, chapter_num
+    )
 
     state.chapters.pop(chapter_index)
     await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
     return {"success": True, "message": f"Chapter {chapter_num} deleted"}
+
+
+def _delete_chapter_assets(base_dir, chapter_filename: str, chapter_num: int) -> None:
+    chapter_path = base_dir / "chapters" / chapter_filename
+    if chapter_path.exists():
+        chapter_path.unlink()
+
+    scenes_dir = base_dir / "media" / "scenes"
+    if scenes_dir.exists():
+        for scene_file in scenes_dir.glob(f"scene-{chapter_num:04d}-*.png"):
+            scene_file.unlink()

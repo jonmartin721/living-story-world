@@ -109,7 +109,7 @@ async def run_chapter_job(
         image_model_used = None
 
         if not request.no_images and (draft.image_prompt or draft.scene_prompt):
-            settings = load_user_settings()
+            settings = await loop.run_in_executor(executor, load_user_settings)
             image_model_used = resolve_image_model(cfg, settings)
             await queue.put(
                 {

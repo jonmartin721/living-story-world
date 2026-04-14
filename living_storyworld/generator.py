@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
+from functools import partial
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -251,16 +253,12 @@ def resolve_generation_settings(
 
 def _resolve_text_model(
     provider,
-    cfg: WorldConfig,
-    settings,
+    provider_name: str,
     resolved_settings: ResolvedGenerationSettings,
 ) -> str:
-    return (
-        resolved_settings.preferred_text_model
-        or cfg.text_model
-        or getattr(settings, "default_text_model", None)
-        or provider.get_default_model()
-    )
+    if provider_name == resolved_settings.text_provider:
+        return resolved_settings.preferred_text_model or provider.get_default_model()
+    return provider.get_default_model()
 
 
 def resolve_image_model(
@@ -307,7 +305,7 @@ def _generate_text_with_fallback(
         try:
             api_key = get_api_key_for_provider(provider_name, user_settings)
             provider = get_text_provider(provider_name, api_key=api_key)
-            model = _resolve_text_model(provider, cfg, user_settings, resolved)
+            model = _resolve_text_model(provider, provider_name, resolved)
             result = provider.generate(messages, temperature=temperature, model=model)
             logger.info(
                 "Generated text using %s (%s), cost: $%.4f",
@@ -560,7 +558,8 @@ def serialize_chapter_response(
 async def infer_choice_reasoning(
     choice_text: str, chapter_summary: str, world_theme: str, cfg: WorldConfig
 ) -> str:
-    settings = load_user_settings()
+    loop = asyncio.get_running_loop()
+    settings = await loop.run_in_executor(None, load_user_settings)
     resolved_settings = resolve_generation_settings(cfg, settings)
     prompt = f"""Given this story context and reader's choice, infer in 1-2 sentences why the reader might have chosen this option. Focus on narrative intent and character motivation.
 
@@ -579,12 +578,16 @@ Reasoning:"""
     ]
 
     try:
-        reasoning, _, _ = _generate_text_with_fallback(
-            messages,
-            cfg,
-            0.7,
-            settings=settings,
-            resolved_settings=resolved_settings,
+        reasoning, _, _ = await loop.run_in_executor(
+            None,
+            partial(
+                _generate_text_with_fallback,
+                messages,
+                cfg,
+                0.7,
+                settings=settings,
+                resolved_settings=resolved_settings,
+            ),
         )
         reasoning = reasoning.strip()
         if len(reasoning) > 200:
@@ -596,7 +599,8 @@ Reasoning:"""
 
 
 async def generate_chapter_summary(chapter_content: str, cfg: WorldConfig) -> str:
-    settings = load_user_settings()
+    loop = asyncio.get_running_loop()
+    settings = await loop.run_in_executor(None, load_user_settings)
     resolved_settings = resolve_generation_settings(cfg, settings)
 
     content_clean = re.sub(r"<!--.*?-->", "", chapter_content, flags=re.DOTALL)
@@ -619,12 +623,16 @@ Summary:"""
     ]
 
     try:
-        summary, _, _ = _generate_text_with_fallback(
-            messages,
-            cfg,
-            0.3,
-            settings=settings,
-            resolved_settings=resolved_settings,
+        summary, _, _ = await loop.run_in_executor(
+            None,
+            partial(
+                _generate_text_with_fallback,
+                messages,
+                cfg,
+                0.3,
+                settings=settings,
+                resolved_settings=resolved_settings,
+            ),
         )
         summary = summary.strip()
         if len(summary) > 300:
