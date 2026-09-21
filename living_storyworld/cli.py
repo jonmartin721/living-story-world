@@ -25,16 +25,13 @@ from .world import init_world, load_world, save_world, tick_world
 def cmd_init(args: argparse.Namespace) -> None:
     slug = args.slug or slugify(args.title)
     style = args.style if args.style in STYLE_PACKS else "storybook-ink"
-    image_model = (
-        args.image_model
-        if hasattr(args, "image_model") and args.image_model
-        else "flux-dev"
-    )
+    image_model = getattr(args, "image_model", None)
     init_world(args.title, args.theme, style, slug, image_model=image_model)
     print(
         f"[bold green]Initialized[/] world '[cyan]{args.title}[/]' at [magenta]worlds/{slug}[/]"
     )
-    print(f"[dim]Image model: {image_model}[/]")
+    if image_model:
+        print(f"[dim]Image model: {image_model}[/]")
 
 
 def cmd_use(args: argparse.Namespace) -> None:
@@ -72,7 +69,7 @@ def cmd_chapter(args: argparse.Namespace) -> None:
         dirs["base"],
         cfg,
         state,
-        make_scene_image=not args.no_images,
+        make_scene_image=not args.no_images and settings.image_provider != "none",
     )
 
     save_world(slug, cfg, state, dirs)
@@ -80,7 +77,7 @@ def cmd_chapter(args: argparse.Namespace) -> None:
         f"Wrote chapter [bold]{ch.number}[/]: [white]{ch.title}[/] -> [blue]{ch.filename}[/]"
     )
 
-    if not args.no_images and (ch.image_prompt or ch.scene_prompt):
+    if not args.no_images and settings.image_provider != "none" and (ch.image_prompt or ch.scene_prompt):
         image_model = resolve_image_model(cfg, settings)
         result = generate_scene_result(
             dirs["base"],
@@ -249,9 +246,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     )
     sp.add_argument(
         "--image-model",
-        choices=["flux-dev", "flux-schnell"],
-        default="flux-dev",
-        help="Image generation model: flux-dev (quality, ~$0.025) or flux-schnell (fast, ~$0.003)",
+        help="Image model for the configured provider (uses the Settings default when omitted)",
     )
     sp.add_argument("--slug", help="Directory name for the world")
     sp.set_defaults(func=cmd_init)

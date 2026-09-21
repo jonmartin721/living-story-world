@@ -122,8 +122,7 @@ class TestInitAndLoadWorld:
     def test_init_and_load_roundtrip(self, tmp_path):
         """Test creating and loading a world."""
         with patch("living_storyworld.storage.WORLDS_DIR", tmp_path / "worlds"), \
-             patch("living_storyworld.world.load_user_settings") as mock_settings, \
-             patch("living_storyworld.world.get_text_provider") as mock_provider:
+             patch("living_storyworld.world.load_user_settings") as mock_settings:
 
             mock_settings.return_value = UserSettings(
                 text_provider="openai",
@@ -131,7 +130,6 @@ class TestInitAndLoadWorld:
             )
             mock_prov = MagicMock()
             mock_prov.get_default_model.return_value = "gpt-4"
-            mock_provider.return_value = mock_prov
 
             slug = init_world(
                 title="Test World",
@@ -152,17 +150,15 @@ class TestInitAndLoadWorld:
             assert state.tick == 0
             assert state.next_chapter == 1
 
-    def test_init_with_provider_failure(self, tmp_path):
-        """Test init when provider fails."""
+    def test_init_without_contacting_provider(self, tmp_path):
+        """World creation persists the configured model without a network call."""
         with patch("living_storyworld.storage.WORLDS_DIR", tmp_path / "worlds"), \
-             patch("living_storyworld.world.load_user_settings") as mock_settings, \
-             patch("living_storyworld.world.get_text_provider") as mock_provider:
+             patch("living_storyworld.world.load_user_settings") as mock_settings:
 
             mock_settings.return_value = UserSettings(
                 text_provider="openai",
                 default_text_model="fallback-model",
             )
-            mock_provider.side_effect = Exception("Provider error")
 
             slug = init_world(title="Fallback", theme="Theme")
 
@@ -224,8 +220,7 @@ class TestSaveAndTickWorld:
     def test_save_world(self, tmp_path):
         """Test saving world modifications."""
         with patch("living_storyworld.storage.WORLDS_DIR", tmp_path / "worlds"), \
-             patch("living_storyworld.world.load_user_settings") as mock_settings, \
-             patch("living_storyworld.world.get_text_provider") as mock_provider:
+             patch("living_storyworld.world.load_user_settings") as mock_settings:
 
             mock_settings.return_value = UserSettings(
                 text_provider="openai",
@@ -233,7 +228,6 @@ class TestSaveAndTickWorld:
             )
             mock_prov = MagicMock()
             mock_prov.get_default_model.return_value = "gpt-4"
-            mock_provider.return_value = mock_prov
 
             slug = init_world(title="Save Test", theme="Theme")
 
@@ -249,8 +243,7 @@ class TestSaveAndTickWorld:
     def test_save_world_without_dirs(self, tmp_path):
         """Test saving without providing dirs."""
         with patch("living_storyworld.storage.WORLDS_DIR", tmp_path / "worlds"), \
-             patch("living_storyworld.world.load_user_settings") as mock_settings, \
-             patch("living_storyworld.world.get_text_provider") as mock_provider:
+             patch("living_storyworld.world.load_user_settings") as mock_settings:
 
             mock_settings.return_value = UserSettings(
                 text_provider="openai",
@@ -258,7 +251,6 @@ class TestSaveAndTickWorld:
             )
             mock_prov = MagicMock()
             mock_prov.get_default_model.return_value = "gpt-4"
-            mock_provider.return_value = mock_prov
 
             slug = init_world(title="Save Test 2", theme="Theme")
 
@@ -272,8 +264,7 @@ class TestSaveAndTickWorld:
     def test_tick_world(self, tmp_path):
         """Test incrementing world tick."""
         with patch("living_storyworld.storage.WORLDS_DIR", tmp_path / "worlds"), \
-             patch("living_storyworld.world.load_user_settings") as mock_settings, \
-             patch("living_storyworld.world.get_text_provider") as mock_provider:
+             patch("living_storyworld.world.load_user_settings") as mock_settings:
 
             mock_settings.return_value = UserSettings(
                 text_provider="openai",
@@ -281,7 +272,6 @@ class TestSaveAndTickWorld:
             )
             mock_prov = MagicMock()
             mock_prov.get_default_model.return_value = "gpt-4"
-            mock_provider.return_value = mock_prov
 
             slug = init_world(title="Tick Test", theme="Theme")
 

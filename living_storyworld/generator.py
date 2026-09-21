@@ -226,10 +226,19 @@ def _parse_meta(md_text: str) -> Dict[str, object]:
     match = re.search(r"<!--\s*(\{.*?\})\s*-->", md_text, re.DOTALL)
     if not match:
         return {}
+    raw = match.group(1)
     try:
-        return json.loads(match.group(1))
-    except Exception:
-        return {}
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        # Some local models close the final nested object but omit the outer brace.
+        # Repair only that end-of-input case, not malformed or truncated fields.
+        if exc.pos != len(raw.rstrip()):
+            return {}
+        try:
+            parsed = json.loads(raw + "}")
+        except json.JSONDecodeError:
+            return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def resolve_generation_settings(
@@ -283,8 +292,7 @@ def resolve_image_model(
     return (
         cfg.image_model
         or getattr(user_settings, "default_image_model", None)
-        or (provider.get_default_model() if provider else None)
-        or "flux"
+        or (provider.get_default_model() if provider else "")
     )
 
 
@@ -312,7 +320,7 @@ def _generate_text_with_fallback(
             model = _resolve_text_model(provider, provider_name, resolved)
             result = provider.generate(messages, temperature=temperature, model=model)
             logger.info(
-                "Generated text using %s (%s), cost: $%.4f",
+                "Generated text using %s (%s), estimated cost in USD: %s",
                 result.provider,
                 result.model,
                 result.estimated_cost,
@@ -327,7 +335,7 @@ def _generate_text_with_fallback(
             if len(resolved.text_provider_order) == 1:
                 if is_safety_block:
                     raise ValueError(
-                        f"Content blocked by {provider_name}'s safety filters. Try regenerating or configure additional text providers in Settings for automatic fallback."
+                        f"Content blocked by {provider_name}'s safety filters. Try a different scene or review your selected provider in Settings."
                     ) from exc
                 raise
             logger.warning("%s failed: %s", provider_name, error_msg)

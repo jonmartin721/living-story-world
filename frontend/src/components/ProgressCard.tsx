@@ -1,29 +1,24 @@
 import type { JobProgress } from "../api/types";
 
-type ProgressCardProps = {
+type Props = {
   title: string;
   progress: JobProgress | null;
   busy: boolean;
   error?: string | null;
 };
 
-export function ProgressCard({ title, progress, busy, error }: ProgressCardProps) {
+export function ProgressCard({ title, progress, busy, error }: Props) {
+  if (!busy && !error) return null;
   return (
-    <section className="panel progress-card">
-      <div className="panel__eyebrow">Live Job</div>
-      <h3>{title}</h3>
-      <div className="progress-track" aria-hidden="true">
-        <span style={{ width: `${progress?.percent ?? 0}%` }} />
+    <section className="progress-card" aria-label={title}>
+      <div className="progress-card__heading">
+        <span>{title}</span>
+        <span>{progress?.percent ?? 0}%</span>
       </div>
-      <p className="progress-card__message">
-        {error ? error : progress?.message ?? (busy ? "Working..." : "No active job")}
+      <progress max={100} value={progress?.percent ?? 0} aria-label={title} />
+      <p role="status">
+        {error ?? progress?.message ?? "Starting generation…"}
       </p>
-      {progress ? (
-        <div className="progress-card__meta">
-          <span>{progress.stage}</span>
-          <span>{progress.percent}%</span>
-        </div>
-      ) : null}
     </section>
   );
 }

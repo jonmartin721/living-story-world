@@ -19,8 +19,8 @@ class TestUserSettings:
     def test_default_settings(self):
         """Test default settings values."""
         settings = UserSettings()
-        assert settings.text_provider == "gemini"
-        assert settings.image_provider == "pollinations"
+        assert settings.text_provider == "ollama"
+        assert settings.image_provider == "none"
         assert settings.default_style_pack == "storybook-ink"
         assert settings.global_instructions is None
 
@@ -46,7 +46,7 @@ class TestLoadUserSettings:
         settings = load_user_settings()
 
         assert isinstance(settings, UserSettings)
-        assert settings.text_provider == "gemini"  # Default
+        assert settings.text_provider == "ollama"  # Default
 
     def test_load_valid_config(self, tmp_path, monkeypatch):
         """Test loading valid config file."""
@@ -79,7 +79,7 @@ class TestLoadUserSettings:
 
         # Should return defaults when JSON is invalid
         assert isinstance(settings, UserSettings)
-        assert settings.text_provider == "gemini"
+        assert settings.text_provider == "ollama"
 
     def test_load_with_extra_fields(self, tmp_path, monkeypatch):
         """Test loading config with unknown fields (should ignore them)."""
@@ -303,7 +303,7 @@ class TestGetAvailableTextProviders:
         for var in ["OPENAI_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY"]:
             monkeypatch.delenv(var, raising=False)
 
-        settings = UserSettings()
+        settings = UserSettings(text_provider="gemini")
         providers = get_available_text_providers(settings)
 
         assert providers == []
@@ -321,8 +321,8 @@ class TestGetAvailableTextProviders:
 
         assert providers == ["groq"]
 
-    def test_multiple_providers_ordered(self, monkeypatch):
-        """Test providers are returned in preferred order."""
+    def test_saved_keys_do_not_enable_other_providers(self, monkeypatch):
+        """Only the chosen service may receive a generation request."""
         for var in ["OPENAI_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY"]:
             monkeypatch.delenv(var, raising=False)
 
@@ -334,12 +334,11 @@ class TestGetAvailableTextProviders:
         )
         providers = get_available_text_providers(settings)
 
-        # Primary provider first, then free providers, then paid
-        assert providers[0] == "openai"  # Primary
-        assert "groq" in providers or "gemini" in providers  # Free providers
+        # Saving several keys must not implicitly permit fallback to another service.
+        assert providers == ["openai"]
 
-    def test_free_providers_prioritized(self, monkeypatch):
-        """Test free providers come before paid ones."""
+    def test_paid_selection_also_stays_on_the_selected_provider(self, monkeypatch):
+        """The app does not infer fallback consent from stored keys."""
         for var in ["OPENAI_API_KEY", "GROQ_API_KEY", "TOGETHER_API_KEY"]:
             monkeypatch.delenv(var, raising=False)
 
@@ -351,12 +350,8 @@ class TestGetAvailableTextProviders:
         )
         providers = get_available_text_providers(settings)
 
-        # Primary first, then groq (free), then openai (paid)
-        assert providers[0] == "together"
-        groq_idx = providers.index("groq") if "groq" in providers else 999
-        openai_idx = providers.index("openai") if "openai" in providers else 999
-        if groq_idx < 999 and openai_idx < 999:
-            assert groq_idx < openai_idx
+        assert providers == ["together"]
+
 
     def test_no_duplicates(self, monkeypatch):
         """Test provider list has no duplicates."""

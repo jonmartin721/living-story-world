@@ -279,42 +279,14 @@ class TestGenerateSceneImage:
             # Result should have timestamp suffix, not be the cached file
             assert result != cached_file
 
-    def test_provider_fallback_to_pollinations(self, tmp_path):
-        """Test fallback to Pollinations when primary provider fails."""
-        scenes_dir = tmp_path / "media" / "scenes"
-        scenes_dir.mkdir(parents=True)
-        (tmp_path / "media").mkdir(exist_ok=True)
-
-        failing_provider = MagicMock()
-        failing_provider.generate.side_effect = Exception("Provider failed")
-
-        fallback_provider = MagicMock()
-        fallback_result = MagicMock()
-        fallback_result.provider = "pollinations"
-        fallback_result.model = "flux"
-        fallback_result.estimated_cost = 0.0
-        fallback_provider.generate.return_value = fallback_result
-
-        with patch("living_storyworld.image._cache_key") as mock_cache_key, \
-             patch("living_storyworld.image.load_user_settings") as mock_settings, \
-             patch("living_storyworld.image.get_image_provider") as mock_get_provider, \
-             patch("living_storyworld.image._append_media_index"):
-            mock_cache_key.return_value = "fallback"
-            mock_settings.return_value = MagicMock(image_provider="replicate")
-            # First call returns failing provider, second call returns fallback
-            mock_get_provider.side_effect = [failing_provider, fallback_provider]
-
-            generate_scene_image(
-                tmp_path,
-                "flux-dev",
-                "storybook-ink",
-                "A scene",
-                chapter_num=1,
-            )
-
-            # Should have called both providers
-            assert failing_provider.generate.call_count == 1
-            assert fallback_provider.generate.call_count == 1
+    def test_image_failure_does_not_contact_another_paid_service(self, tmp_path):
+        provider = MagicMock()
+        provider.generate.side_effect = RuntimeError("Provider failed")
+        with patch("living_storyworld.image.load_user_settings", return_value=MagicMock(image_provider="replicate")), patch("living_storyworld.image.get_image_provider", return_value=provider) as factory:
+            with pytest.raises(RuntimeError, match="Provider failed"):
+                generate_scene_image(tmp_path, "flux-dev", "storybook-ink", "A scene", chapter_num=1)
+        factory.assert_called_once()
+        assert not (tmp_path / "media/index.json").exists()
 
     def test_pollinations_failure_raises(self, tmp_path):
         """Test that Pollinations failure raises (no further fallback)."""
@@ -397,13 +369,11 @@ class TestAppendMediaIndex:
         assert data[0]["chapter"] == 1
 
 
-def test_fallback_identity_survives_media_index_and_cache(tmp_path):
+def test_provider_identity_survives_media_index_and_cache(tmp_path):
     from living_storyworld.image import generate_scene_result
     from living_storyworld.providers.image import ImageGenerationResult
     from living_storyworld.settings import UserSettings
 
-    primary = MagicMock()
-    primary.generate.side_effect = RuntimeError("Unavailable")
     fallback = MagicMock()
 
     def generate(**kwargs):
@@ -415,7 +385,7 @@ def test_fallback_identity_survives_media_index_and_cache(tmp_path):
     fallback.generate.side_effect = generate
     with (
         patch("living_storyworld.image.load_user_settings", return_value=UserSettings(image_provider="replicate")),
-        patch("living_storyworld.image.get_image_provider", side_effect=[primary, fallback]),
+        patch("living_storyworld.image.get_image_provider", return_value=fallback),
     ):
         result = generate_scene_result(tmp_path, "flux-dev", "storybook-ink", "Harbor", 1)
         cached = generate_scene_result(tmp_path, "flux-dev", "storybook-ink", "Harbor", 1)

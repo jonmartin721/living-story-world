@@ -42,6 +42,8 @@ class WorldCreateRequest(BaseModel):
 
 
 class WorldUpdateRequest(BaseModel):
+    text_model: Optional[str] = Field(None, max_length=100)
+    image_model: Optional[str] = Field(None, max_length=100)
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     theme: Optional[str] = Field(None, min_length=1, max_length=1000)
     style_pack: Optional[str] = Field(None, max_length=100)
@@ -251,6 +253,10 @@ async def update_world(
     check_world_idle(slug)
     cfg, state, dirs = load_world(slug)
 
+    if request.text_model is not None:
+        cfg.text_model = request.text_model.strip()
+    if request.image_model is not None:
+        cfg.image_model = request.image_model.strip()
     if request.title is not None:
         cfg.title = request.title
     if request.theme is not None:

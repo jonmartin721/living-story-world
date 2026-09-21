@@ -1,3 +1,5 @@
+import { useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Toast } from "../hooks/useToastQueue";
 
 type ToastShelfProps = {
@@ -6,7 +8,14 @@ type ToastShelfProps = {
 };
 
 export function ToastShelf({ toasts, onDismiss }: ToastShelfProps) {
-  return (
+  const [container, setContainer] = useState<Element>(document.body);
+  useLayoutEffect(() => {
+    const dialogs = document.querySelectorAll("dialog[open]");
+    // Native modal dialogs sit above every normal stacking context.
+    setContainer(dialogs[dialogs.length - 1] ?? document.body);
+  });
+
+  return createPortal(
     <div className="toast-shelf" aria-live="polite">
       {toasts.map((toast) => (
         <button
@@ -18,6 +27,7 @@ export function ToastShelf({ toasts, onDismiss }: ToastShelfProps) {
           {toast.message}
         </button>
       ))}
-    </div>
+    </div>,
+    container,
   );
 }

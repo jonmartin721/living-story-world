@@ -74,10 +74,13 @@ def run_world_wizard() -> None:
     if not go:
         return
     cfg, state, dirs = load_world(slug)
-    ch = generate_chapter(dirs["base"], cfg, state, make_scene_image=True)
+    illustrations_enabled = s.image_provider != "none"
+    ch = generate_chapter(
+        dirs["base"], cfg, state, make_scene_image=illustrations_enabled
+    )
     save_world(slug, cfg, state, dirs)
-    if ch.image_prompt or ch.scene_prompt:
-        image_model = resolve_image_model(cfg, load_user_settings())
+    if illustrations_enabled and (ch.image_prompt or ch.scene_prompt):
+        image_model = resolve_image_model(cfg, s)
         result = generate_scene_result(
             dirs["base"],
             image_model,

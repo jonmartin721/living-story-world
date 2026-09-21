@@ -120,26 +120,11 @@ def _generate_random_world() -> dict:
         random_seed = random.randint(1000, 9999)
         timestamp = int(time.time())
 
-        # Use the configured text provider, fallback to OpenAI if no key
         settings = load_user_settings()
         text_provider_name = settings.text_provider
         api_key = get_api_key_for_provider(text_provider_name, settings)
-
-        # If no API key for configured provider, fallback to OpenAI
-        if not api_key:
-            logger.warning(
-                "No API key for %s, falling back to OpenAI", text_provider_name
-            )
-            text_provider_name = "openai"
-            api_key = get_api_key_for_provider("openai", settings)
-            model = "gpt-4o-mini"
-        else:
-            model = settings.default_text_model
-
-        if not api_key:
-            raise ValueError("No API key available for text generation")
-
         provider = get_text_provider(text_provider_name, api_key=api_key)
+        model = settings.default_text_model or None
 
         messages = [
             {
