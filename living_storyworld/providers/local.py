@@ -34,7 +34,7 @@ def validate_local_url(value: str, default_path: str = "/v1") -> str:
 
 class LocalProvider(TextProvider):
     def __init__(self, api_key=None, *, provider="local", base_url=None):
-        from ..settings import load_user_settings
+        from ..settings import get_api_key_for_provider, load_user_settings
 
         settings = load_user_settings()
         self.provider = provider
@@ -42,9 +42,7 @@ class LocalProvider(TextProvider):
             base_url or getattr(settings, f"{provider}_base_url")
         )
         self.api_key = (
-            api_key
-            or (settings.local_api_key if provider == "local" else None)
-            or "local"
+            api_key or get_api_key_for_provider(provider, settings) or "local"
         )
         self.reasoning_effort = settings.local_reasoning_effort
 

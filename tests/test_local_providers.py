@@ -8,27 +8,43 @@ import pytest
 from fastapi.testclient import TestClient
 
 from living_storyworld.providers.local import LocalProvider, validate_local_url
-from living_storyworld.settings import UserSettings, get_available_text_providers
+from living_storyworld.settings import (
+    UserSettings,
+    get_api_key_for_provider,
+    get_available_text_providers,
+)
 from living_storyworld.webapp import app
 
 
 @pytest.fixture
-def model_server():
+def model_server(request):
     requests = []
+    required_key = getattr(request, "param", None)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass
 
-        def send(self, body):
+        def send(self, body, status=200):
             data = json.dumps(body).encode()
-            self.send_response(200)
+            self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
 
+        def authorized(self):
+            if (
+                required_key
+                and self.headers.get("Authorization") != f"Bearer {required_key}"
+            ):
+                self.send({"error": {"message": "Unauthorized"}}, status=401)
+                return False
+            return True
+
         def do_GET(self):
+            if not self.authorized():
+                return
             requests.append((self.path, None))
             self.send(
                 {
@@ -41,6 +57,8 @@ def model_server():
             )
 
         def do_POST(self):
+            if not self.authorized():
+                return
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             requests.append((self.path, body))
             self.send(
@@ -85,6 +103,43 @@ def test_local_generation_uses_compatible_wire_protocol(model_server, provider):
     assert requests[1][1]["reasoning_effort"] == "none"
     if provider == "ollama":
         assert model.list_models() == ["installed-model"]
+
+
+@pytest.mark.parametrize("model_server", ["local-test-token"], indirect=True)
+@pytest.mark.parametrize("source", ["environment", "settings", "environment_override"])
+def test_local_discovery_and_generation_use_the_same_credentials(
+    model_server, source, monkeypatch
+):
+    url, _ = model_server
+    monkeypatch.delenv("LOCAL_API_KEY", raising=False)
+    settings = UserSettings(text_provider="local", local_base_url=url)
+    if source == "settings":
+        settings.local_api_key = "local-test-token"
+    else:
+        monkeypatch.setenv("LOCAL_API_KEY", "local-test-token")
+        if source == "environment_override":
+            settings.local_api_key = "outdated-token"
+    monkeypatch.setattr(
+        "living_storyworld.settings.load_user_settings", lambda: settings
+    )
+    monkeypatch.setattr(
+        "living_storyworld.api.settings.load_user_settings", lambda: settings
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/settings/local-models", json={"provider": "local", "base_url": url}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"models": ["installed-model", "remote:cloud"]}
+    result = LocalProvider(
+        api_key=get_api_key_for_provider("local", settings)
+    ).generate([{"role": "user", "content": "Tell a story"}], model="installed-model")
+    assert result.content == "# The Lantern\nA story."
+    public_settings = client.get("/api/settings")
+    assert public_settings.json()["has_local_key"] is True
+    assert "local-test-token" not in public_settings.text
+    assert "outdated-token" not in public_settings.text
 
 
 def test_local_selection_cannot_fall_back_to_a_paid_provider(monkeypatch):
@@ -176,7 +231,9 @@ def test_existing_provider_and_model_settings_survive_new_defaults(
 
 def test_pollinations_auth_is_only_in_the_header(tmp_path):
     import io
+
     from PIL import Image
+
     from living_storyworld.providers.image import PollinationsProvider
 
     data = io.BytesIO()
