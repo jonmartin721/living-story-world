@@ -1,0 +1,363 @@
+:root {
+  color-scheme: dark;
+  --bg: #171315;
+  --bg-panel: rgba(30, 23, 25, 0.88);
+  --line: rgba(255, 230, 214, 0.12);
+  --text: #f7ede7;
+  --text-muted: #c4b3ab;
+  --accent: #f2a86e;
+  --accent-strong: #ffd1a8;
+  --success: #8fd6a4;
+  --error: #ff8d80;
+  --shadow: 0 20px 48px rgba(0, 0, 0, 0.28);
+  font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(242, 168, 110, 0.14), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(181, 110, 110, 0.12), transparent 30%),
+    linear-gradient(180deg, #1e1719 0%, #120f11 100%);
+  color: var(--text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.app-shell {
+  padding: 28px;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.hero h1,
+.panel h2,
+.panel h3 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.hero p {
+  max-width: 56rem;
+  color: var(--text-muted);
+}
+
+.hero__kicker,
+.panel__eyebrow {
+  display: inline-flex;
+  margin-bottom: 10px;
+  color: var(--accent-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.76rem;
+}
+
+.hero__actions,
+.sidebar__actions,
+.editor__actions,
+.chapter-card__actions,
+.world-summary__controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.button {
+  border: 1px solid rgba(255, 220, 198, 0.18);
+  background: linear-gradient(135deg, rgba(242, 168, 110, 0.88), rgba(180, 93, 77, 0.9));
+  color: #160f11;
+  border-radius: 999px;
+  padding: 0.72rem 1.1rem;
+  font-weight: 700;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button--ghost {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.sidebar {
+  position: sticky;
+  top: 20px;
+  align-self: start;
+}
+
+.sidebar__header,
+.settings-panel__header,
+.world-summary__header,
+.reader__header,
+.world-card__title,
+.chapter-card__heading,
+.progress-card__meta,
+.world-summary__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.world-list,
+.timeline-list {
+  display: grid;
+  gap: 12px;
+}
+
+.world-card,
+.chapter-card__body,
+.toast {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 20px;
+  color: inherit;
+  text-align: left;
+}
+
+.world-card {
+  padding: 14px;
+}
+
+.world-card p,
+.chapter-card p,
+.progress-card__message,
+.empty-state,
+.reader__meta,
+.chapter-card__meta,
+.world-summary__meta,
+.settings-status {
+  color: var(--text-muted);
+}
+
+.world-card--active,
+.chapter-card--active .chapter-card__body,
+.choice-card--selected {
+  border-color: rgba(242, 168, 110, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(242, 168, 110, 0.22);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(242, 168, 110, 0.14);
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+}
+
+.pill--muted {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+.content {
+  display: grid;
+  gap: 18px;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.form-grid label,
+.world-summary__controls label {
+  display: grid;
+  gap: 0.5rem;
+  color: var(--text-muted);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(14, 11, 12, 0.75);
+  color: var(--text);
+  padding: 0.78rem 0.9rem;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.checkbox-row {
+  display: flex !important;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.checkbox-row input {
+  width: auto;
+}
+
+.progress-track {
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 14px 0 10px;
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f2a86e 0%, #ffd1a8 100%);
+  transition: width 160ms ease;
+}
+
+.chapter-card {
+  display: grid;
+  gap: 10px;
+}
+
+.chapter-card__body {
+  padding: 14px;
+}
+
+.chapter-card__actions {
+  padding: 0 4px 4px;
+}
+
+.reader__scene {
+  margin: 16px 0;
+  border-radius: 22px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.reader__body {
+  display: grid;
+  gap: 1rem;
+  color: #f4ede9;
+  line-height: 1.72;
+}
+
+.reader__body h1,
+.reader__body h2,
+.reader__body h3 {
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+}
+
+.choice-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.choice-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+.toast-shelf {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  display: grid;
+  gap: 10px;
+  max-width: 360px;
+}
+
+.toast {
+  padding: 0.95rem 1rem;
+}
+
+.toast--success {
+  border-color: rgba(143, 214, 164, 0.35);
+}
+
+.toast--error {
+  border-color: rgba(255, 141, 128, 0.35);
+}
+
+@media (max-width: 1100px) {
+  .layout,
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 700px) {
+  .app-shell {
+    padding: 16px;
+  }
+
+  .hero,
+  .world-summary__header,
+  .reader__header,
+  .sidebar__header,
+  .settings-panel__header {
+    flex-direction: column;
+  }
+
+  .toast-shelf {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: none;
+  }
+}

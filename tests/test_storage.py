@@ -1,5 +1,8 @@
+from unittest.mock import patch
+
 import pytest
-from living_storyworld.storage import slugify, validate_slug
+
+from living_storyworld.storage import read_json, slugify, validate_slug, write_json
 
 
 class TestSlugify:
@@ -104,3 +107,23 @@ class TestValidateSlug:
     def test_hyphens_allowed_in_middle(self):
         assert validate_slug("my-long-world-name") == "my-long-world-name"
         assert validate_slug("test-123-abc") == "test-123-abc"
+
+
+def test_atomic_save_retains_previous_json_on_replace_failure(tmp_path):
+    path = tmp_path / "world.json"
+    write_json(path, {"chapter": 1})
+    with patch(
+        "living_storyworld.storage.os.replace", side_effect=OSError("disk error")
+    ):
+        with pytest.raises(OSError):
+            write_json(path, {"chapter": 2})
+    assert read_json(path) == {"chapter": 1}
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_atomic_save_retains_previous_json_on_serialization_failure(tmp_path):
+    path = tmp_path / "world.json"
+    write_json(path, {"chapter": 1})
+    with pytest.raises(TypeError):
+        write_json(path, {"chapter": object()})
+    assert read_json(path) == {"chapter": 1}

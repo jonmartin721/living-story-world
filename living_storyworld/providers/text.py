@@ -175,27 +175,17 @@ class OpenAIProvider(TextProvider):
         if model_name not in self.ALLOWED_MODELS:
             raise InvalidModelError("OpenAI", model_name, list(self.ALLOWED_MODELS))
 
-        # VALIDATION: Model-specific temperature constraints
-        # Some OpenAI models only support specific temperature values
-        if "gpt-3.5-turbo" in model_name and temperature != 1:
-            logger.warning(
-                "OpenAI model %s only supports temperature=1, adjusting from %s",
-                model_name,
-                temperature,
-            )
-            temperature = 1
-        elif temperature > 2:
-            logger.warning(
-                "OpenAI models support max temperature=2, adjusting from %s",
-                temperature,
-            )
-            temperature = 2
+        # The original GPT-5 reasoning models reject sampling parameters.
+        # https://developers.openai.com/api/docs/guides/latest-model
+        generation_options = {}
+        if model_name not in {"gpt-5", "gpt-5-mini", "gpt-5-nano"}:
+            generation_options["temperature"] = temperature
 
         try:
             resp = client.chat.completions.create(
                 model=model_name,
                 messages=messages,  # type: ignore
-                temperature=temperature,
+                **generation_options,
             )
         except Exception as e:
             # Convert to user-friendly error

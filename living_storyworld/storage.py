@@ -4,17 +4,32 @@ import json
 import logging
 import os
 import re
+import sys
+import tempfile
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-ROOT = Path(os.getcwd())
+
+def resolve_storage_root() -> Path:
+    configured_root = os.environ.get("LIVING_STORYWORLD_ROOT")
+    if configured_root:
+        return Path(configured_root).expanduser().resolve()
+    if getattr(sys, "frozen", False):
+        return Path.cwd().resolve()
+    return Path(__file__).resolve().parent.parent
+
+
+ROOT = resolve_storage_root()
 WORLDS_DIR = ROOT / "worlds"
 CURRENT_FILE = ROOT / ".lsw_current"
 
 
-def ensure_world_dirs(slug: str) -> Dict[str, Path]:
+def ensure_world_dirs(slug: str, *, create_new: bool = False) -> Dict[str, Path]:
+    slug = validate_slug(slug)
     base = WORLDS_DIR / slug
+    if create_new:
+        base.mkdir(parents=True, exist_ok=False)
     (base / "chapters").mkdir(parents=True, exist_ok=True)
     (base / "media" / "scenes").mkdir(parents=True, exist_ok=True)
     (base / "media" / "characters").mkdir(parents=True, exist_ok=True)
@@ -31,9 +46,7 @@ def ensure_world_dirs(slug: str) -> Dict[str, Path]:
 def write_json(path: Path, data: Any) -> None:
     if is_dataclass(data) and not isinstance(data, type):
         data = asdict(data)  # type: ignore[arg-type]
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    write_text(path, json.dumps(data, indent=2, ensure_ascii=False))
 
 
 def read_json(path: Path, default: Optional[Any] = None) -> Any:
@@ -58,9 +71,26 @@ def read_text(path: Path) -> str:
 
 
 def write_text(path: Path, text: str) -> None:
+    """Replace one complete file, preserving its previous contents on failure."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        f.write(text)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def slugify(value: str) -> str:

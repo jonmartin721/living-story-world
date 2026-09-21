@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .settings import ensure_api_key_from_settings
 from .storage import get_current_world
 
 
@@ -48,7 +47,6 @@ def run_tui() -> None:
             yield Footer()
 
         def on_mount(self) -> None:
-            ensure_api_key_from_settings()
             self.current_world = get_current_world()
             status = self.query_one("#status", Static)
             if self.current_world:

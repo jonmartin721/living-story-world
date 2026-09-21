@@ -1,6 +1,8 @@
 """Tests for webapp startup, middleware, and configuration."""
 
 
+import importlib
+
 from fastapi.testclient import TestClient
 
 
@@ -34,7 +36,7 @@ class TestWebappStartup:
         from living_storyworld.webapp import app
 
         # Check routes exist
-        routes = [route.path for route in app.routes]
+        routes = app.openapi()["paths"]
         assert any("/api/worlds" in route for route in routes)
         assert any("/api/settings" in route for route in routes)
         assert any("/api/generate" in route for route in routes)
@@ -77,10 +79,9 @@ class TestStaticFileServing:
 
     def test_worlds_static_files(self):
         """Worlds static files are served."""
-        from living_storyworld.webapp import app
-
         # Create a test world file
         from living_storyworld.storage import WORLDS_DIR
+        from living_storyworld.webapp import app
 
         test_world = WORLDS_DIR / "test-static"
         test_file = test_world / "test.txt"
@@ -144,3 +145,22 @@ class TestErrorHandling:
         response = client.get("/api/nonexistent-route-xyz")
 
         assert response.status_code == 404
+
+
+def test_webapp_mounts_worlds_on_clean_start(tmp_path, monkeypatch):
+    worlds_dir = tmp_path / "worlds"
+    monkeypatch.setattr("living_storyworld.storage.WORLDS_DIR", worlds_dir)
+
+    import living_storyworld.webapp as webapp_module
+
+    webapp = importlib.reload(webapp_module)
+
+    served_file = worlds_dir / "test-world" / "hello.txt"
+    served_file.parent.mkdir(parents=True, exist_ok=True)
+    served_file.write_text("hello", encoding="utf-8")
+
+    client = TestClient(webapp.app)
+    response = client.get("/worlds/test-world/hello.txt")
+
+    assert response.status_code == 200
+    assert response.text == "hello"

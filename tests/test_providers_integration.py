@@ -1,6 +1,8 @@
 """Provider integration tests - testing real code paths with mocked SDK calls."""
 
 import os
+import sys
+import types
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
@@ -189,14 +191,15 @@ class TestTextProviderGeneration:
 
         mock_response = Mock()
         mock_response.text = "Gemini generated text"
+        mock_response.parts = [Mock()]
 
-        with patch("google.generativeai.configure"), patch(
-            "google.generativeai.GenerativeModel"
-        ) as mock_model_class:
-            mock_model = Mock()
-            mock_model.generate_content.return_value = mock_response
-            mock_model_class.return_value = mock_model
+        fake_genai = types.ModuleType("google.generativeai")
+        fake_genai.configure = Mock()
+        fake_model = Mock()
+        fake_model.generate_content.return_value = mock_response
+        fake_genai.GenerativeModel = Mock(return_value=fake_model)
 
+        with patch.dict(sys.modules, {"google.generativeai": fake_genai}):
             result = provider.generate([{"role": "user", "content": "test"}])
 
             assert result.content == "Gemini generated text"
@@ -204,13 +207,12 @@ class TestTextProviderGeneration:
 
     def test_groq_generate_success(self):
         """Groq provider generates text."""
-        pytest.importorskip("groq")
         provider = GroqProvider(api_key="gsk-test")
 
         mock_response = Mock()
         mock_response.choices = [Mock(message=Mock(content="Groq response"))]
 
-        with patch("groq.Groq") as mock_groq:
+        with patch("openai.OpenAI") as mock_groq:
             mock_client = MagicMock()
             mock_client.chat.completions.create.return_value = mock_response
             mock_groq.return_value = mock_client
@@ -329,18 +331,17 @@ class TestImageProviderGeneration:
             assert result.provider == "pollinations"
             assert result.estimated_cost == 0.0  # Free provider
 
-    @pytest.mark.skip(reason="Complex mocking of Replicate SDK - tested via integration")
     def test_replicate_generate(self, tmp_path):
         """Replicate generates images."""
         provider = ReplicateProvider(api_key="r8_test")
         output_path = tmp_path / "test.png"
 
-        mock_output = ["https://example.com/image.png"]
-
-        with patch("replicate.run") as mock_run, patch(
-            "living_storyworld.image.safe_download_image"
+        with patch("replicate.Client") as mock_client_class, patch(
+            "living_storyworld.providers.image._safe_download_image"
         ) as mock_download:
-            mock_run.return_value = mock_output
+            mock_client = MagicMock()
+            mock_client.run.return_value = ["https://example.com/image.png"]
+            mock_client_class.return_value = mock_client
             mock_download.return_value = output_path
             output_path.write_bytes(b"fake image")
 
@@ -349,27 +350,32 @@ class TestImageProviderGeneration:
             assert isinstance(result, ImageGenerationResult)
             assert result.image_path == output_path
             assert result.provider == "replicate"
+            mock_client.run.assert_called_once()
+            mock_download.assert_called_once_with(
+                "https://example.com/image.png", output_path
+            )
 
-    @pytest.mark.skip(reason="Complex mocking of HuggingFace API - tested via integration")
     def test_huggingface_generate(self, tmp_path):
         """HuggingFace generates images."""
         provider = HuggingFaceImageProvider(api_key="hf_test")
         output_path = tmp_path / "test.png"
 
-        with patch("requests.post") as mock_post, patch(
-            "living_storyworld.image.safe_download_image"
-        ) as mock_download:
+        with patch("requests.post") as mock_post:
             mock_response = Mock()
             mock_response.status_code = 200
-            mock_response.content = b"fake image data"
+            mock_response.headers = {
+                "Content-Type": "image/png",
+                "Content-Length": "15",
+            }
+            mock_response.iter_content.return_value = [b"fake image data"]
             mock_post.return_value = mock_response
-            mock_download.return_value = output_path
-            output_path.write_bytes(b"fake image")
 
             result = provider.generate("A sunset", output_path)
 
             assert isinstance(result, ImageGenerationResult)
             assert result.provider == "huggingface"
+            assert output_path.exists()
+            assert output_path.read_bytes() == b"fake image data"
 
 
 # ============================================================================

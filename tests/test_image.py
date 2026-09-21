@@ -1,13 +1,14 @@
 """Tests for image generation functionality."""
 import json
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, Mock
 
 from living_storyworld.image import (
-    safe_download_image,
+    _append_media_index,
     _cache_key,
     generate_scene_image,
-    _append_media_index,
+    safe_download_image,
 )
 
 
@@ -394,3 +395,32 @@ class TestAppendMediaIndex:
         data = json.loads(index_file.read_text())
         assert len(data) == 1
         assert data[0]["chapter"] == 1
+
+
+def test_fallback_identity_survives_media_index_and_cache(tmp_path):
+    from living_storyworld.image import generate_scene_result
+    from living_storyworld.providers.image import ImageGenerationResult
+    from living_storyworld.settings import UserSettings
+
+    primary = MagicMock()
+    primary.generate.side_effect = RuntimeError("Unavailable")
+    fallback = MagicMock()
+
+    def generate(**kwargs):
+        path = kwargs["output_path"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"image")
+        return ImageGenerationResult(path, "pollinations", "flux", 0.0)
+
+    fallback.generate.side_effect = generate
+    with (
+        patch("living_storyworld.image.load_user_settings", return_value=UserSettings(image_provider="replicate")),
+        patch("living_storyworld.image.get_image_provider", side_effect=[primary, fallback]),
+    ):
+        result = generate_scene_result(tmp_path, "flux-dev", "storybook-ink", "Harbor", 1)
+        cached = generate_scene_result(tmp_path, "flux-dev", "storybook-ink", "Harbor", 1)
+    record = json.loads((tmp_path / "media/index.json").read_text())[0]
+    assert (result.provider, result.model) == ("pollinations", "flux")
+    assert (record["provider"], record["model"]) == ("pollinations", "flux")
+    assert (cached.provider, cached.model, cached.cached) == ("pollinations", "flux", True)
+    fallback.generate.assert_called_once()
