@@ -1,23 +1,28 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict
 from typing import Optional
 
-from .models import Chapter, Character, Choice, Item, Location, WorldConfig, WorldState
+from .models import WorldConfig, WorldState
 from .providers.text import get_text_provider
 from .settings import load_user_settings
-from .storage import ensure_world_dirs, read_json, set_current_world, slugify, write_json
+from .storage import (
+    ensure_world_dirs,
+    read_json,
+    set_current_world,
+    slugify,
+    write_json,
+)
 
 
 def init_world(
     title: str,
     theme: str,
-    style_pack: str = "storybook-ink",
+    style_pack: Optional[str] = None,
     slug: Optional[str] = None,
-    image_model: str = "flux-dev",
-    maturity_level: str = "general",
-    preset: str = "cozy-adventure",
+    image_model: Optional[str] = None,
+    maturity_level: Optional[str] = None,
+    preset: Optional[str] = None,
     enable_choices: bool = False,
     memory: Optional[str] = None,
     authors_note: Optional[str] = None,
@@ -29,22 +34,22 @@ def init_world(
     # Get the default text model from user's chosen provider
     try:
         text_provider = get_text_provider(settings.text_provider)
-        text_model = text_provider.get_default_model()
+        text_model = settings.default_text_model or text_provider.get_default_model()
     except Exception:
         # Fallback to user's default model if provider creation fails
         text_model = settings.default_text_model
 
     slug = slug or slugify(title)
-    dirs = ensure_world_dirs(slug)
+    dirs = ensure_world_dirs(slug, create_new=True)
     cfg = WorldConfig(
         title=title,
         slug=slug,
         theme=theme,
-        style_pack=style_pack,
+        style_pack=style_pack or settings.default_style_pack,
         text_model=text_model,
-        image_model=image_model,
-        maturity_level=maturity_level,
-        preset=preset,
+        image_model=image_model or settings.default_image_model,
+        maturity_level=maturity_level or settings.default_maturity_level,
+        preset=preset or settings.default_preset,
         enable_choices=enable_choices,
         memory=memory,
         authors_note=authors_note,
@@ -58,12 +63,11 @@ def init_world(
         items={},
         chapters=[],
     )
-    write_json(dirs["base"] / "config.json", asdict(cfg))
-    write_json(dirs["base"] / "world.json", asdict(state))
+    write_json(dirs["base"] / "config.json", cfg.to_dict())
+    write_json(dirs["base"] / "world.json", state.to_dict())
     set_current_world(slug)
     # Minimal web index placeholder
-    (dirs["web"] / "index.html").write_text(
-        """
+    (dirs["web"] / "index.html").write_text("""
 <!doctype html>
 <html><head><meta charset='utf-8'><title>Living Storyworld</title>
 <style>body{font-family:system-ui, sans-serif;max-width:860px;margin:3rem auto;padding:0 1rem} img{max-width:100%;height:auto;border-radius:6px} .chapter{margin:2rem 0;padding:1rem;border:1px solid #eee;border-radius:8px}</style>
@@ -72,48 +76,13 @@ def init_world(
 <h1>Living Storyworld</h1>
 <p>Chapters will appear here after generation.</p>
 </body></html>
-"""
-    )
+""")
     return slug
 
 
 def _deserialize_world_state(data: dict) -> WorldState:
     """Deserialize WorldState from dict, properly reconstructing nested dataclasses."""
-    # Deserialize chapters
-    chapters = []
-    if "chapters" in data:
-        for ch_data in data["chapters"]:
-            # Deserialize choices if present
-            if "choices" in ch_data and ch_data["choices"]:
-                ch_data["choices"] = [Choice(**choice) for choice in ch_data["choices"]]
-            chapters.append(Chapter(**ch_data))
-
-    # Deserialize characters
-    characters = {}
-    if "characters" in data:
-        for name, char_data in data["characters"].items():
-            characters[name] = Character(**char_data)
-
-    # Deserialize locations
-    locations = {}
-    if "locations" in data:
-        for name, loc_data in data["locations"].items():
-            locations[name] = Location(**loc_data)
-
-    # Deserialize items
-    items = {}
-    if "items" in data:
-        for name, item_data in data["items"].items():
-            items[name] = Item(**item_data)
-
-    return WorldState(
-        tick=data.get("tick", 0),
-        next_chapter=data.get("next_chapter", 1),
-        characters=characters,
-        locations=locations,
-        items=items,
-        chapters=chapters,
-    )
+    return WorldState.from_dict(data)
 
 
 def load_world(slug: str) -> tuple[WorldConfig, WorldState, dict]:
@@ -130,11 +99,7 @@ def load_world(slug: str) -> tuple[WorldConfig, WorldState, dict]:
         raise RuntimeError(f"World '{slug}' config.json not found or corrupted")
 
     try:
-        # Handle backward compatibility for removed image_model field
-        cfg_data_copy = cfg_data.copy()
-        if "image_model" in cfg_data_copy:
-            del cfg_data_copy["image_model"]
-        cfg = WorldConfig(**cfg_data_copy)
+        cfg = WorldConfig.from_dict(cfg_data)
     except (TypeError, ValueError) as e:
         logging.error(f"Failed to validate world config for '{slug}': {e}")
         raise RuntimeError(f"World '{slug}' has corrupted configuration: {e}")
@@ -158,8 +123,8 @@ def save_world(
 ) -> None:
     if dirs is None:
         dirs = ensure_world_dirs(slug)
-    write_json(dirs["base"] / "config.json", asdict(cfg))
-    write_json(dirs["base"] / "world.json", asdict(state))
+    write_json(dirs["base"] / "config.json", cfg.to_dict())
+    write_json(dirs["base"] / "world.json", state.to_dict())
 
 
 def tick_world(slug: str) -> int:

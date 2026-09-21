@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 from pathlib import Path
 from typing import Generator
@@ -6,14 +7,21 @@ from unittest.mock import MagicMock
 
 import pytest
 
+# Unit tests must not pick up the developer's real credentials from .env.
+os.environ["PYTHON_DOTENV_DISABLED"] = "1"
+
+from living_storyworld.api import chapters, worlds
+from living_storyworld.api.world_operations import active_world_operations
 from living_storyworld.models import (
-    Character,
     Chapter,
+    Character,
     Choice,
     Location,
     WorldConfig,
     WorldState,
 )
+from living_storyworld.settings import UserSettings
+from living_storyworld.world import save_world
 
 
 @pytest.fixture
@@ -185,3 +193,21 @@ def mock_image_provider(mock_image_response: bytes) -> MagicMock:
     provider.generate.return_value = mock_image_response
     provider.validate_model.return_value = True
     return provider
+
+
+@pytest.fixture
+def stored_world(tmp_path, monkeypatch):
+    root = tmp_path / "worlds"
+    monkeypatch.setattr("living_storyworld.storage.WORLDS_DIR", root)
+    monkeypatch.setattr("living_storyworld.storage.CURRENT_FILE", tmp_path / "current")
+    monkeypatch.setattr(chapters, "WORLDS_DIR", root)
+    monkeypatch.setattr(worlds, "WORLDS_DIR", root)
+    monkeypatch.setattr(
+        "living_storyworld.world.load_user_settings", lambda: UserSettings()
+    )
+    cfg = WorldConfig(title="Harbor", slug="harbor", theme="Adventure")
+    state = WorldState()
+    save_world("harbor", cfg, state)
+    yield cfg, state, root / "harbor"
+    active_world_operations.clear()
+    chapters.active_jobs.clear()

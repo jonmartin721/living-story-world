@@ -1,23 +1,29 @@
 import json
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from living_storyworld.generator import (
     _build_chapter_prompt,
-    _parse_meta,
     _extract_title,
+    _generate_text_with_fallback,
+    _parse_meta,
     _register_new_entities,
     _write_scene_request,
     generate_chapter,
-    infer_choice_reasoning,
     generate_chapter_summary,
+    infer_choice_reasoning,
+    resolve_generation_settings,
 )
 from living_storyworld.models import (
+    Chapter,
+    Character,
+    Choice,
+    Location,
     WorldConfig,
     WorldState,
-    Chapter,
-    Choice,
 )
+from living_storyworld.settings import UserSettings
 
 
 class TestBuildChapterPrompt:
@@ -389,8 +395,8 @@ class TestRegisterNewEntities:
         _register_new_entities(state, new_characters, [])
 
         assert "char-1" in state.characters
-        assert state.characters["char-1"]["name"] == "Hero"
-        assert state.characters["char-1"]["description"] == "A brave warrior"
+        assert state.characters["char-1"].name == "Hero"
+        assert state.characters["char-1"].description == "A brave warrior"
 
     def test_register_new_location(self):
         """Test registering a new location."""
@@ -405,7 +411,7 @@ class TestRegisterNewEntities:
         _register_new_entities(state, [], new_locations)
 
         assert "loc-1" in state.locations
-        assert state.locations["loc-1"]["name"] == "Dark Forest"
+        assert state.locations["loc-1"].name == "Dark Forest"
 
     def test_skip_existing_entities(self):
         """Test that existing entities are not overwritten."""
@@ -420,7 +426,7 @@ class TestRegisterNewEntities:
         _register_new_entities(state, new_characters, [])
 
         # Should not be overwritten
-        assert state.characters["char-1"]["name"] == "Original"
+        assert state.characters["char-1"].name == "Original"
 
     def test_register_invalid_data(self):
         """Test that invalid entity data is skipped."""
@@ -746,3 +752,147 @@ class TestGenerateChapterSummary:
 
         assert len(summary) <= 300
         assert summary.endswith("...")
+
+
+def test_prompt_contains_entity_details(sample_world_config):
+    state = WorldState(
+        characters={
+            "sailor": Character(
+                id="sailor",
+                name="Moss",
+                traits=["distrustful"],
+                description="Lost a hand at sea",
+            )
+        },
+        locations={
+            "port": Location(
+                id="port", name="Amber Port", description="A flooded harbor"
+            )
+        },
+    )
+    with patch(
+        "living_storyworld.generator.load_user_settings", return_value=UserSettings()
+    ):
+        _, messages, _ = _build_chapter_prompt(sample_world_config, state)
+    prompt = messages[-1]["content"]
+    assert "Lost a hand at sea" in prompt
+    assert "distrustful" in prompt
+    assert "A flooded harbor" in prompt
+
+
+@pytest.mark.asyncio
+async def test_summary_includes_ending_beyond_first_thousand_characters(
+    sample_world_config,
+):
+    content = "<!-- hidden metadata -->\n" + "Opening. " * 200 + "THE FINAL REVELATION"
+    with (
+        patch(
+            "living_storyworld.generator.load_user_settings",
+            return_value=UserSettings(),
+        ),
+        patch(
+            "living_storyworld.generator._generate_text_with_fallback",
+            return_value=("Summary", "fake", "fake"),
+        ) as generate,
+    ):
+        await generate_chapter_summary(content, sample_world_config)
+    prompt = generate.call_args.args[0][-1]["content"]
+    assert "THE FINAL REVELATION" in prompt
+    assert "hidden metadata" not in prompt
+
+
+def test_resolve_generation_settings_prefers_world_models(sample_world_config):
+    settings = UserSettings(
+        text_provider="gemini",
+        image_provider="pollinations",
+        default_text_model="gemini-2.5-flash-lite",
+        default_image_model="flux",
+    )
+
+    with patch(
+        "living_storyworld.settings.get_available_text_providers",
+        return_value=["gemini", "openai"],
+    ):
+        resolved = resolve_generation_settings(sample_world_config, settings)
+
+    assert resolved.text_provider_order == ["gemini", "openai"]
+    assert resolved.preferred_text_model == sample_world_config.text_model
+    assert resolved.preferred_image_model == sample_world_config.image_model
+
+
+def test_text_fallback_uses_provider_default_model_for_secondary_provider(
+    sample_world_config,
+):
+    settings = UserSettings(
+        text_provider="openai",
+        default_text_model="gpt-4o-mini",
+    )
+    messages = [{"role": "user", "content": "Hello"}]
+
+    primary_provider = MagicMock()
+    secondary_provider = MagicMock()
+    primary_provider.generate.side_effect = RuntimeError("primary failed")
+    primary_provider.get_default_model.return_value = "gpt-5-mini"
+    secondary_provider.generate.return_value = type(
+        "Result",
+        (),
+        {
+            "content": "fallback worked",
+            "provider": "gemini",
+            "model": "gemini-2.5-flash",
+            "estimated_cost": 0.0,
+        },
+    )()
+    secondary_provider.get_default_model.return_value = "gemini-2.5-flash"
+
+    with patch(
+        "living_storyworld.generator.get_text_provider",
+        side_effect=[primary_provider, secondary_provider],
+    ), patch(
+        "living_storyworld.generator.get_api_key_for_provider",
+        return_value="test-key",
+    ), patch(
+        "living_storyworld.settings.get_available_text_providers",
+        return_value=["openai", "gemini"],
+    ):
+        content, provider_name, model_name = _generate_text_with_fallback(
+            messages,
+            sample_world_config,
+            0.7,
+            settings=settings,
+        )
+
+    assert content == "fallback worked"
+    assert provider_name == "gemini"
+    assert model_name == "gemini-2.5-flash"
+    secondary_provider.generate.assert_called_once_with(
+        messages,
+        temperature=0.7,
+        model="gemini-2.5-flash",
+    )
+
+
+@pytest.mark.parametrize(
+    "choices, expected",
+    [
+        (None, []),
+        ({"id": "x"}, []),
+        (
+            [{"id": "stay", "text": "Stay", "consequence": "Wait", "description": None}],
+            [Choice(id="stay", text="Stay", description="")],
+        ),
+    ],
+)
+def test_optional_choice_metadata_does_not_discard_story(sample_world_config, choices, expected):
+    import json
+
+    from living_storyworld.generator import generate_chapter_draft
+
+    markdown = "<!-- " + json.dumps({"choices": choices}) + " -->\n# Harbor\nThe tide turned."
+    with (
+        patch("living_storyworld.generator.load_user_settings", return_value=UserSettings()),
+        patch("living_storyworld.generator._generate_text_with_fallback", return_value=(markdown, "fake", "fake")),
+    ):
+        draft = generate_chapter_draft(sample_world_config, WorldState())
+    assert draft.markdown == markdown
+    assert draft.choices == expected

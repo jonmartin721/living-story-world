@@ -1,0 +1,3 @@
+# Keep Vite's HTML input and generated entrypoint stable on Windows.
+/frontend/index.html text eol=lf
+/living_storyworld/web/index.html text eol=lf

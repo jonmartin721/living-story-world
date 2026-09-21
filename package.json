@@ -1,0 +1,9 @@
+{
+  "name": "living-storyworld",
+  "private": true,
+  "scripts": {
+    "verify": "node scripts/verify.mjs",
+    "start": "node scripts/run-web.mjs",
+    "start:no-browser": "node scripts/run-web.mjs --no-browser"
+  }
+}

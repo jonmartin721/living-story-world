@@ -29,19 +29,26 @@ Also, I wanted to play with provider-agnostic patterns to avoid vendor lock-in. 
 
 ## Quick Start
 
-I highly recommend downloading pre-built executables from the [Releases](https://github.com/jonmartin721/living-storyworld/releases).
+I highly recommend downloading pre-built executables from the [Releases](https://github.com/jonmartin721/living-story-world/releases).
 
 If you'd rather build from source or contribute:
 
 ```bash
-git clone https://github.com/jonmartin721/living-storyworld.git
-cd living-storyworld
+git clone https://github.com/jonmartin721/living-story-world.git
+cd living-story-world
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+npm install --prefix frontend
 
 # Start the web interface
-python3 -m living_storyworld.cli web
+npm run start
+```
+
+To run the full local verification pass from the repo root:
+
+```bash
+npm run verify
 ```
 
 The web app will open at `http://localhost:8001`. First-time setup will walk you through configuring API keys—I recommend using Gemini 2.5 Flash (free tier) plus Pollinations for images to get started without costs.
@@ -168,7 +175,7 @@ New entities get registered into `WorldState` during generation, building a pers
 
 ### Real-Time Progress Streaming
 
-Chapter generation uses Server-Sent Events for live progress updates without polling:
+Chapter generation uses Server-Sent Events for live progress updates, with status polling if the connection drops:
 
 ```javascript
 // Frontend code - real-time updates without refreshing
@@ -187,7 +194,7 @@ eventSource.onmessage = (event) => {
 };
 ```
 
-Backend emits structured events during the async generation pipeline. Feels responsive compared to long-polling.
+The backend emits structured events during generation. Reconnecting readers receive the latest status or completed chapter without starting another generation. Completed jobs stay in memory for up to 10 minutes (at most 100 results); restarting the server clears that recovery state.
 
 ### Memory System (NovelAI-Inspired)
 
@@ -297,6 +304,21 @@ python3 -m living_storyworld.cli web --no-browser --port 8001
 python3 -m living_storyworld.cli play
 ```
 
+## Frontend Development
+
+The FastAPI app serves built assets from `living_storyworld/web/`, and that directory is generated from the React/Vite app in `frontend/`.
+
+```bash
+# Install once
+npm install --prefix frontend
+
+# Run frontend tests
+npm test --prefix frontend
+
+# Build the production UI into living_storyworld/web/
+npm run build --prefix frontend
+```
+
 ---
 
 ## API Keys & Configuration
@@ -326,11 +348,12 @@ Good enough for a local tool, not production-ready.
 
 ### Current Limitations
 
-- No multi-threaded generation (one chapter at a time per world)
+- The local API runs one mutation per world at a time. Run a single server process; CLI writes and multiple server processes do not share this guard.
 - Entity extraction relies on LLM structured output—can be flaky with smaller models
 - Image generation is slow (30-60s per scene with Flux models)
 - No built-in story branching visualization (choice tree)
-- Choice system doesn't support "go back" (permanent decisions)
+- Reroll, deletion, and choice changes are limited to the latest chapter so later chapters retain their established history.
+- Rerolls save a new Markdown revision and retain the prior file. Newly generated chapters include an entity snapshot; legacy chapters retain existing entity facts because historical snapshots are unavailable. There is no revision restore UI yet.
 
 ### Future Ideas
 

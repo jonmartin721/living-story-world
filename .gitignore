@@ -54,6 +54,8 @@ dmypy.json
 .env
 .env.*
 .envrc
+node_modules/
+frontend/node_modules/
 venv/
 .venv/
 ENV/
@@ -68,14 +70,6 @@ __pypackages__/
 *.swp
 *.swo
 
-# AI agent instruction files
-CLAUDE.md
-.cursorrules
-.aider*
-.windsurf/
-.ai/
-.github/copilot-instructions.md
-
 # OS
 .DS_Store
 Thumbs.db
@@ -83,7 +77,7 @@ Thumbs.db
 # Project-specific (generated content)
 # SECURITY: These contain potentially sensitive data
 .lsw_current
-worlds/
+/worlds/
 .config/
 
 # Logs
@@ -102,11 +96,3 @@ dist/
 .coverage.*
 htmlcov/
 .pytest_cache/
-
-
-# AI agent configuration files
-CLAUDE.md
-.claude/
-.cursorrules
-.aider*
-.clinerules
