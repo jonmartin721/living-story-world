@@ -111,15 +111,15 @@ class TestTextProviderMethods:
         """OpenAI estimates costs."""
         provider = OpenAIProvider(api_key="sk-test")
         messages = [{"role": "user", "content": "test"}]
-        cost = provider.estimate_cost(messages, "gpt-4o-mini")
+        cost = provider.estimate_cost(messages, "gpt-5.6-luna")
         assert isinstance(cost, float)
         assert cost >= 0
 
-    def test_free_providers_zero_cost(self):
-        """Free providers return zero cost."""
+    def test_cloud_cost_estimates_do_not_assume_free_tier(self):
+        """Account-specific free quotas are not assumed in cost estimates."""
         gemini = GeminiProvider(api_key="test")
         messages = [{"role": "user", "content": "test"}]
-        assert gemini.estimate_cost(messages) == 0.0
+        assert gemini.estimate_cost(messages) > 0
 
         # Groq is technically paid but very cheap
         groq = GroqProvider(api_key="gsk-test")
@@ -193,14 +193,12 @@ class TestTextProviderGeneration:
         mock_response.text = "Gemini generated text"
         mock_response.parts = [Mock()]
 
-        fake_genai = types.ModuleType("google.generativeai")
-        fake_genai.configure = Mock()
-        fake_model = Mock()
-        fake_model.generate_content.return_value = mock_response
-        fake_genai.GenerativeModel = Mock(return_value=fake_model)
-
-        with patch.dict(sys.modules, {"google.generativeai": fake_genai}):
-            result = provider.generate([{"role": "user", "content": "test"}])
+        mock_response.usage_metadata = None
+        with patch("google.genai.Client") as client:
+            client.return_value.__enter__.return_value.models.generate_content.return_value = mock_response
+            result = provider.generate([{"role": "system", "content": "A narrator"}, {"role": "user", "content": "test"}])
+            options = client.return_value.__enter__.return_value.models.generate_content.call_args.kwargs
+            assert options["config"].system_instruction == "A narrator"
 
             assert result.content == "Gemini generated text"
             assert result.provider == "gemini"
@@ -233,9 +231,9 @@ class TestImageProviderCore:
 
     def test_pollinations_provider_init(self):
         """Pollinations provider works without API key."""
-        provider = PollinationsProvider()
+        provider = PollinationsProvider(api_key="test-pollinations")
         assert provider.provider_name == "Pollinations.ai"
-        assert provider.requires_api_key is False
+        assert provider.requires_api_key is True
 
     def test_replicate_provider_init(self):
         """Replicate provider initializes."""
@@ -256,7 +254,7 @@ class TestImageProviderCore:
 
     def test_get_image_provider_factory(self):
         """get_image_provider returns correct type."""
-        provider = get_image_provider("pollinations")
+        provider = get_image_provider("pollinations", api_key="test-pollinations")
         assert isinstance(provider, PollinationsProvider)
 
         provider = get_image_provider("replicate", api_key="r8_test")
@@ -273,7 +271,7 @@ class TestImageProviderMethods:
 
     def test_pollinations_default_model(self):
         """Pollinations has a default model."""
-        provider = PollinationsProvider()
+        provider = PollinationsProvider(api_key="test-pollinations")
         model = provider.get_default_model()
         assert isinstance(model, str)
         assert len(model) > 0
@@ -286,7 +284,7 @@ class TestImageProviderMethods:
 
     def test_pollinations_aspect_ratio_conversion(self):
         """Pollinations converts aspect ratios correctly."""
-        provider = PollinationsProvider()
+        provider = PollinationsProvider(api_key="test-pollinations")
 
         # Test various aspect ratios
         width, height = provider._aspect_ratio_to_dimensions("1:1")
@@ -307,7 +305,7 @@ class TestImageProviderGeneration:
 
     def test_pollinations_generate(self, tmp_path):
         """Pollinations generates images via URL."""
-        provider = PollinationsProvider()
+        provider = PollinationsProvider(api_key="test-pollinations")
         output_path = tmp_path / "test.png"
 
         # Minimal valid 1x1 PNG image (67 bytes)
@@ -329,7 +327,7 @@ class TestImageProviderGeneration:
             assert isinstance(result, ImageGenerationResult)
             assert result.image_path == output_path
             assert result.provider == "pollinations"
-            assert result.estimated_cost == 0.0  # Free provider
+            assert result.estimated_cost is None
 
     def test_replicate_generate(self, tmp_path):
         """Replicate generates images."""
@@ -360,22 +358,15 @@ class TestImageProviderGeneration:
         provider = HuggingFaceImageProvider(api_key="hf_test")
         output_path = tmp_path / "test.png"
 
-        with patch("requests.post") as mock_post:
-            mock_response = Mock()
-            mock_response.status_code = 200
-            mock_response.headers = {
-                "Content-Type": "image/png",
-                "Content-Length": "15",
-            }
-            mock_response.iter_content.return_value = [b"fake image data"]
-            mock_post.return_value = mock_response
-
+        from PIL import Image
+        with patch("huggingface_hub.InferenceClient") as client:
+            client.return_value.text_to_image.return_value = Image.new("RGB", (8, 8))
             result = provider.generate("A sunset", output_path)
-
-            assert isinstance(result, ImageGenerationResult)
+            assert result.image_path == output_path
             assert result.provider == "huggingface"
-            assert output_path.exists()
-            assert output_path.read_bytes() == b"fake image data"
+            assert Image.open(output_path).size == (8, 8)
+            client.assert_called_once_with(provider="auto", api_key="hf_test", timeout=120)
+
 
 
 # ============================================================================

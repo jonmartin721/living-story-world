@@ -4,7 +4,6 @@ import logging
 from typing import Optional
 
 from .models import WorldConfig, WorldState
-from .providers.text import get_text_provider
 from .settings import load_user_settings
 from .storage import (
     ensure_world_dirs,
@@ -31,13 +30,7 @@ def init_world(
     # Load user settings to get proper defaults
     settings = load_user_settings()
 
-    # Get the default text model from user's chosen provider
-    try:
-        text_provider = get_text_provider(settings.text_provider)
-        text_model = settings.default_text_model or text_provider.get_default_model()
-    except Exception:
-        # Fallback to user's default model if provider creation fails
-        text_model = settings.default_text_model
+    text_model = settings.default_text_model
 
     slug = slug or slugify(title)
     dirs = ensure_world_dirs(slug, create_new=True)

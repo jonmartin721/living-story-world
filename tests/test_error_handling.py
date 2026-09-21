@@ -242,7 +242,7 @@ class TestProviderErrorPropagation:
         from pathlib import Path
         import requests
 
-        provider = PollinationsProvider()
+        provider = PollinationsProvider(api_key="test-pollinations")
 
         # Simulate connection error
         mock_get.side_effect = requests.exceptions.ConnectionError("Network unreachable")
@@ -261,7 +261,7 @@ class TestProviderErrorPropagation:
         from pathlib import Path
         import requests
 
-        provider = PollinationsProvider()
+        provider = PollinationsProvider(api_key="test-pollinations")
 
         # Simulate timeout
         mock_get.side_effect = requests.exceptions.Timeout()

@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
+from .catalog import default_model
+from .text import _init_api_key
+
 logger = logging.getLogger(__name__)
 
 
@@ -104,7 +107,7 @@ class ImageGenerationResult:
     image_path: Path
     provider: str
     model: str
-    estimated_cost: float  # in USD
+    estimated_cost: Optional[float]  # USD; None when pricing varies by route
     cached: bool = False
 
 
@@ -153,6 +156,46 @@ class ImageProvider(ABC):
     def requires_api_key(self) -> bool:
         """Whether this provider requires an API key."""
         pass
+
+
+class OpenAIImageProvider(ImageProvider):
+    """Low-cost GPT Image illustrations using the existing OpenAI connection."""
+
+    def __init__(self, api_key=None):
+        self.api_key = _init_api_key("OPENAI_API_KEY", "OpenAI", api_key)
+
+    def generate(self, prompt, output_path, aspect_ratio="16:9", model=None):
+        import base64
+
+        from openai import OpenAI
+
+        model_name = model or self.get_default_model()
+        if not model_name.startswith("gpt-image-"):
+            raise ValueError("Choose a GPT Image model for OpenAI illustrations in Settings or Edit world.")
+        size = "1024x1024" if aspect_ratio == "1:1" else "1024x1536" if aspect_ratio in {"3:4", "9:16"} else "1536x1024"
+        with OpenAI(api_key=self.api_key, timeout=180, max_retries=0) as client:
+            response = client.images.generate(model=model_name, prompt=prompt, size=size, quality="low", n=1)
+        data = base64.b64decode(response.data[0].b64_json, validate=True)
+        if not _validate_image_data(data):
+            raise RuntimeError("OpenAI returned invalid image data.")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(data)
+        cost = (.005 if size == "1024x1024" else .006) if model_name == "gpt-image-1-mini" else None
+        return ImageGenerationResult(output_path, "openai", model_name, cost)
+
+    def get_default_model(self):
+        return default_model("openai", "image")
+
+    def estimate_cost(self, model=None):
+        return .006 if (model or self.get_default_model()) == "gpt-image-1-mini" else None
+
+    @property
+    def provider_name(self):
+        return "OpenAI"
+
+    @property
+    def requires_api_key(self):
+        return True
 
 
 class ReplicateProvider(ImageProvider):
@@ -241,7 +284,7 @@ class ReplicateProvider(ImageProvider):
         )
 
     def get_default_model(self) -> str:
-        return "flux-dev"
+        return default_model("replicate", "image")
 
     def estimate_cost(self, model: Optional[str] = None) -> float:
         """Replicate pricing varies by model."""
@@ -271,63 +314,22 @@ class HuggingFaceImageProvider(ImageProvider):
                 "Hugging Face API key not found. Set HUGGINGFACE_API_KEY environment variable or pass api_key parameter."
             )
 
-    def generate(
-        self,
-        prompt: str,
-        output_path: Path,
-        aspect_ratio: str = "16:9",
-        model: Optional[str] = None,
-    ) -> ImageGenerationResult:
-        import requests
+    def generate(self, prompt, output_path, aspect_ratio="16:9", model=None) -> ImageGenerationResult:
+        from huggingface_hub import InferenceClient
 
         model_name = model or self.get_default_model()
-        api_url = f"https://api-inference.huggingface.co/models/{model_name}"
-
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-        payload = {"inputs": prompt}
-
-        response = requests.post(api_url, headers=headers, json=payload, stream=True)
-        response.raise_for_status()
-
-        content_type = response.headers.get("Content-Type", "")
-        if content_type and not content_type.startswith("image/"):
-            raise RuntimeError(f"Unexpected content type: {content_type}")
-
-        content_length = int(response.headers.get("Content-Length", 0))
-        max_bytes = 50 * 1024 * 1024
-        if content_length > max_bytes:
-            raise ValueError(f"Response too large: {content_length} bytes (max: 50MB)")
-
-        # Stream download with size check
+        width, height = PollinationsProvider._aspect_ratio_to_dimensions(self, aspect_ratio)
+        client = InferenceClient(provider="auto", api_key=self.api_key, timeout=120)
+        image = client.text_to_image(prompt, model=model_name, width=width, height=height)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        downloaded = 0
-        try:
-            with output_path.open("wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    downloaded += len(chunk)
-                    if downloaded > max_bytes:
-                        output_path.unlink(missing_ok=True)
-                        raise ValueError("Download exceeded size limit (50MB)")
-                    f.write(chunk)
-        except Exception:
-            output_path.unlink(missing_ok=True)
-            raise
-
-        cost = self.estimate_cost(model_name)
-
-        return ImageGenerationResult(
-            image_path=output_path,
-            provider="huggingface",
-            model=model_name,
-            estimated_cost=cost,
-        )
+        image.save(output_path, format="PNG")
+        return ImageGenerationResult(output_path, "huggingface", model_name, None)
 
     def get_default_model(self) -> str:
-        return "stabilityai/stable-diffusion-xl-base-1.0"
+        return default_model("huggingface", "image")
 
-    def estimate_cost(self, model: Optional[str] = None) -> float:
-        """Hugging Face Inference API is free (rate-limited)."""
-        return 0.0
+    def estimate_cost(self, model=None):
+        return None
 
     @property
     def provider_name(self) -> str:
@@ -339,11 +341,10 @@ class HuggingFaceImageProvider(ImageProvider):
 
 
 class PollinationsProvider(ImageProvider):
-    """Pollinations.ai free image generation provider."""
+    """Authenticated Pollinations image generation."""
 
     def __init__(self, api_key: Optional[str] = None):
-        # Pollinations doesn't require an API key
-        pass
+        self.api_key = _init_api_key("POLLINATIONS_API_KEY", "Pollinations", api_key)
 
     def generate(
         self,
@@ -354,19 +355,10 @@ class PollinationsProvider(ImageProvider):
     ) -> ImageGenerationResult:
         import requests
 
-        model_name = model or self.get_default_model()
+        model_name = self.get_default_model() if model in (None, "flux") else model
 
-        # Pollinations.ai simple API
-        # URL format:
-        # https://image.pollinations.ai/prompt/{prompt}?width={w}&height={h}&model={model}
-
-        # Convert aspect ratio to dimensions
         width, height = self._aspect_ratio_to_dimensions(aspect_ratio)
 
-        # Pollinations.ai uses GET requests with the prompt in the URL path
-        # Pollinations.ai uses GET requests with the prompt in the URL path.
-        # The `requests` library can be tricky with URLs that have dynamic path segments
-        # and query parameters, so we construct the URL manually.
         import urllib.parse
 
         # Truncate extremely long prompts if necessary (rarely needed)
@@ -378,14 +370,13 @@ class PollinationsProvider(ImageProvider):
             prompt = prompt[:max_prompt_length]
 
         # Manually construct the URL with the prompt in the path
-        encoded_prompt = urllib.parse.quote(prompt)
-        base_url = "https://image.pollinations.ai/prompt/"
+        encoded_prompt = urllib.parse.quote(prompt, safe="")
+        base_url = "https://gen.pollinations.ai/image/"
 
         import random
-        import time
 
         # Add random seed to bypass Pollinations caching for regeneration
-        seed = f"{int(time.time())}-{random.randint(1000, 9999)}"
+        seed = random.randint(0, 2147483647)
         params = {
             "width": width,
             "height": height,
@@ -400,7 +391,7 @@ class PollinationsProvider(ImageProvider):
 
         try:
             # Always use GET for Pollinations
-            response = requests.get(url, stream=True, timeout=30)
+            response = requests.get(url, headers={"Authorization": f"Bearer {self.api_key}"}, stream=True, timeout=120)
 
             response.raise_for_status()
         except Exception as e:
@@ -445,7 +436,7 @@ class PollinationsProvider(ImageProvider):
             image_path=output_path,
             provider="pollinations",
             model=model_name,
-            estimated_cost=0.0,  # Free
+            estimated_cost=None,
         )
 
     def _aspect_ratio_to_dimensions(self, aspect_ratio: str) -> tuple[int, int]:
@@ -460,11 +451,10 @@ class PollinationsProvider(ImageProvider):
         return ratios.get(aspect_ratio, (1344, 768))
 
     def get_default_model(self) -> str:
-        return "flux"
+        return default_model("pollinations", "image")
 
     def estimate_cost(self, model: Optional[str] = None) -> float:
-        """Pollinations.ai is completely free."""
-        return 0.0
+        return None
 
     @property
     def provider_name(self) -> str:
@@ -472,7 +462,7 @@ class PollinationsProvider(ImageProvider):
 
     @property
     def requires_api_key(self) -> bool:
-        return False
+        return True
 
 
 class FalAIProvider(ImageProvider):
@@ -510,11 +500,11 @@ class FalAIProvider(ImageProvider):
         payload = {
             "prompt": prompt,
             "image_size": image_size,
-            "num_inference_steps": 28,
+            "num_inference_steps": 4 if "schnell" in model_name else 28,
             "num_images": 1,
         }
 
-        response = requests.post(api_url, headers=headers, json=payload)
+        response = requests.post(api_url, headers=headers, json=payload, timeout=120)
         response.raise_for_status()
 
         result = response.json()
@@ -545,7 +535,7 @@ class FalAIProvider(ImageProvider):
         return sizes.get(aspect_ratio, "landscape_16_9")
 
     def get_default_model(self) -> str:
-        return "flux/dev"
+        return default_model("fal", "image")
 
     def estimate_cost(self, model: Optional[str] = None) -> float:
         """Fal.ai pricing varies by model."""
@@ -580,7 +570,14 @@ def get_image_provider(
     Raises:
         ValueError: If provider_name is not recognized
     """
+    if provider_name == "comfyui":
+        from .local_image import ComfyUIProvider
+        return ComfyUIProvider()
+    if provider_name == "horde":
+        from .horde import HordeImageProvider
+        return HordeImageProvider(api_key=api_key)
     providers = {
+        "openai": OpenAIImageProvider,
         "replicate": ReplicateProvider,
         "huggingface": HuggingFaceImageProvider,
         "pollinations": PollinationsProvider,

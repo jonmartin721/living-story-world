@@ -47,6 +47,9 @@ async def run_chapter_job(
         await queue.put({"stage": "init", "percent": 5, "message": "Loading world..."})
         cfg, state, dirs = await loop.run_in_executor(executor, load_world, slug)
 
+        settings = await loop.run_in_executor(executor, load_user_settings)
+        include_images = not request.no_images and settings.image_provider != "none"
+
         existing_chapter = None
         chapter_index = None
         reroll = chapter_num is not None
@@ -136,7 +139,7 @@ async def run_chapter_job(
         image_path = None
         image_model_used = None
 
-        if not request.no_images and (draft.image_prompt or draft.scene_prompt):
+        if include_images and (draft.image_prompt or draft.scene_prompt):
             settings = await loop.run_in_executor(executor, load_user_settings)
             image_model_used = resolve_image_model(cfg, settings)
             await queue.put(
@@ -202,7 +205,7 @@ async def run_chapter_job(
                     if reroll
                     else None
                 ),
-                write_scene_request=not request.no_images,
+                write_scene_request=include_images,
             ),
         )
 

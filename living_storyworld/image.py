@@ -193,46 +193,14 @@ def generate_scene_result(
             model=image_model,
         )
         logger.info(
-            "Generated image using %s (%s), cost: $%.4f",
+            "Generated image using %s (%s), estimated cost in USD: %s",
             image_result.provider,
             image_result.model,
             image_result.estimated_cost,
         )
-    except Exception as e:
-        # Fallback to Pollinations if the chosen provider fails
-        if image_provider_name != "pollinations":
-            logger.warning(
-                "Failed to generate with %s (%s), falling back to Pollinations: %s",
-                image_provider_name,
-                image_model,
-                str(e),
-            )
-            try:
-                pollinations_provider = get_image_provider("pollinations", api_key=None)
-                image_result = pollinations_provider.generate(
-                    prompt=full_prompt,
-                    output_path=out,
-                    aspect_ratio=aspect_ratio,
-                    model="flux",  # Pollinations default
-                )
-                logger.info(
-                    "Generated image using Pollinations fallback (%s), cost: $%.4f",
-                    image_result.model,
-                    image_result.estimated_cost,
-                )
-            except Exception as fallback_error:
-                logger.error(
-                    "Both %s and Pollinations fallback failed: %s",
-                    image_provider_name,
-                    str(fallback_error),
-                )
-                raise RuntimeError(
-                    f"Image generation failed with both {image_provider_name} and Pollinations: {fallback_error}"
-                )
-        else:
-            # If already using Pollinations and it failed, just raise the original error
-            logger.error("Pollinations image generation failed: %s", str(e))
-            raise
+    except Exception:
+        logger.warning("Image generation failed with %s", image_provider_name)
+        raise
 
     _append_media_index(
         base_dir,

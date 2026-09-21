@@ -112,10 +112,10 @@ class TestImageProviderSelection:
 
     def test_pollinations_provider_selection(self):
         """Test selecting Pollinations provider returns PollinationsProvider instance."""
-        provider = get_image_provider("pollinations")
+        provider = get_image_provider("pollinations", api_key="test-pollinations")
         assert isinstance(provider, PollinationsProvider)
         assert provider.provider_name == "Pollinations.ai"
-        assert not provider.requires_api_key
+        assert provider.requires_api_key
 
     def test_fal_provider_selection(self):
         """Test selecting Fal.ai provider returns FalAIProvider instance."""
@@ -126,9 +126,9 @@ class TestImageProviderSelection:
 
     def test_case_insensitive_image_provider_name(self):
         """Test image provider selection is case-insensitive."""
-        provider1 = get_image_provider("pollinations")
-        provider2 = get_image_provider("POLLINATIONS")
-        provider3 = get_image_provider("Pollinations")
+        provider1 = get_image_provider("pollinations", api_key="test-pollinations")
+        provider2 = get_image_provider("POLLINATIONS", api_key="test-pollinations")
+        provider3 = get_image_provider("Pollinations", api_key="test-pollinations")
         assert isinstance(provider1, PollinationsProvider)
         assert isinstance(provider2, PollinationsProvider)
         assert isinstance(provider3, PollinationsProvider)
@@ -171,14 +171,14 @@ class TestProviderMetadata:
             ("pollinations", "Pollinations.ai"),
         ]
         for provider_key, expected_name in providers:
-            provider = get_image_provider(provider_key)
+            provider = get_image_provider(provider_key, api_key="test")
             assert provider.provider_name == expected_name
 
     def test_providers_indicate_api_key_requirement(self):
         """Test providers correctly indicate if they need API keys."""
-        # Pollinations doesn't require an API key
-        pollinations = get_image_provider("pollinations")
-        assert not pollinations.requires_api_key
+        # Pollinations now requires an API key
+        pollinations = get_image_provider("pollinations", api_key="test-pollinations")
+        assert pollinations.requires_api_key
 
         # Other providers do
         with patch.dict('os.environ', {'REPLICATE_API_TOKEN': 'test'}):
@@ -219,12 +219,11 @@ class TestProviderGeneration:
             assert isinstance(openai.get_default_model(), str)
             assert len(openai.get_default_model()) > 0
 
-    def test_pollinations_provider_works_without_api_key(self):
-        """Test Pollinations provider can be instantiated without API key."""
-        # Should not raise any error
-        provider = get_image_provider("pollinations")
-        assert provider is not None
-        assert not provider.requires_api_key
+    def test_pollinations_provider_requires_api_key(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(RuntimeError, match="Pollinations API key not found"):
+                get_image_provider("pollinations")
+
 
 
 class TestProviderAPIKeyHandling:

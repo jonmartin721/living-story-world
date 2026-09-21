@@ -72,7 +72,7 @@ def cmd_chapter(args: argparse.Namespace) -> None:
         dirs["base"],
         cfg,
         state,
-        make_scene_image=not args.no_images,
+        make_scene_image=not args.no_images and settings.image_provider != "none",
     )
 
     save_world(slug, cfg, state, dirs)
@@ -80,7 +80,7 @@ def cmd_chapter(args: argparse.Namespace) -> None:
         f"Wrote chapter [bold]{ch.number}[/]: [white]{ch.title}[/] -> [blue]{ch.filename}[/]"
     )
 
-    if not args.no_images and (ch.image_prompt or ch.scene_prompt):
+    if not args.no_images and settings.image_provider != "none" and (ch.image_prompt or ch.scene_prompt):
         image_model = resolve_image_model(cfg, settings)
         result = generate_scene_result(
             dirs["base"],

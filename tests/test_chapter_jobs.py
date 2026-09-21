@@ -262,6 +262,7 @@ async def test_image_revision_is_published_only_with_saved_chapter(stored_world,
             side_effect=OSError("disk error") if failing_save else save_world,
         ),
         patch("living_storyworld.image.load_user_settings", return_value=UserSettings(image_provider="pollinations")),
+        patch("living_storyworld.chapter_jobs.load_user_settings", return_value=UserSettings(image_provider="pollinations")),
         patch("living_storyworld.image.get_image_provider", return_value=provider),
         patch("living_storyworld.chapter_jobs.generate_scene_result", wraps=generate_scene_result),
     ):
