@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { ChapterSummary, JobProgress } from "../api/types";
+import type { ChapterJobStatus, ChapterSummary, JobProgress } from "../api/types";
 
 type StreamState = {
-  status: "idle" | "streaming" | "complete" | "error";
+  status: "idle" | "streaming" | "reconnecting" | "complete" | "error";
   progress: JobProgress | null;
   error: string | null;
 };
@@ -39,6 +39,9 @@ export function useEventStream(path: string | null, options: StreamOptions = {})
 
     const source = new EventSource(path);
     let settled = false;
+    let polling = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
     setState({ status: "streaming", progress: null, error: null });
 
     const closeWithError = (message: string) => {
@@ -60,9 +63,9 @@ export function useEventStream(path: string | null, options: StreamOptions = {})
       setState({ status: "streaming", progress, error: null });
     });
 
-    source.addEventListener("complete", (event) => {
+    const complete = (chapter: ChapterSummary) => {
+      if (settled) return;
       settled = true;
-      const chapter = JSON.parse((event as MessageEvent<string>).data) as ChapterSummary;
       void onCompleteRef.current?.(chapter);
       setState((previous) => ({
         status: "complete",
@@ -70,12 +73,46 @@ export function useEventStream(path: string | null, options: StreamOptions = {})
         error: null,
       }));
       source.close();
+    };
+
+    const pollStatus = async () => {
+      try {
+        const response = await fetch(path.replace("/stream/", "/jobs/"), { signal: controller.signal });
+        if (settled) return;
+        if (response.status === 404) {
+          closeWithError("This job is no longer available. Reload the world to check its latest chapter.");
+          return;
+        }
+        if (!response.ok) throw new Error("Status unavailable");
+        const job = await response.json() as ChapterJobStatus;
+        if (settled) return;
+        if (job.status === "complete" && job.chapter) { complete(job.chapter); return; }
+        if (job.status === "error") { closeWithError(job.error ?? "Chapter generation failed."); return; }
+        setState({ status: "reconnecting", progress: job.progress, error: null });
+      } catch {
+        if (settled || controller.signal.aborted) return;
+        setState((previous) => ({ ...previous, status: "reconnecting", error: "Connection lost. Retrying job status..." }));
+      }
+      if (!settled) timer = setTimeout(() => void pollStatus(), 2000);
+    };
+
+    const recoverConnection = () => {
+      if (settled || polling) return;
+      polling = true;
+      source.close();
+      setState((previous) => ({ ...previous, status: "reconnecting", error: "Connection lost. Checking job status..." }));
+      void pollStatus();
+    };
+
+    source.addEventListener("complete", (event) => {
+      const chapter = JSON.parse((event as MessageEvent<string>).data) as ChapterSummary;
+      complete(chapter);
     });
 
     source.addEventListener("error", (event) => {
       const data = readEventData(event);
       if (!data) {
-        closeWithError("Connection lost while streaming progress.");
+        recoverConnection();
         return;
       }
 
@@ -87,11 +124,14 @@ export function useEventStream(path: string | null, options: StreamOptions = {})
       }
     });
 
-    source.onerror = () => {
-      closeWithError("Connection lost while streaming progress.");
-    };
+    source.onerror = recoverConnection;
 
-    return () => source.close();
+    return () => {
+      settled = true;
+      source.close();
+      controller.abort();
+      clearTimeout(timer);
+    };
   }, [path]);
 
   return state;

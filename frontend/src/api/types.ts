@@ -139,3 +139,11 @@ export type JobProgress = {
   message: string;
   job_id?: string;
 };
+
+export type ChapterJobStatus = {
+  job_id: string;
+  status: "running" | "complete" | "error";
+  progress: JobProgress | null;
+  chapter: ChapterSummary | null;
+  error: string | null;
+};

@@ -25,3 +25,15 @@ describe("ChapterReader", () => {
     expect(onSelectChoice).toHaveBeenCalledWith("stay");
   });
 });
+
+
+it("applies changed reader preferences to the chapter body", () => {
+  const chapter = { number: 1, title: "Harbor", filename: "1.md", characters_in_scene: [], choices: [] };
+  const { container, rerender } = render(<ChapterReader chapter={chapter} onSelectChoice={vi.fn()} content="Story" fontFamily="Georgia" fontSize="medium" />);
+  const body = container.querySelector<HTMLElement>(".reader__body")!;
+  expect(body.style.fontFamily).toContain("Georgia");
+  const medium = body.style.fontSize;
+  rerender(<ChapterReader chapter={chapter} onSelectChoice={vi.fn()} content="Story" fontFamily="monospace" fontSize="large" />);
+  expect(body.style.fontFamily).toContain("Courier");
+  expect(body.style.fontSize).not.toBe(medium);
+});

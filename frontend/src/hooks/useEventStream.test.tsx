@@ -90,17 +90,42 @@ describe("useEventStream", () => {
     await waitFor(() => expect(onError).toHaveBeenCalledWith("Reroll failed"));
   });
 
-  it("falls back cleanly for native transport errors", async () => {
+  it("recovers completion from job status after a transport failure", async () => {
     const onError = vi.fn();
-    render(<Harness label="transport" onError={onError} />);
-
-    const source = MockEventSource.instances[0];
+    const onComplete = vi.fn();
+    const fetchStatus = vi.fn().mockResolvedValue({ ok: true, status: 200,
+      json: async () => ({ status: "complete", chapter: { title: "Recovered" } }) });
+    vi.stubGlobal("fetch", fetchStatus);
+    render(<Harness label="transport" onError={onError} onComplete={onComplete} />);
     act(() => {
-      source.emitNativeError();
+      MockEventSource.instances[0].emitNativeError();
+      MockEventSource.instances[0].onerror?.();
     });
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ title: "Recovered" }));
+    expect(onError).not.toHaveBeenCalled();
+    expect(fetchStatus).toHaveBeenCalledTimes(1);
+    expect(fetchStatus).toHaveBeenCalledWith("/jobs/test", expect.objectContaining({ signal: expect.any(AbortSignal) }));
+  });
 
-    await waitFor(() =>
-      expect(onError).toHaveBeenCalledWith("Connection lost while streaming progress."),
-    );
+  it("reports expired jobs without starting another generation", async () => {
+    const onError = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 404 }));
+    render(<Harness label="expired" onError={onError} />);
+    act(() => MockEventSource.instances[0].emitNativeError());
+    await waitFor(() => expect(onError).toHaveBeenCalledWith(expect.stringContaining("no longer available")));
+  });
+
+  it("cancels status recovery when unmounted", async () => {
+    const onComplete = vi.fn();
+    let resolve!: (value: unknown) => void;
+    const fetchStatus = vi.fn().mockReturnValue(new Promise((done) => { resolve = done; }));
+    vi.stubGlobal("fetch", fetchStatus);
+    const { unmount } = render(<Harness label="pending" onComplete={onComplete} />);
+    act(() => MockEventSource.instances[0].emitNativeError());
+    const signal = fetchStatus.mock.calls[0][1].signal;
+    unmount();
+    await act(async () => resolve({ status: 200, ok: true, json: async () => ({ status: "complete", chapter: { title: "Late" } }) }));
+    expect(signal.aborted).toBe(true);
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });

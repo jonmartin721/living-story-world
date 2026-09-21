@@ -5,6 +5,20 @@ describe("api client", () => {
     vi.restoreAllMocks();
   });
 
+  it("shows the conflict message from a running world operation", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(
+      JSON.stringify({ detail: { error: "A chapter is already running.", job_id: "job" } }),
+      { status: 409 },
+    ));
+    await expect(api.startChapterGeneration("world", { no_images: true, chapter_length: "short" }))
+      .rejects.toThrow("A chapter is already running.");
+  });
+
+  it("handles a non-JSON error response without reading its body twice", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("Unavailable", { status: 503, statusText: "Service unavailable" }));
+    await expect(api.listWorlds()).rejects.toThrow("Service unavailable");
+  });
+
   it("keeps the world response shape intact", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(

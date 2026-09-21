@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api/client";
 import type {
   ChapterSummary,
@@ -28,6 +28,18 @@ type JobState = {
 
 type EditorState = "create" | "edit" | null;
 
+function savedJob(): JobState | null {
+  try {
+    const value: unknown = JSON.parse(sessionStorage.getItem("activeChapterJob") ?? "null");
+    if (value && typeof value === "object" && "slug" in value && "jobId" in value &&
+        typeof value.slug === "string" && /^[a-z0-9-]+$/i.test(value.slug) &&
+        typeof value.jobId === "string" && /^[a-z0-9-]+$/i.test(value.jobId)) {
+      return { slug: value.slug, jobId: value.jobId, label: "Chapter generation" };
+    }
+  } catch { /* Storage may be unavailable in private browsing. */ }
+  return null;
+}
+
 const defaultGenerationRequest: GenerationRequest = {
   no_images: false,
   chapter_length: "medium",
@@ -38,12 +50,14 @@ export function App() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [worldDetail, setWorldDetail] = useState<WorldDetail | null>(null);
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
-  const [chapterContent, setChapterContent] = useState<Record<number, string>>({});
+  const [chapterContent, setChapterContent] = useState<Record<string, string>>({});
+  const selectedSlugRef = useRef(selectedSlug);
+  selectedSlugRef.current = selectedSlug;
   const [selectedChapterNumber, setSelectedChapterNumber] = useState<number | null>(null);
   const [generationRequest, setGenerationRequest] = useState<GenerationRequest>(
     defaultGenerationRequest,
   );
-  const [activeJob, setActiveJob] = useState<JobState | null>(null);
+  const [activeJob, setActiveJob] = useState<JobState | null>(savedJob);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>(null);
   const [randomWorld, setRandomWorld] = useState<RandomWorldResponse | null>(null);
@@ -65,14 +79,18 @@ export function App() {
     {
       onComplete: async (chapter) => {
         pushToast(`${activeJob?.label ?? "Chapter job"} finished.`, "success");
-        setSelectedChapterNumber(chapter.number);
+        if (activeJob?.slug === selectedSlugRef.current) setSelectedChapterNumber(chapter.number);
         setChapterContent((current) => {
           const next = { ...current };
-          delete next[chapter.number];
+          delete next[`${activeJob?.slug}:${chapter.number}`];
           return next;
         });
         setActiveJob(null);
-        await refreshSelectedWorld(activeJob?.slug ?? null, chapter.number);
+        try {
+          await refreshSelectedWorld(activeJob?.slug ?? null, chapter.number);
+        } catch (error) {
+          pushToast((error as Error).message, "error");
+        }
       },
       onError: (message) => {
         pushToast(message, "error");
@@ -82,8 +100,15 @@ export function App() {
   );
 
   useEffect(() => {
-    void loadWorlds();
-    void loadSettings();
+    try {
+      if (activeJob) sessionStorage.setItem("activeChapterJob", JSON.stringify(activeJob));
+      else sessionStorage.removeItem("activeChapterJob");
+    } catch { /* Job discovery still works when storage is unavailable. */ }
+  }, [activeJob]);
+
+  useEffect(() => {
+    void loadWorlds().catch((error: Error) => pushToast(error.message, "error"));
+    void loadSettings().catch((error: Error) => pushToast(error.message, "error"));
   }, []);
 
   useEffect(() => {
@@ -91,17 +116,25 @@ export function App() {
       setWorldDetail(null);
       return;
     }
-    void refreshSelectedWorld(selectedSlug);
+    setWorldDetail(null);
+    setSelectedChapterNumber(null);
+    void refreshSelectedWorld(selectedSlug).catch((error: Error) => pushToast(error.message, "error"));
+    void api.getCurrentChapterJob(selectedSlug).then((job) => {
+      if (job && selectedSlugRef.current === selectedSlug) {
+        setActiveJob((current) => current ?? { slug: selectedSlug, jobId: job.job_id, label: "Chapter generation" });
+      }
+    }).catch((error: Error) => pushToast(error.message, "error"));
   }, [selectedSlug]);
 
   useEffect(() => {
-    if (!selectedSlug || selectedChapterNumber === null || chapterContent[selectedChapterNumber]) {
+    const key = `${selectedSlug}:${selectedChapterNumber}`;
+    if (!selectedSlug || selectedChapterNumber === null || chapterContent[key]) {
       return;
     }
     void api
       .getChapterContent(selectedSlug, selectedChapterNumber)
       .then((response) => {
-        setChapterContent((current) => ({ ...current, [selectedChapterNumber]: response.content }));
+        setChapterContent((current) => ({ ...current, [key]: response.content }));
       })
       .catch((error: Error) => pushToast(error.message, "error"));
   }, [chapterContent, pushToast, selectedChapterNumber, selectedSlug]);
@@ -123,6 +156,7 @@ export function App() {
       return;
     }
     const detail = await api.getWorld(slug);
+    if (selectedSlugRef.current !== slug) return;
     startTransition(() => {
       setWorldDetail(detail);
       setSelectedChapterNumber(
@@ -132,7 +166,7 @@ export function App() {
           null,
       );
     });
-    void loadWorlds();
+    void loadWorlds().catch((error: Error) => pushToast(error.message, "error"));
   }
 
   async function handleWorldSubmit(input: WorldInput) {
@@ -200,8 +234,12 @@ export function App() {
     if (slug === selectedSlug) {
       return;
     }
-    await api.setCurrentWorld(slug);
-    setSelectedSlug(slug);
+    try {
+      await api.setCurrentWorld(slug);
+      setSelectedSlug(slug);
+    } catch (error) {
+      pushToast((error as Error).message, "error");
+    }
   }
 
   async function handleDeleteWorld() {
@@ -280,7 +318,7 @@ export function App() {
       pushToast(`Chapter ${chapterNumber} deleted.`, "success");
       setChapterContent((current) => {
         const next = { ...current };
-        delete next[chapterNumber];
+        delete next[`${selectedSlug}:${chapterNumber}`];
         return next;
       });
       await refreshSelectedWorld(selectedSlug);
@@ -298,8 +336,7 @@ export function App() {
           <span className="hero__kicker">Persistent narrative engine</span>
           <h1>Living Storyworld</h1>
           <p>
-            Keep the world model, chapter pipeline, and reader experience in one place
-            without the old front-end sprawl.
+            Create a world, meet its characters, and choose where the story goes next.
           </p>
         </div>
         <div className="hero__actions">
@@ -328,11 +365,12 @@ export function App() {
         />
 
         <main className="content">
-          {editorState ? (
+          {editorState && settings ? (
             <WorldEditor
               mode={editorState}
               world={worldDetail}
               randomWorld={randomWorld}
+              settings={settings}
               busy={busy}
               onCancel={() => {
                 setEditorState(null);
@@ -436,8 +474,10 @@ export function App() {
 
             <ChapterReader
               chapter={selectedChapter}
+              fontFamily={settings?.reader_font_family}
+              fontSize={settings?.reader_font_size}
               content={
-                selectedChapterNumber !== null ? chapterContent[selectedChapterNumber] ?? "" : ""
+                selectedChapterNumber !== null ? chapterContent[`${selectedSlug}:${selectedChapterNumber}`] ?? "" : ""
               }
               onSelectChoice={(choiceId) => void handleSelectChoice(choiceId)}
             />

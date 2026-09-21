@@ -175,7 +175,7 @@ New entities get registered into `WorldState` during generation, building a pers
 
 ### Real-Time Progress Streaming
 
-Chapter generation uses Server-Sent Events for live progress updates without polling:
+Chapter generation uses Server-Sent Events for live progress updates, with status polling if the connection drops:
 
 ```javascript
 // Frontend code - real-time updates without refreshing
@@ -194,7 +194,7 @@ eventSource.onmessage = (event) => {
 };
 ```
 
-Backend emits structured events during the async generation pipeline. Feels responsive compared to long-polling.
+The backend emits structured events during generation. Reconnecting readers receive the latest status or completed chapter without starting another generation. Completed jobs stay in memory for up to 10 minutes (at most 100 results); restarting the server clears that recovery state.
 
 ### Memory System (NovelAI-Inspired)
 

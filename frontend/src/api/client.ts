@@ -1,4 +1,5 @@
 import type {
+  ChapterJobStatus,
   GenerationRequest,
   RandomWorldResponse,
   SettingsResponse,
@@ -20,10 +21,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     let detail = response.statusText;
     try {
-      const payload = (await response.json()) as { detail?: string };
-      detail = payload.detail ?? detail;
+      const payload = (await response.json()) as { detail?: string | { error?: string } | unknown[] };
+      if (typeof payload.detail === "string") detail = payload.detail;
+      else if (payload.detail && !Array.isArray(payload.detail)) detail = payload.detail.error ?? detail;
+      else if (Array.isArray(payload.detail)) detail = "Please check the form values and try again.";
     } catch {
-      detail = await response.text();
+      // The response body has already been consumed by json(). Keep the status message.
     }
     throw new Error(detail || "Request failed");
   }
@@ -63,6 +66,8 @@ export const api = {
   getRandomWorld: () => request<RandomWorldResponse>("/api/generate/world"),
   getChapterContent: (slug: string, chapterNumber: number) =>
     request<{ content: string }>(`/api/worlds/${slug}/chapters/${chapterNumber}/content`),
+  getCurrentChapterJob: (slug: string) =>
+    request<ChapterJobStatus | null>(`/api/worlds/${slug}/chapters/jobs/current`),
   startChapterGeneration: (slug: string, input: GenerationRequest) =>
     request<{ job_id: string }>(`/api/worlds/${slug}/chapters`, {
       method: "POST",

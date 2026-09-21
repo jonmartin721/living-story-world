@@ -19,12 +19,20 @@ Some areas I'd like to explore:
 ### Development Setup
 
 ```bash
-git clone https://github.com/jonmartin721/living-storyworld.git
-cd living-storyworld
+git clone https://github.com/jonmartin721/living-story-world.git
+cd living-story-world
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+npm ci --prefix frontend
+npm run build --prefix frontend
 ```
+
+On Windows PowerShell, use `python -m venv .venv` and `.\.venv\Scripts\python.exe -m pip install -r requirements.txt`. Activation is optional.
+
+Run `npm run verify` before submitting changes. It runs the backend tests, frontend tests, TypeScript checking, and the production build. Also run `.venv/Scripts/ruff check living_storyworld/` on Windows, or `.venv/bin/ruff check living_storyworld/` on Unix.
+
+Edit the frontend in `frontend/src/`, then rebuild and include the generated `living_storyworld/web/` assets. Generated stories are stored in the root `/worlds/` directory, which Git ignores.
 
 ### Running the Application
 

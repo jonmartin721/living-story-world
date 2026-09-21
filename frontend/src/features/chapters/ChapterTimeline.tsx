@@ -43,7 +43,7 @@ export function ChapterTimeline({
               </div>
             </button>
             <div className="chapter-card__actions">
-              <button type="button" className="button button--ghost" onClick={() => onReroll(chapter.number)}>
+              <button type="button" className="button button--ghost" disabled={chapter !== chapters[chapters.length - 1]} title="Only the latest chapter can be rerolled" onClick={() => onReroll(chapter.number)}>
                 Reroll
               </button>
               <button
@@ -53,7 +53,7 @@ export function ChapterTimeline({
               >
                 Image
               </button>
-              <button type="button" className="button button--ghost" onClick={() => onDelete(chapter.number)}>
+              <button type="button" className="button button--ghost" disabled={chapter !== chapters[chapters.length - 1]} title="Only the latest chapter can be deleted" onClick={() => onDelete(chapter.number)}>
                 Delete
               </button>
             </div>
