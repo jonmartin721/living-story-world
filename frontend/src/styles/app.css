@@ -137,8 +137,7 @@ p {
   color: var(--muted);
   font-size: 0.875rem;
 }
-.eyebrow,
-.panel__eyebrow {
+.eyebrow {
   font: 500 0.68rem/1.4 var(--sans);
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -366,6 +365,8 @@ p {
   color: var(--text);
   line-height: 1.75;
   overflow-wrap: anywhere;
+  max-width: 72ch;
+  margin-inline: auto;
 }
 .reader__body > :first-child {
   margin-top: 0;
@@ -518,20 +519,24 @@ p {
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   min-height: 44px;
   background: var(--accent);
   border: 1px solid var(--accent);
   color: var(--on-accent);
-  border-radius: 3px;
+  border-radius: 7px;
   padding: 11px 20px;
   font-size: 0.88rem;
+  font-weight: 550;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
 }
 .button:hover:not(:disabled) {
   filter: brightness(1.08);
 }
 .button--continue {
-  font: 1.12rem var(--serif);
+  font: 550 1.12rem var(--serif);
   min-width: 218px;
   padding: 14px 23px;
   justify-content: space-between;
@@ -541,12 +546,17 @@ p {
   background: transparent;
   border-color: var(--line);
 }
+.button--ghost:hover:not(:disabled) {
+  background: var(--selected);
+  filter: none;
+}
 .button--danger {
   background: var(--danger);
   border-color: var(--danger);
   color: var(--paper);
 }
 .text-button {
+  min-height: 32px;
   background: none;
   border: 0;
   padding: 0;
@@ -575,8 +585,10 @@ p {
 .progress-card {
   margin: 24px 0 0;
   max-width: 540px;
-  border-top: 1px solid var(--line);
-  padding-top: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 20px;
   font-size: 0.8rem;
 }
 .progress-card__heading {
@@ -588,7 +600,9 @@ p {
 .progress-card progress {
   appearance: none;
   width: 100%;
-  height: 3px;
+  height: 4px;
+  border-radius: 4px;
+  overflow: hidden;
   border: 0;
   display: block;
   margin: 12px 0;
@@ -630,7 +644,7 @@ p {
   background: var(--paper);
   color: var(--text);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 12px;
   padding: 28px 32px;
   width: min(620px, calc(100vw - 32px));
   max-height: calc(100dvh - 48px);
@@ -644,6 +658,11 @@ p {
   background: var(--scrim);
 }
 .dialog__header {
+  position: sticky;
+  top: -28px;
+  padding-block: 10px;
+  background: var(--paper);
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -754,46 +773,6 @@ p {
   flex-wrap: wrap;
   margin: 20px 0;
 }
-.world-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.world-card {
-  background: var(--surface);
-  text-align: left;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--line);
-  padding: 22px;
-  color: var(--text);
-}
-.world-card:hover,
-.world-card--active {
-  border-left-color: var(--accent);
-  background: var(--selected);
-}
-.world-card__title strong {
-  display: block;
-  font: 1.5rem/1.25 var(--serif);
-  margin-bottom: 10px;
-}
-.world-card p {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-.pill {
-  font-size: 0.7rem;
-  color: var(--accent);
-}
-.pill--muted {
-  color: var(--muted);
-}
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-.form-grid label,
 .generation-options label {
   display: grid;
   gap: 8px;
@@ -804,7 +783,7 @@ select,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: 7px;
   background: var(--surface);
   color: var(--text);
   padding: 11px 12px;
@@ -824,21 +803,6 @@ textarea {
   height: 17px;
   padding: 0;
   margin: 0;
-}
-.form-grid label:has(textarea),
-.form-grid .editor__actions {
-  grid-column: 1 / -1;
-}
-.panel h2 {
-  font: 1.3rem var(--serif);
-  margin: 8px 0 20px;
-}
-.settings-status {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--line);
 }
 .lore-content section {
   padding-top: 18px;
@@ -985,10 +949,6 @@ textarea {
   .dialog__header h2 {
     font-size: 1.5rem;
   }
-  .form-grid,
-  .world-list {
-    grid-template-columns: 1fr;
-  }
   .theme-grid {
     gap: 20px 12px;
   }
@@ -1030,27 +990,7 @@ textarea {
     scroll-behavior: auto !important;
   }
 }
-/* Shared workspaces and controls */
-.button,
-input:not([type="radio"]):not([type="checkbox"]),
-select,
-textarea {
-  border-radius: 7px;
-}
-.button {
-  font-weight: 550;
-  gap: 12px;
-  transition:
-    background-color 0.15s,
-    border-color 0.15s;
-}
-.button--ghost:hover:not(:disabled) {
-  background: var(--selected);
-  filter: none;
-}
-.text-button {
-  min-height: 32px;
-}
+/* Workspaces */
 .workspace {
   min-height: 100dvh;
 }
@@ -1484,7 +1424,7 @@ textarea {
 .lore-content article h4 {
   margin-top: 0;
 }
-/* A library of stories, with useful search and unmistakable actions. */
+/* Library */
 .library-toolbar {
   display: flex;
   justify-content: space-between;
@@ -1502,11 +1442,15 @@ textarea {
   min-width: 180px;
 }
 .world-list {
+  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
   padding-bottom: 56px;
 }
 .world-card {
+  background: var(--surface);
+  text-align: left;
+  color: var(--text);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0;
@@ -1557,8 +1501,13 @@ textarea {
   width: 100%;
 }
 .world-card__title strong {
-  font-size: 1.55rem;
+  display: block;
+  font: 1.55rem/1.25 var(--serif);
   margin: 10px 0 12px;
+}
+.world-card p {
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 .world-card__body > p {
   margin: 0 0 20px;
@@ -1588,31 +1537,6 @@ textarea {
 .library-empty h2 {
   font: 1.8rem var(--serif);
   margin-top: 0;
-}
-.dialog {
-  border-radius: 12px;
-}
-.dialog__header {
-  position: sticky;
-  top: -28px;
-  padding-block: 10px;
-  background: var(--paper);
-  z-index: 2;
-}
-.reader__body {
-  max-width: 72ch;
-  margin-inline: auto;
-}
-.progress-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 20px;
-}
-.progress-card progress {
-  height: 4px;
-  border-radius: 4px;
-  overflow: hidden;
 }
 @media (max-width: 1250px) {
   .reading-layout--inspecting {
