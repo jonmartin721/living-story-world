@@ -91,6 +91,8 @@ class Chapter:
     generated_at: Optional[str] = None  # ISO format timestamp
     text_model_used: Optional[str] = None  # Model used for text generation
     image_model_used: Optional[str] = None  # Model used for image generation
+    entity_context: Optional[dict] = None  # Entity state immediately before generation
+    scene_filename: Optional[str] = None  # None: legacy lookup; empty: no published image
 
     def __post_init__(self) -> None:
         self.choices = [Choice.from_dict(choice) for choice in self.choices]

@@ -3,13 +3,16 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import uuid
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
 from .config import STYLE_PACKS
 from .providers import get_image_provider
+from .providers.image import ImageGenerationResult
 from .settings import get_api_key_for_provider, load_user_settings
+from .storage import read_json, write_json
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +108,22 @@ def generate_scene_image(
     aspect_ratio: str = "16:9",
     bypass_cache: bool = False,
 ) -> Path:
+    return generate_scene_result(
+        base_dir, image_model, style_pack, prompt, chapter_num, aspect_ratio, bypass_cache
+    ).image_path
+
+
+def generate_scene_result(
+    base_dir: Path,
+    image_model: str,
+    style_pack: str,
+    prompt: str,
+    chapter_num: Optional[int] = None,
+    aspect_ratio: str = "16:9",
+    bypass_cache: bool = False,
+    *,
+    revision: bool = False,
+) -> ImageGenerationResult:
     """Generate a scene image using the configured image provider.
 
     Args:
@@ -117,7 +136,7 @@ def generate_scene_image(
         bypass_cache: If True, generate a new image even if cached version exists
 
     Returns:
-        Path to generated PNG image
+        Generated image path and the provider/model that actually produced it.
     """
     style = STYLE_PACKS.get(style_pack, STYLE_PACKS["storybook-ink"])
     # Emphasize style by putting it at beginning AND wrapping the prompt
@@ -142,9 +161,24 @@ def generate_scene_image(
         )
     )
 
+    # Revision images stay outside the legacy filename glob until referenced by a chapter.
+    if revision:
+        out = out.parent / "revisions" / uuid.uuid4().hex / out.name
+
     if not bypass_cache and out.exists():
         logger.debug("Using cached image: %s", out.name)
-        return out
+        records = read_json(base_dir / "media" / "index.json", [])
+        record: dict = next(
+            (
+                entry
+                for entry in reversed(records)
+                if str(entry.get("file", "")).replace("\\", "/") == out.relative_to(base_dir).as_posix()
+            ),
+            {},
+        )
+        return ImageGenerationResult(
+            out, record.get("provider", "unknown"), record.get("model", "unknown"), 0.0, cached=True
+        )
 
     settings = load_user_settings()
     image_provider_name = settings.image_provider
@@ -175,7 +209,7 @@ def generate_scene_image(
             )
             try:
                 pollinations_provider = get_image_provider("pollinations", api_key=None)
-                result = pollinations_provider.generate(
+                image_result = pollinations_provider.generate(
                     prompt=full_prompt,
                     output_path=out,
                     aspect_ratio=aspect_ratio,
@@ -183,8 +217,8 @@ def generate_scene_image(
                 )
                 logger.info(
                     "Generated image using Pollinations fallback (%s), cost: $%.4f",
-                    result.model,
-                    result.estimated_cost,
+                    image_result.model,
+                    image_result.estimated_cost,
                 )
             except Exception as fallback_error:
                 logger.error(
@@ -205,15 +239,16 @@ def generate_scene_image(
         {
             "type": "scene",
             "chapter": chapter_num,
-            "file": str(out.relative_to(base_dir)),
+            "file": out.relative_to(base_dir).as_posix(),
             "key": key,
             "prompt": prompt,
             "style_pack": style_pack,
             "aspect_ratio": aspect_ratio,
-            "model": image_model,
+            "model": image_result.model,
+            "provider": image_result.provider,
         },
     )
-    return out
+    return ImageGenerationResult(out, image_result.provider, image_result.model, image_result.estimated_cost)
 
 
 def _append_media_index(base_dir: Path, entry: dict) -> None:
@@ -226,4 +261,4 @@ def _append_media_index(base_dir: Path, entry: dict) -> None:
         except Exception:
             data = []
     data.append(entry)
-    idx.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    write_json(idx, data)

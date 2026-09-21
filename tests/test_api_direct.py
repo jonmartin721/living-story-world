@@ -10,13 +10,14 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import HTTPException
 
 # API modules to test
-from living_storyworld.api import chapters
+from living_storyworld.api import chapters, worlds
 from living_storyworld.api.chapters import (
     ChapterGenerateRequest,
     ChoiceSelectionRequest,
@@ -58,7 +59,6 @@ from living_storyworld.api.worlds import (
 )
 from living_storyworld.models import Chapter, Choice, WorldConfig, WorldState
 from living_storyworld.settings import UserSettings
-
 
 # ============================================================================
 # API Dependencies Tests
@@ -834,12 +834,14 @@ class TestImagesAPI:
         mock_dirs = {"base": world_dir}
         mock_settings = UserSettings(default_image_model="flux-schnell")
 
-        with patch("living_storyworld.api.images.load_world_async") as mock_load, patch(
-            "living_storyworld.settings.load_user_settings", return_value=mock_settings
-        ), patch(
-            "living_storyworld.api.images.generate_scene_image",
-            return_value=mock_image_path,
-        ) as mock_gen:
+        with (
+            patch("living_storyworld.api.images.load_world_async") as mock_load,
+            patch("living_storyworld.settings.load_user_settings", return_value=mock_settings),
+            patch(
+                "living_storyworld.api.images.generate_scene_result",
+                return_value=SimpleNamespace(image_path=mock_image_path, model="flux"),
+            ) as mock_gen,
+        ):
             mock_load.return_value = (sample_world_config, sample_world_state, mock_dirs)
 
             request = ImageGenerateRequest(prompt="A beautiful scene", chapter=1)
@@ -876,13 +878,14 @@ class TestImagesAPI:
         )
         sample_world_state.chapters = [chapter]
 
-        with patch("living_storyworld.api.images.load_world_async") as mock_load, patch(
-            "living_storyworld.settings.load_user_settings", return_value=mock_settings
-        ), patch(
-            "living_storyworld.api.images.generate_scene_image",
-            return_value=mock_image_path,
-        ) as mock_gen, patch(
-            "living_storyworld.world.save_world"
+        with (
+            patch("living_storyworld.api.images.load_world_async") as mock_load,
+            patch("living_storyworld.settings.load_user_settings", return_value=mock_settings),
+            patch(
+                "living_storyworld.api.images.generate_scene_result",
+                return_value=SimpleNamespace(image_path=mock_image_path, model="flux"),
+            ) as mock_gen,
+            patch("living_storyworld.world.save_world"),
         ):
             mock_load.return_value = (sample_world_config, sample_world_state, mock_dirs)
 
@@ -916,3 +919,26 @@ class TestImagesAPI:
                 await generate_image(request, world_info)
             assert exc.value.status_code == 400
             assert "No prompt provided" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_create_world_returns_conflict_for_duplicate(stored_world):
+    with pytest.raises(HTTPException) as exc:
+        await worlds.create_world(
+            worlds.WorldCreateRequest(title="Harbor", theme="Overwrite")
+        )
+    assert exc.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_low_disk_space_prevents_creation(stored_world):
+    with (
+        patch("shutil.disk_usage", return_value=SimpleNamespace(free=1)),
+        patch.object(worlds, "init_world") as create,
+    ):
+        with pytest.raises(HTTPException) as exc:
+            await worlds.create_world(
+                worlds.WorldCreateRequest(title="New", theme="Theme")
+            )
+    assert exc.value.status_code == 507
+    create.assert_not_called()

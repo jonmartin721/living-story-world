@@ -6,10 +6,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
-from ..generator import find_latest_scene_path, serialize_chapter_response
+from ..generator import find_chapter_scene_path, serialize_chapter_response
 from ..storage import WORLDS_DIR, get_current_world, set_current_world
 from ..world import init_world, load_world
 from .dependencies import get_validated_world_slug
+from .world_operations import check_world_idle
 
 router = APIRouter(prefix="/api/worlds", tags=["worlds"])
 
@@ -19,9 +20,9 @@ class WorldCreateRequest(BaseModel):
     theme: str = Field(
         ..., min_length=1, max_length=1000, description="World theme/description"
     )
-    style_pack: str = Field(default="storybook-ink", max_length=100)
-    maturity_level: str = Field(default="general", max_length=20)
-    preset: str = Field(default="cozy-adventure", max_length=50)
+    style_pack: Optional[str] = Field(default=None, max_length=100)
+    maturity_level: Optional[str] = Field(default=None, max_length=20)
+    preset: Optional[str] = Field(default=None, max_length=50)
     enable_choices: bool = Field(default=False)
     slug: Optional[str] = Field(None, max_length=100)
     memory: Optional[str] = Field(
@@ -137,24 +138,32 @@ async def create_world(request: WorldCreateRequest):
                 status_code=507,
                 detail=f"Insufficient disk space ({free_mb:.0f}MB free, need {min_free_mb}MB minimum)",
             )
-    except Exception as e:
+    except OSError as e:
         # Log but don't block on disk check failure
         import logging
 
         logging.warning(f"Failed to check disk space: {e}")
 
-    slug = init_world(
-        title=request.title,
-        theme=request.theme,
-        style_pack=request.style_pack,
-        slug=request.slug,
-        maturity_level=request.maturity_level,
-        preset=request.preset,
-        enable_choices=request.enable_choices,
-        memory=request.memory,
-        authors_note=request.authors_note,
-        world_instructions=request.world_instructions,
-    )
+    try:
+        slug = init_world(
+            title=request.title,
+            theme=request.theme,
+            style_pack=request.style_pack,
+            slug=request.slug,
+            maturity_level=request.maturity_level,
+            preset=request.preset,
+            enable_choices=request.enable_choices,
+            memory=request.memory,
+            authors_note=request.authors_note,
+            world_instructions=request.world_instructions,
+        )
+    except FileExistsError:
+        raise HTTPException(
+            status_code=409,
+            detail="A world with that name already exists. Choose another name.",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     cfg, state, _ = load_world(slug)
     return WorldResponse(
@@ -186,7 +195,7 @@ async def get_world(world_info: tuple[str, Path] = Depends(get_validated_world_s
         serialize_chapter_response(
             slug,
             chapter,
-            scene=find_latest_scene_path(dirs["base"], slug, chapter.number),
+            scene=find_chapter_scene_path(dirs["base"], slug, chapter),
         )
         for chapter in state.chapters
     ]
@@ -239,6 +248,7 @@ async def update_world(
 
     from ..world import save_world
 
+    check_world_idle(slug)
     cfg, state, dirs = load_world(slug)
 
     if request.title is not None:
@@ -287,6 +297,7 @@ async def delete_world(
 ):
     """Delete a world"""
     slug, world_path = world_info
+    check_world_idle(slug)
 
     import shutil
 

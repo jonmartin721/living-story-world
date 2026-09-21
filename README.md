@@ -29,13 +29,13 @@ Also, I wanted to play with provider-agnostic patterns to avoid vendor lock-in. 
 
 ## Quick Start
 
-I highly recommend downloading pre-built executables from the [Releases](https://github.com/jonmartin721/living-storyworld/releases).
+I highly recommend downloading pre-built executables from the [Releases](https://github.com/jonmartin721/living-story-world/releases).
 
 If you'd rather build from source or contribute:
 
 ```bash
-git clone https://github.com/jonmartin721/living-storyworld.git
-cd living-storyworld
+git clone https://github.com/jonmartin721/living-story-world.git
+cd living-story-world
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -348,11 +348,12 @@ Good enough for a local tool, not production-ready.
 
 ### Current Limitations
 
-- No multi-threaded generation (one chapter at a time per world)
+- The local API runs one mutation per world at a time. Run a single server process; CLI writes and multiple server processes do not share this guard.
 - Entity extraction relies on LLM structured output—can be flaky with smaller models
 - Image generation is slow (30-60s per scene with Flux models)
 - No built-in story branching visualization (choice tree)
-- Choice system doesn't support "go back" (permanent decisions)
+- Reroll, deletion, and choice changes are limited to the latest chapter so later chapters retain their established history.
+- Rerolls save a new Markdown revision and retain the prior file. Newly generated chapters include an entity snapshot; legacy chapters retain existing entity facts because historical snapshots are unavailable. There is no revision restore UI yet.
 
 ### Future Ideas
 

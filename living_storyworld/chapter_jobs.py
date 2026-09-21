@@ -5,34 +5,42 @@ import logging
 import random
 import time
 import traceback
+import uuid
 from datetime import datetime, timezone
 from functools import partial
-from typing import Optional
+from typing import Optional, Protocol
 
 from .generator import (
-    find_latest_scene_path,
+    find_chapter_scene_path,
     generate_chapter_draft,
     generate_chapter_summary,
     persist_generated_chapter,
     resolve_image_model,
     serialize_chapter_response,
 )
-from .image import generate_scene_image
+from .image import generate_scene_result
+from .models import WorldState
 from .settings import load_user_settings
 from .world import load_world, save_world
 
 logger = logging.getLogger(__name__)
 
 
+class ProgressSink(Protocol):
+    async def put(self, update: dict) -> None:
+        ...
+
+
 async def run_chapter_job(
     slug: str,
     request,
-    queue: asyncio.Queue,
+    queue: ProgressSink,
     job_id: str,
     executor,
     *,
     chapter_num: Optional[int] = None,
 ) -> None:
+    summary_task = None
     try:
         loop = asyncio.get_event_loop()
 
@@ -53,6 +61,25 @@ async def run_chapter_job(
                     {"stage": "error", "error": f"Chapter {chapter_num} not found"}
                 )
                 return
+            if chapter_index != len(state.chapters) - 1:
+                await queue.put(
+                    {
+                        "stage": "error",
+                        "error": "Only the latest chapter can be rerolled. Later chapters depend on it.",
+                    }
+                )
+                return
+            # Never prompt a reroll with the chapter being replaced or with a future number.
+            context = existing_chapter.entity_context or state.to_dict()
+            state = WorldState.from_dict(
+                {
+                    **context,
+                    "next_chapter": chapter_num,
+                    "chapters": [
+                        chapter.to_dict() for chapter in state.chapters[:chapter_index]
+                    ],
+                }
+            )
         elif cfg.enable_choices and state.chapters:
             previous = state.chapters[-1]
             if previous.choices and not previous.selected_choice_id:
@@ -66,7 +93,6 @@ async def run_chapter_job(
                         "message": f"Auto-selecting choice: '{selected_choice.text[:50]}...'",
                     }
                 )
-                await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
 
         await queue.put(
             {"stage": "text", "percent": 10, "message": "Generating chapter text..."}
@@ -102,7 +128,9 @@ async def run_chapter_job(
                 "message": "Generating summary...",
             }
         )
-        summary_task = asyncio.create_task(generate_chapter_summary(draft.markdown, cfg))
+        summary_task = asyncio.create_task(
+            generate_chapter_summary(draft.markdown, cfg)
+        )
 
         target_chapter_number = chapter_num or state.next_chapter
         image_path = None
@@ -122,7 +150,7 @@ async def run_chapter_job(
             image_future = loop.run_in_executor(
                 executor,
                 partial(
-                    generate_scene_image,
+                    generate_scene_result,
                     dirs["base"],
                     image_model_used,
                     cfg.style_pack,
@@ -130,6 +158,7 @@ async def run_chapter_job(
                     target_chapter_number,
                     "16:9",
                     reroll,
+                    revision=True,
                 ),
             )
             await _watch_progress(
@@ -141,7 +170,9 @@ async def run_chapter_job(
                 estimated_duration=8.0,
                 label="Scene image",
             )
-            image_path = await image_future
+            image_result = await image_future
+            image_path = image_result.image_path
+            image_model_used = image_result.model
 
         await queue.put(
             {
@@ -164,38 +195,44 @@ async def run_chapter_job(
                 state,
                 draft,
                 target_chapter_number,
-                filename=existing_chapter.filename if existing_chapter else None,
-                chapter_index=chapter_index,
+                # Publish a new file, then atomically switch world.json to it. The previous
+                # revision remains readable if saving fails, and is retained after success.
+                filename=(
+                    f"chapter-{target_chapter_number:04d}-{uuid.uuid4().hex}.md"
+                    if reroll
+                    else None
+                ),
                 write_scene_request=not request.no_images,
             ),
         )
 
-        chapter.generated_at = datetime.now(timezone.utc).isoformat().replace(
-            "+00:00", "Z"
+        chapter.generated_at = (
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         )
-        chapter.ai_summary = ai_summary or (existing_chapter.ai_summary if existing_chapter else None)
-        if existing_chapter:
-            chapter.selected_choice_id = existing_chapter.selected_choice_id
-            chapter.choice_reasoning = existing_chapter.choice_reasoning
+        chapter.ai_summary = ai_summary or draft.summary
         if image_model_used:
             chapter.image_model_used = image_model_used
         elif existing_chapter:
             chapter.image_model_used = existing_chapter.image_model_used
 
+        if image_path is not None:
+            chapter.scene_filename = image_path.relative_to(dirs["base"] / "media" / "scenes").as_posix()
+        elif existing_chapter:
+            prior_scene = find_chapter_scene_path(dirs["base"], slug, existing_chapter)
+            chapter.scene_filename = prior_scene.removeprefix(f"/worlds/{slug}/media/scenes/") if prior_scene else ""
+
         await loop.run_in_executor(executor, save_world, slug, cfg, state, dirs)
 
-        scene = None
-        if image_path is not None:
-            scene = f"/worlds/{slug}/media/scenes/{image_path.name}"
-        else:
-            scene = find_latest_scene_path(dirs["base"], slug, target_chapter_number)
+        scene = find_chapter_scene_path(dirs["base"], slug, chapter)
 
         chapter_data = serialize_chapter_response(slug, chapter, scene=scene)
         await queue.put(
             {
                 "stage": "complete",
                 "percent": 100,
-                "message": "Chapter complete!" if not reroll else "Chapter regenerated!",
+                "message": (
+                    "Chapter complete!" if not reroll else "Chapter regenerated!"
+                ),
                 "chapter": chapter_data,
             }
         )
@@ -209,10 +246,14 @@ async def run_chapter_job(
                 "job_id": job_id,
             }
         )
+    finally:
+        if summary_task is not None and not summary_task.done():
+            summary_task.cancel()
+            await asyncio.gather(summary_task, return_exceptions=True)
 
 
 async def _watch_progress(
-    queue: asyncio.Queue,
+    queue: ProgressSink,
     future,
     *,
     stage: str,

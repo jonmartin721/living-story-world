@@ -5,7 +5,7 @@ from typing import Optional
 
 from .config import STYLE_PACKS
 from .generator import generate_chapter, resolve_image_model
-from .image import generate_scene_image
+from .image import generate_scene_result
 from .presets import PRESETS
 from .settings import load_user_settings, save_user_settings
 from .storage import set_current_world, slugify
@@ -78,14 +78,17 @@ def run_world_wizard() -> None:
     save_world(slug, cfg, state, dirs)
     if ch.image_prompt or ch.scene_prompt:
         image_model = resolve_image_model(cfg, load_user_settings())
-        out = generate_scene_image(
+        result = generate_scene_result(
             dirs["base"],
             image_model,
             cfg.style_pack,
             ch.image_prompt or ch.scene_prompt or "",
             chapter_num=ch.number,
+            revision=True,
         )
-        ch.image_model_used = image_model
+        out = result.image_path
+        ch.image_model_used = result.model
+        ch.scene_filename = out.relative_to(dirs["base"] / "media" / "scenes").as_posix()
         save_world(slug, cfg, state, dirs)
         print(f"Generated scene image -> {out.relative_to(dirs['base'])}")
     print(f"Wrote chapter {ch.number}: {ch.title}")

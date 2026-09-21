@@ -20,6 +20,7 @@ from .models import (
 from .presets import DEFAULT_PRESET, PRESETS
 from .providers import get_text_provider
 from .settings import get_api_key_for_provider, load_user_settings
+from .storage import write_json, write_text
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +118,13 @@ def _build_chapter_prompt(
         "theme": cfg.theme,
         "tick": state.tick,
         "chapter_number": state.next_chapter,
-        "known_characters": list(state.characters.keys()),
-        "known_locations": list(state.locations.keys()),
+        "known_characters": [
+            character.to_dict() for character in state.characters.values()
+        ],
+        "known_locations": [
+            location.to_dict() for location in state.locations.values()
+        ],
+        "known_items": [item.to_dict() for item in state.items.values()],
     }
 
     user_parts = []
@@ -233,13 +239,11 @@ def resolve_generation_settings(
 
     user_settings = settings or load_user_settings()
     text_provider_order = get_available_text_providers(user_settings)
-    preferred_text_model = (
-        cfg.text_model
-        or getattr(user_settings, "default_text_model", None)
+    preferred_text_model = cfg.text_model or getattr(
+        user_settings, "default_text_model", None
     )
-    preferred_image_model = (
-        cfg.image_model
-        or getattr(user_settings, "default_image_model", None)
+    preferred_image_model = cfg.image_model or getattr(
+        user_settings, "default_image_model", None
     )
 
     return ResolvedGenerationSettings(
@@ -359,24 +363,37 @@ def generate_chapter_draft(
         characters_in_scene = []
 
     choices = []
-    for choice_data in meta.get("choices", []) if isinstance(meta, dict) else []:
+    choice_entries = meta.get("choices", []) if isinstance(meta, dict) else []
+    for choice_data in choice_entries if isinstance(choice_entries, list) else []:
         if (
             isinstance(choice_data, dict)
             and "id" in choice_data
             and "text" in choice_data
         ):
-            choices.append(Choice.from_dict(choice_data))
+            choices.append(
+                Choice(
+                    id=str(choice_data["id"]),
+                    text=str(choice_data["text"]),
+                    description=str(choice_data.get("description") or ""),
+                )
+            )
 
     return GeneratedChapterDraft(
         markdown=markdown,
         title=_extract_title(markdown) or f"Chapter {state.next_chapter}",
-        summary=str(meta.get("summary", "")) or None if isinstance(meta, dict) else None,
-        scene_prompt=str(meta.get("scene_prompt", "")) or None
-        if isinstance(meta, dict)
-        else None,
-        image_prompt=str(meta.get("image_prompt", "")) or None
-        if isinstance(meta, dict)
-        else None,
+        summary=(
+            str(meta.get("summary", "")) or None if isinstance(meta, dict) else None
+        ),
+        scene_prompt=(
+            str(meta.get("scene_prompt", "")) or None
+            if isinstance(meta, dict)
+            else None
+        ),
+        image_prompt=(
+            str(meta.get("image_prompt", "")) or None
+            if isinstance(meta, dict)
+            else None
+        ),
         characters_in_scene=[str(character) for character in characters_in_scene],
         choices=choices,
         text_model_used=model_name,
@@ -391,9 +408,7 @@ def _extract_title(md: str) -> Optional[str]:
     for line in md.splitlines():
         if line.strip().startswith("# "):
             title = line.strip("# ").strip()
-            return re.sub(
-                r"^Chapter\s+\d+\s*[:\-]\s*", "", title, flags=re.IGNORECASE
-            )
+            return re.sub(r"^Chapter\s+\d+\s*[:\-]\s*", "", title, flags=re.IGNORECASE)
     return None
 
 
@@ -414,7 +429,7 @@ def _write_scene_request(
             "prompt": scene_prompt,
         }
     )
-    reqs.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    write_json(reqs, data)
 
 
 def _register_new_entities(
@@ -463,12 +478,18 @@ def persist_generated_chapter(
     chapter_index: Optional[int] = None,
     write_scene_request: bool = True,
 ) -> Chapter:
+    entity_context = {
+        "tick": state.tick,
+        "characters": {key: value.to_dict() for key, value in state.characters.items()},
+        "locations": {key: value.to_dict() for key, value in state.locations.items()},
+        "items": {key: value.to_dict() for key, value in state.items.items()},
+    }
     _register_new_entities(state, draft.new_characters, draft.new_locations)
 
     chapter_filename = filename or f"chapter-{chapter_number:04d}.md"
     chapter_path = base_dir / "chapters" / chapter_filename
     chapter_path.parent.mkdir(parents=True, exist_ok=True)
-    chapter_path.write_text(draft.markdown, encoding="utf-8")
+    write_text(chapter_path, draft.markdown)
 
     chapter = Chapter(
         number=chapter_number,
@@ -480,6 +501,8 @@ def persist_generated_chapter(
         characters_in_scene=list(draft.characters_in_scene),
         choices=list(draft.choices),
         text_model_used=draft.text_model_used,
+        entity_context=entity_context,
+        scene_filename="",
     )
 
     if write_scene_request and (draft.image_prompt or draft.scene_prompt):
@@ -517,7 +540,15 @@ def generate_chapter(
     )
 
 
-def find_latest_scene_path(base_dir: Path, slug: str, chapter_number: int) -> Optional[str]:
+def find_chapter_scene_path(base_dir: Path, slug: str, chapter: Chapter) -> Optional[str]:
+    if chapter.scene_filename is not None:
+        return f"/worlds/{slug}/media/scenes/{chapter.scene_filename}" if chapter.scene_filename else None
+    return find_latest_scene_path(base_dir, slug, chapter.number)
+
+
+def find_latest_scene_path(
+    base_dir: Path, slug: str, chapter_number: int
+) -> Optional[str]:
     scenes_dir = base_dir / "media" / "scenes"
     if not scenes_dir.exists():
         return None
@@ -605,12 +636,11 @@ async def generate_chapter_summary(chapter_content: str, cfg: WorldConfig) -> st
 
     content_clean = re.sub(r"<!--.*?-->", "", chapter_content, flags=re.DOTALL)
     content_clean = re.sub(r"<[^>]+>", "", content_clean)
-    content_sample = content_clean[:1000]
 
     prompt = f"""Generate a concise 2-3 sentence summary of this chapter's key events and plot developments for story continuity. Focus on what actually happens and any important changes.
 
 Chapter content:
-{content_sample}
+{content_clean}
 
 Summary:"""
 

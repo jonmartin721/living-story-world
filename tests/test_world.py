@@ -1,15 +1,17 @@
 import json
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from living_storyworld.models import Choice
+from living_storyworld.settings import UserSettings
 from living_storyworld.world import (
+    _deserialize_world_state,
     init_world,
     load_world,
     save_world,
     tick_world,
-    _deserialize_world_state,
 )
-from living_storyworld.models import Choice
 
 
 class TestDeserializeWorldState:
@@ -123,7 +125,7 @@ class TestInitAndLoadWorld:
              patch("living_storyworld.world.load_user_settings") as mock_settings, \
              patch("living_storyworld.world.get_text_provider") as mock_provider:
 
-            mock_settings.return_value = MagicMock(
+            mock_settings.return_value = UserSettings(
                 text_provider="openai",
                 default_text_model="gpt-4",
             )
@@ -156,7 +158,7 @@ class TestInitAndLoadWorld:
              patch("living_storyworld.world.load_user_settings") as mock_settings, \
              patch("living_storyworld.world.get_text_provider") as mock_provider:
 
-            mock_settings.return_value = MagicMock(
+            mock_settings.return_value = UserSettings(
                 text_provider="openai",
                 default_text_model="fallback-model",
             )
@@ -225,7 +227,7 @@ class TestSaveAndTickWorld:
              patch("living_storyworld.world.load_user_settings") as mock_settings, \
              patch("living_storyworld.world.get_text_provider") as mock_provider:
 
-            mock_settings.return_value = MagicMock(
+            mock_settings.return_value = UserSettings(
                 text_provider="openai",
                 default_text_model="gpt-4",
             )
@@ -250,7 +252,7 @@ class TestSaveAndTickWorld:
              patch("living_storyworld.world.load_user_settings") as mock_settings, \
              patch("living_storyworld.world.get_text_provider") as mock_provider:
 
-            mock_settings.return_value = MagicMock(
+            mock_settings.return_value = UserSettings(
                 text_provider="openai",
                 default_text_model="gpt-4",
             )
@@ -273,7 +275,7 @@ class TestSaveAndTickWorld:
              patch("living_storyworld.world.load_user_settings") as mock_settings, \
              patch("living_storyworld.world.get_text_provider") as mock_provider:
 
-            mock_settings.return_value = MagicMock(
+            mock_settings.return_value = UserSettings(
                 text_provider="openai",
                 default_text_model="gpt-4",
             )
@@ -293,3 +295,76 @@ class TestSaveAndTickWorld:
             # Verify persistence
             _, state, _ = load_world(slug)
             assert state.tick == 2
+
+
+def test_existing_world_cannot_be_overwritten(stored_world):
+    cfg, state, base = stored_world
+    original = (base / "config.json").read_bytes()
+    with pytest.raises(FileExistsError):
+        init_world("Harbor", "Overwrite")
+    assert (base / "config.json").read_bytes() == original
+
+
+def test_load_and_save_world_preserves_image_model(tmp_path):
+    worlds_dir = tmp_path / "worlds"
+    world_dir = worlds_dir / "kept-model"
+    world_dir.mkdir(parents=True)
+    (world_dir / "config.json").write_text(
+        """
+{
+  "title": "Kept Model",
+  "slug": "kept-model",
+  "theme": "Testing persistence",
+  "style_pack": "storybook-ink",
+  "text_model": "gpt-4o-mini",
+  "image_model": "flux-schnell"
+}
+""".strip(),
+        encoding="utf-8",
+    )
+    (world_dir / "world.json").write_text(
+        '{"tick": 0, "next_chapter": 1, "characters": {}, "locations": {}, "items": {}, "chapters": []}',
+        encoding="utf-8",
+    )
+
+    with patch("living_storyworld.storage.WORLDS_DIR", worlds_dir):
+        cfg, state, dirs = load_world("kept-model")
+        assert cfg.image_model == "flux-schnell"
+
+        save_world("kept-model", cfg, state, dirs)
+        reloaded_cfg, _, _ = load_world("kept-model")
+
+    assert reloaded_cfg.image_model == "flux-schnell"
+
+
+def test_world_uses_saved_defaults_and_preserves_explicit_overrides(stored_world):
+    settings = UserSettings(
+        default_image_model="flux",
+        default_style_pack="noir-sketch",
+        default_preset="noir-mystery",
+        default_maturity_level="teen",
+    )
+    with patch("living_storyworld.world.load_user_settings", return_value=settings):
+        slug = init_world(title="Defaults", theme="Mystery")
+        explicit = init_world(
+            title="Explicit",
+            theme="Adventure",
+            style_pack="storybook-ink",
+            preset="cozy-adventure",
+            maturity_level="general",
+            image_model="flux-dev",
+        )
+    cfg = load_world(slug)[0]
+    assert (cfg.image_model, cfg.style_pack, cfg.preset, cfg.maturity_level) == (
+        "flux",
+        "noir-sketch",
+        "noir-mystery",
+        "teen",
+    )
+    cfg = load_world(explicit)[0]
+    assert (cfg.image_model, cfg.style_pack, cfg.preset, cfg.maturity_level) == (
+        "flux-dev",
+        "storybook-ink",
+        "cozy-adventure",
+        "general",
+    )
