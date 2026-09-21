@@ -280,3 +280,12 @@ async def test_image_revision_is_published_only_with_saved_chapter(stored_world,
         assert saved.scene_filename.startswith("revisions/")
         assert scene == final["chapter"]["scene"]
         assert scene.endswith(saved.scene_filename)
+
+    from argparse import Namespace
+
+    from living_storyworld.cli import cmd_build
+
+    cmd_build(Namespace(world=cfg.slug))
+    exported = (base / "web/index.html").read_text(encoding="utf-8")
+    assert "../" + scene.removeprefix(f"/worlds/{cfg.slug}/") in exported
+    assert f"../chapters/{saved.filename}" in exported

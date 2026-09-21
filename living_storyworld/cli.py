@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import html as html_lib
 import os
 from getpass import getpass
 from typing import Optional
@@ -8,15 +9,15 @@ from typing import Optional
 from rich import print
 
 from .config import STYLE_PACKS
-from .generator import generate_chapter, resolve_image_model
-from .image import generate_scene_image
+from .generator import find_chapter_scene_path, generate_chapter, resolve_image_model
+from .image import generate_scene_result
 from .presets import PRESETS
 from .settings import (
     get_available_text_providers,
     load_user_settings,
     save_user_settings,
 )
-from .storage import WORLDS_DIR, get_current_world, read_json, set_current_world, slugify
+from .storage import WORLDS_DIR, get_current_world, set_current_world, slugify
 from .tui import run_tui
 from .world import init_world, load_world, save_world, tick_world
 
@@ -81,14 +82,17 @@ def cmd_chapter(args: argparse.Namespace) -> None:
 
     if not args.no_images and (ch.image_prompt or ch.scene_prompt):
         image_model = resolve_image_model(cfg, settings)
-        out = generate_scene_image(
+        result = generate_scene_result(
             dirs["base"],
             image_model,
             cfg.style_pack,
             ch.image_prompt or ch.scene_prompt or "",
             chapter_num=ch.number,
+            revision=True,
         )
-        ch.image_model_used = image_model
+        out = result.image_path
+        ch.image_model_used = result.model
+        ch.scene_filename = out.relative_to(dirs["base"] / "media" / "scenes").as_posix()
         save_world(slug, cfg, state, dirs)
         print(f"Generated scene image -> [green]{out.relative_to(dirs['base'])}[/]")
 
@@ -116,9 +120,16 @@ def cmd_image(args: argparse.Namespace) -> None:
         if not prompt:
             raise SystemExit("[yellow]No prompt found[/] for the requested chapter.")
         image_model = resolve_image_model(cfg, load_user_settings())
-        out = generate_scene_image(
-            dirs["base"], image_model, cfg.style_pack, prompt, chapter_num=chap_num
+        result = generate_scene_result(
+            dirs["base"], image_model, cfg.style_pack, prompt, chapter_num=chap_num, revision=True
         )
+        out = result.image_path
+        for chapter in state.chapters:
+            if chapter.number == chap_num:
+                chapter.scene_filename = out.relative_to(dirs["base"] / "media" / "scenes").as_posix()
+                chapter.image_model_used = result.model
+                save_world(slug, cfg, state, dirs)
+                break
         print(f"Generated scene image -> [green]{out.relative_to(dirs['base'])}[/]")
     else:
         raise SystemExit("[yellow]Only 'scene' images are implemented in MVP.[/]")
@@ -150,25 +161,16 @@ def cmd_build(args: argparse.Namespace) -> None:
             "[yellow]No world chosen.[/] Use --world or `story use <slug>`. "
         )
     cfg, state, dirs = load_world(slug)
-    # Build a simple index.html that lists chapters with first scene image if available
-    media_idx = read_json(dirs["base"] / "media" / "index.json", [])
-    scene_for_chapter = {}
-    for m in media_idx:
-        if m.get("type") == "scene" and m.get("chapter"):
-            scene_for_chapter[m["chapter"]] = m["file"]
-
     items = []
     for ch in state.chapters:
-        num = ch.number
+        scene = find_chapter_scene_path(dirs["base"], slug, ch)
         items.append(
             {
                 "title": ch.title,
-                "file": f"chapters/{ch.filename}",
-                "scene": scene_for_chapter.get(num),
+                "file": f"../chapters/{ch.filename}",
+                "scene": "../" + scene.removeprefix(f"/worlds/{slug}/") if scene else None,
             }
         )
-
-        import html as html_lib
 
     html = [
         "<!doctype html>",
