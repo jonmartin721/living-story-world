@@ -15,25 +15,68 @@ describe("ChapterReader", () => {
           choices: [{ id: "stay", text: "Stay", description: "Hold position" }],
           scene: null,
         }}
-        content={"<!-- {\"scene_prompt\":\"x\"} -->\n# Harbor\n\nThe tide came in."}
+        content={'<!-- {"scene_prompt":"x"} -->\n# Harbor\n\nThe tide came in.'}
         onSelectChoice={onSelectChoice}
       />,
     );
 
     expect(screen.getByText(/the tide came in/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /stay hold position/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /stay hold position/i }));
     expect(onSelectChoice).toHaveBeenCalledWith("stay");
+    expect(screen.getAllByRole("heading", { name: "Harbor" })).toHaveLength(1);
   });
 });
 
-
 it("applies changed reader preferences to the chapter body", () => {
-  const chapter = { number: 1, title: "Harbor", filename: "1.md", characters_in_scene: [], choices: [] };
-  const { container, rerender } = render(<ChapterReader chapter={chapter} onSelectChoice={vi.fn()} content="Story" fontFamily="Georgia" fontSize="medium" />);
+  const chapter = {
+    number: 1,
+    title: "Harbor",
+    filename: "1.md",
+    characters_in_scene: [],
+    choices: [],
+  };
+  const { container, rerender } = render(
+    <ChapterReader
+      chapter={chapter}
+      onSelectChoice={vi.fn()}
+      content="Story"
+      fontFamily="Georgia"
+      fontSize="medium"
+    />,
+  );
   const body = container.querySelector<HTMLElement>(".reader__body")!;
   expect(body.style.fontFamily).toContain("Georgia");
   const medium = body.style.fontSize;
-  rerender(<ChapterReader chapter={chapter} onSelectChoice={vi.fn()} content="Story" fontFamily="monospace" fontSize="large" />);
+  rerender(
+    <ChapterReader
+      chapter={chapter}
+      onSelectChoice={vi.fn()}
+      content="Story"
+      fontFamily="monospace"
+      fontSize="large"
+    />,
+  );
   expect(body.style.fontFamily).toContain("Courier");
   expect(body.style.fontSize).not.toBe(medium);
+});
+
+it("keeps historical choices readable but prevents changing them", () => {
+  const onSelectChoice = vi.fn();
+  render(
+    <ChapterReader
+      historical
+      chapter={{
+        number: 1,
+        title: "Harbor",
+        filename: "1.md",
+        characters_in_scene: [],
+        choices: [{ id: "stay", text: "Stay" }],
+        selected_choice_id: "stay",
+      }}
+      content="Story"
+      onSelectChoice={onSelectChoice}
+    />,
+  );
+  expect(screen.getByRole("radio", { name: "Stay" })).toBeChecked();
+  expect(screen.getByRole("radio", { name: "Stay" })).toBeDisabled();
 });

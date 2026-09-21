@@ -51,11 +51,19 @@ To run the full local verification pass from the repo root:
 npm run verify
 ```
 
-The web app will open at `http://localhost:8001`. First-time setup will walk you through configuring API keys—I recommend using Gemini 2.5 Flash (free tier) plus Pollinations for images to get started without costs.
+The web app opens at `http://localhost:8001`. New installs use **Ollama for local writing, with illustrations off**. There is no required paid API or subscription.
 
-![Setup wizard for initial configuration](screenshots/setup-wizard.png)
+1. Install [Ollama](https://docs.ollama.com/quickstart) and download a model that fits your hardware.
+2. Open **Settings → Story generation**, select Ollama, and click **Check connection**. Choose an installed model and save.
+3. Open **Library → New world**. Add a title and premise, then begin the story.
 
-Once you're in, create a new world by clicking "New" (or use the random generator) and start generating chapters. You'll get choices at key points to steer the story direction.
+Already running LM Studio, vLLM, llama.cpp, or NInfer? Choose **Local OpenAI-compatible server**, enter its loopback URL (including `/v1`), and check the connection. Reasoning defaults to off for faster storytelling; choose **Use server default** if your runtime does not support that parameter. Local generation never falls back to a cloud service. Hardware, electricity, and model licenses are still your responsibility.
+
+For hosted generation, [Gemini](https://ai.google.dev/gemini-api/docs/pricing) and [Groq](https://console.groq.com/docs/rate-limits) offer quota-limited free tiers that require keys. OpenRouter also offers a free models router. Paid providers are optional and labeled in Settings. Generation stays on your selected provider, even when another key is saved. For free illustrations, choose **AI Horde** with a free account key. Community queues can be slow; requests time out after five minutes. Prompts go to volunteer workers. Anonymous keys are not supported because anonymous images are shared with a dataset.
+
+For local illustrations, choose **ComfyUI**. Start ComfyUI, import an **API-format** workflow in Settings, and select its positive text prompt node. The app replaces that prompt and randomizes seeds, while preserving your model and image dimensions. Use local model nodes (for example Z-Image Turbo or FLUX Schnell); ComfyUI's cloud API nodes can incur charges. This connection needs a working workflow with a Save Image node.
+
+Pollinations now requires authentication and credits; it is no longer a keyless image fallback.
 
 ---
 
@@ -63,17 +71,11 @@ Once you're in, create a new world by clicking "New" (or use the random generato
 
 ### 1. First-Time Setup
 
-When you first launch Living Storyworld, you'll see a setup wizard that guides you through configuring your API keys. You'll need at least one text provider (Gemini's free tier is solid) and optionally an image provider (Pollinations is free and requires no key).
-
-![Setup wizard for initial configuration](screenshots/setup-wizard.png)
-
-You can always return to settings later to add more providers or change your defaults:
-
-![API keys configuration](screenshots/api-keys-settings.png)
+Open Settings to choose generation services, set defaults for new worlds, or manage connections. Reading appearance lives beside the story: four themes, three typefaces, and four text sizes apply immediately.
 
 ### 2. World Management
 
-The main interface shows all your story worlds in one place. Each world card displays recent chapters with their illustrations, making it easy to jump back into any story.
+The main interface shows all your story worlds in one place. Search by title or premise, see chapter counts, and return to a story from its card.
 
 ![Main interface showing world management](screenshots/main-page.png)
 
@@ -139,9 +141,9 @@ class TextProvider(ABC):
         ...
 ```
 
-Now I can A/B test providers side-by-side or switch when one goes down. Currently supports: OpenAI, Groq, Together AI, HuggingFace, OpenRouter, Gemini.
+Now I can A/B test providers side-by-side or switch when one goes down. Currently supports: Ollama, local OpenAI-compatible servers, OpenAI, Groq, Together AI, Hugging Face, OpenRouter, and Gemini.
 
-Same pattern for image providers (Replicate, HuggingFace, Pollinations, Fal.ai).
+Same pattern for image providers (ComfyUI, AI Horde, OpenAI, Replicate, Hugging Face, Pollinations, and fal.ai).
 
 ### State Management & Entity Graph
 
@@ -323,11 +325,9 @@ npm run build --prefix frontend
 
 ## API Keys & Configuration
 
-I recommend using Gemini 2.5 Flash (free tier) with Pollinations for images to get started without costs. Get a Gemini key here: https://aistudio.google.com/api-keys
+Local writing needs no cloud key. For optional hosted services, add a key under **Settings → Connections**; the browser only receives key-presence flags. Keys are stored in plain text in `~/.config/living_storyworld/config.json` (or `$XDG_CONFIG_HOME/living_storyworld/config.json`). The app attempts to restrict file permissions, but this is not encrypted credential storage.
 
-The setup wizard will walk you through configuration. You'll need at least one text provider API key—image providers like Pollinations work without keys.
-
-API keys are stored in `~/.config/living-storyworld/settings.json` with 600 permissions (secure, local-only).
+Existing world and model settings are preserved. To have an older world follow current app defaults, open **Edit world → Additional details** and clear its model overrides. Saved model IDs must match the provider selected in Settings. Retired Gemini models produce an actionable error instead of silently changing the story's model.
 
 ### Security Notes
 

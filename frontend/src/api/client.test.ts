@@ -6,17 +6,41 @@ describe("api client", () => {
   });
 
   it("shows the conflict message from a running world operation", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(
-      JSON.stringify({ detail: { error: "A chapter is already running.", job_id: "job" } }),
-      { status: 409 },
-    ));
-    await expect(api.startChapterGeneration("world", { no_images: true, chapter_length: "short" }))
-      .rejects.toThrow("A chapter is already running.");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          detail: { error: "A chapter is already running.", job_id: "job" },
+        }),
+        { status: 409 },
+      ),
+    );
+    await expect(
+      api.startChapterGeneration("world", {
+        no_images: true,
+        chapter_length: "short",
+      }),
+    ).rejects.toThrow("A chapter is already running.");
   });
 
   it("handles a non-JSON error response without reading its body twice", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("Unavailable", { status: 503, statusText: "Service unavailable" }));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("Unavailable", {
+        status: 503,
+        statusText: "Service unavailable",
+      }),
+    );
     await expect(api.listWorlds()).rejects.toThrow("Service unavailable");
+  });
+
+  it("explains connection failures without exposing the browser's fetch error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      new TypeError("Failed to fetch"),
+    );
+    await expect(
+      api.updateSettings({ reader_font_size: "large" }),
+    ).rejects.toThrow(
+      "Could not reach the app. Check the connection and try again.",
+    );
   });
 
   it("keeps the world response shape intact", async () => {

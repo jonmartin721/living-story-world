@@ -60,8 +60,14 @@ export type WorldDetail = {
   state: {
     tick: number;
     next_chapter: number;
-    characters: Record<string, { id: string; name: string; description?: string | null }>;
-    locations: Record<string, { id: string; name: string; description?: string | null }>;
+    characters: Record<
+      string,
+      { id: string; name: string; description?: string | null }
+    >;
+    locations: Record<
+      string,
+      { id: string; name: string; description?: string | null }
+    >;
   };
   chapters: ChapterSummary[];
   is_current: boolean;
@@ -77,6 +83,8 @@ export type WorldInput = {
   memory?: string;
   authors_note?: string;
   world_instructions?: string;
+  text_model?: string;
+  image_model?: string;
 };
 
 export type SettingsResponse = {
@@ -90,6 +98,15 @@ export type SettingsResponse = {
   has_gemini_key: boolean;
   has_replicate_token: boolean;
   has_fal_key: boolean;
+  has_pollinations_key?: boolean;
+  has_local_key?: boolean;
+  has_horde_key?: boolean;
+  comfyui_base_url?: string;
+  comfyui_workflow?: string;
+  comfyui_prompt_node?: string;
+  local_reasoning_effort?: string;
+  ollama_base_url?: string;
+  local_base_url?: string;
   global_instructions?: string | null;
   default_style_pack: string;
   default_preset: string;
@@ -110,6 +127,15 @@ export type SettingsUpdateRequest = {
   gemini_api_key?: string;
   replicate_api_token?: string;
   fal_api_key?: string;
+  pollinations_api_key?: string;
+  local_api_key?: string;
+  horde_api_key?: string;
+  comfyui_base_url?: string;
+  comfyui_workflow?: string;
+  comfyui_prompt_node?: string;
+  local_reasoning_effort?: string;
+  ollama_base_url?: string;
+  local_base_url?: string;
   global_instructions?: string;
   default_style_pack?: string;
   default_preset?: string;
@@ -117,6 +143,24 @@ export type SettingsUpdateRequest = {
   default_image_model?: string;
   reader_font_family?: string;
   reader_font_size?: string;
+};
+
+export type ProviderOption = {
+  billing?: "local" | "free_tier" | "free" | "disabled" | "paid";
+  name: string;
+  url: string;
+  models: {
+    id: string;
+    name: string;
+    note: string;
+    input_price: number | null;
+    output_price: number | null;
+  }[];
+};
+export type ProviderCatalog = {
+  text: Record<string, ProviderOption>;
+  image: Record<string, ProviderOption>;
+  reviewed_on: string;
 };
 
 export type RandomWorldResponse = {
@@ -134,7 +178,14 @@ export type GenerationRequest = {
 };
 
 export type JobProgress = {
-  stage: "init" | "text" | "post-processing" | "image" | "saving" | "complete" | "error";
+  stage:
+    | "init"
+    | "text"
+    | "post-processing"
+    | "image"
+    | "saving"
+    | "complete"
+    | "error";
   percent: number;
   message: string;
   job_id?: string;
