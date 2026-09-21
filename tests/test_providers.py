@@ -3,23 +3,26 @@
 These tests ensure that when users select a specific provider, that provider
 is actually used for generation (not defaulting to a different one).
 """
-import pytest
+from types import SimpleNamespace
 from unittest.mock import patch
-from living_storyworld.providers.text import (
-    get_text_provider,
-    OpenAIProvider,
-    GroqProvider,
-    TogetherAIProvider,
-    HuggingFaceProvider,
-    OpenRouterProvider,
-    GeminiProvider
-)
+
+import pytest
+
 from living_storyworld.providers.image import (
-    get_image_provider,
-    ReplicateProvider,
+    FalAIProvider,
     HuggingFaceImageProvider,
     PollinationsProvider,
-    FalAIProvider
+    ReplicateProvider,
+    get_image_provider,
+)
+from living_storyworld.providers.text import (
+    GeminiProvider,
+    GroqProvider,
+    HuggingFaceProvider,
+    OpenAIProvider,
+    OpenRouterProvider,
+    TogetherAIProvider,
+    get_text_provider,
 )
 
 
@@ -244,3 +247,21 @@ class TestProviderAPIKeyHandling:
         with patch.dict('os.environ', {'OPENAI_API_KEY': 'env-key'}):
             provider = get_text_provider("openai", api_key="explicit-key")
             assert provider.api_key == "explicit-key"
+
+
+@pytest.mark.parametrize("model", ["gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-4o-mini", "gpt-3.5-turbo"])
+def test_openai_uses_supported_sampling_parameters(model):
+    from unittest.mock import MagicMock
+
+    from living_storyworld.providers.text import OpenAIProvider
+
+    response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="Story"))])
+    with patch("openai.OpenAI") as client:
+        client.return_value = MagicMock()
+        client.return_value.chat.completions.create.return_value = response
+        OpenAIProvider(api_key="test-key").generate([{"role": "user", "content": "Story"}], temperature=0.7, model=model)
+    options = client.return_value.chat.completions.create.call_args.kwargs
+    if model.startswith("gpt-5"):
+        assert "temperature" not in options
+    else:
+        assert options["temperature"] == 0.7
