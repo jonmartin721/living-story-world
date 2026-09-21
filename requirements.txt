@@ -1,4 +1,4 @@
-openai>=1.35.0
+openai>=3.16.0
 python-dotenv>=1.0.0
 replicate>=1.0.0
 rich>=13.7.0
