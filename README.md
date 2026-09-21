@@ -73,40 +73,42 @@ Pollinations now requires authentication and credits; it is no longer a keyless 
 
 Open Settings to choose generation services, set defaults for new worlds, or manage connections. Reading appearance lives beside the story: four themes, three typefaces, and four text sizes apply immediately.
 
+![Story generation settings with a local model server](screenshots/settings.jpg)
+
 ### 2. World Management
 
 The main interface shows all your story worlds in one place. Search by title or premise, see chapter counts, and return to a story from its card.
 
-![Main interface showing world management](screenshots/main-page.png)
+![Main interface showing world management](screenshots/main-page.jpg)
 
 ### 3. Creating a New World
 
-Click "New World" to start a fresh story. You can manually set the title, theme, genre, and art style, or use the random generator to create unique combinations instantly.
+Click "New world" to set a title, premise, story tone, art style, audience, and branching choices. Additional details let you add lore and model overrides. "Random world" in the library generates a starting point you can edit before saving.
 
-![New world creation dialog](screenshots/new-world-dialog.png)
+![New world editor](screenshots/new-world.jpg)
 
 ### 4. Reading & Making Choices
 
-When reading chapters, you'll get a clean view optimized for enjoying your generated story. The interface shows the chapter illustration, narrative text, and your choices.
+The reader shows chapter text, choices when enabled, and an illustration when one has been generated. Chapter navigation, lore, and reading appearance are available beside the story.
 
-![Clean reading interface](screenshots/reading-mode.png)
+![Clean reading interface](screenshots/reading-mode.jpg)
 
 At key moments in the story, you'll be presented with choices that influence how the narrative unfolds. Select an option to guide the direction of the next chapter.
 
-These are PERMANENT! Choose carefully.
+You can change the latest chapter's choice until you generate the next chapter. Earlier chapters keep their established choices.
 
-![Interactive choice moments](screenshots/make-choices.png)
+![Interactive choice moments](screenshots/make-choices.jpg)
 
 ---
 
 ## Features
 
 - **Persistent Memory** - Stories remember characters and locations across chapters (entity graph tracks continuity)
-- **Multi-Provider Support** - Swap between OpenAI, Groq, Together AI, HuggingFace, OpenRouter, Gemini without touching code
+- **Multi-Provider Support** - Use Ollama or a local OpenAI-compatible server, or choose a hosted text and image provider in Settings
 - **Visual Styles** - 8 illustration styles from storybook ink to pixel art to oil paintings
 - **Genre Presets** - 12 narrative presets tuned for different story types (fantasy, mystery, sci-fi, horror, etc.)
-- **Real-Time Streaming** - Progress updates via Server-Sent Events (no polling, feels snappy)
-- **Choice System** - Make decisions that affect future chapters (permanent branching)
+- **Real-Time Progress** - Server-Sent Events with status polling to recover from a dropped connection
+- **Choice System** - Choose the next chapter's direction, with changes allowed while it is still the latest chapter
 - **Image Caching** - Avoids redundant API calls by hashing prompts
 - **Random Worlds** - Generator creates unique world combinations with pre-built lore
 - **Web + TUI + CLI** - Three interfaces (browser, terminal UI, command-line)
@@ -119,26 +121,22 @@ These are PERMANENT! Choose carefully.
 
 One design goal: don't get locked into a single AI provider. OpenAI might be expensive, Groq might be fast, Together AI might have a better model next month.
 
-The solution is abstract base classes that let you swap providers without touching generation logic:
+Text providers share a synchronous interface: pass chat messages to `generate()` and receive a `TextGenerationResult` with content, provider, model, and an estimated cost. For example, to use the provider and model selected in Settings:
 
 ```python
-class TextProvider(ABC):
-    """All text providers implement this interface"""
+from living_storyworld.providers import get_text_provider
+from living_storyworld.settings import get_api_key_for_provider, load_user_settings
 
-    @abstractmethod
-    async def generate(self, prompt: str, **kwargs) -> str:
-        """Generate text. Each provider handles retries differently."""
-        ...
-
-    @abstractmethod
-    def validate_model(self, model: str) -> bool:
-        """Check if a model name is valid for this provider."""
-        ...
-
-    @abstractmethod
-    def estimate_cost(self, tokens: int) -> float:
-        """Ballpark cost estimate—useful for comparing providers."""
-        ...
+settings = load_user_settings()
+provider = get_text_provider(
+    settings.text_provider,
+    api_key=get_api_key_for_provider(settings.text_provider, settings),
+)
+result = provider.generate(
+    [{"role": "user", "content": "Write an opening scene in a clockmaker's workshop."}],
+    model=settings.default_text_model or None,
+)
+print(result.content)
 ```
 
 Now I can A/B test providers side-by-side or switch when one goes down. Currently supports: Ollama, local OpenAI-compatible servers, OpenAI, Groq, Together AI, Hugging Face, OpenRouter, and Gemini.
@@ -151,7 +149,7 @@ World state is stored as JSON files with dataclass serialization. Each world tra
 
 ```
 worlds/<slug>/
-├── config.json          # WorldConfig (immutable: title, theme, models, style)
+├── config.json          # WorldConfig (editable title, theme, models, style)
 ├── world.json           # WorldState (mutable: characters, locations, chapters)
 ├── chapters/            # Generated markdown content
 ├── media/
@@ -179,22 +177,13 @@ New entities get registered into `WorldState` during generation, building a pers
 
 Chapter generation uses Server-Sent Events for live progress updates, with status polling if the connection drops:
 
-```javascript
-// Frontend code - real-time updates without refreshing
-const eventSource = new EventSource('/api/generate/stream');
+| Request | Response |
+| --- | --- |
+| `POST /api/worlds/{slug}/chapters` with `{"chapter_length":"medium","no_images":true}` | `{"job_id":"..."}` starts one generation job |
+| `GET /api/worlds/{slug}/chapters/stream/{job_id}` | Named SSE events: `progress` carries stage, percent, and message; `complete` carries the chapter; `error` carries `{"error":"..."}` |
+| `GET /api/worlds/{slug}/chapters/jobs/{job_id}` | Job status (`running`, `complete`, or `error`) plus progress, chapter, and error fields |
 
-eventSource.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-
-  if (data.type === 'progress') {
-    updateProgressBar(data.percent);  // Text generation in progress
-  } else if (data.type === 'chapter_complete') {
-    renderChapter(data.content);      // Chapter ready, now generating image
-  } else if (data.type === 'image_complete') {
-    displayScene(data.image_url);     // All done!
-  }
-};
-```
+Listen with `addEventListener("progress", ...)` and `addEventListener("complete", ...)`, rather than `onmessage`, because the stream uses named events. The React [useEventStream hook](frontend/src/hooks/useEventStream.ts) handles terminal events and status recovery.
 
 The backend emits structured events during generation. Reconnecting readers receive the latest status or completed chapter without starting another generation. Completed jobs stay in memory for up to 10 minutes (at most 100 results); restarting the server clears that recovery state.
 
@@ -280,8 +269,10 @@ Each preset specifies temperature, system instructions, pacing, and content matu
 python3 -m living_storyworld.cli init \
   --title "World Name" \
   --theme "Theme description" \
-  --style storybook-ink \
-  --preset epic-fantasy
+  --style storybook-ink
+
+# init inherits the image model from Settings; --image-model overrides it.
+# Select a narrative preset when generating a chapter:
 
 # Chapter generation
 python3 -m living_storyworld.cli chapter \
@@ -327,6 +318,8 @@ npm run build --prefix frontend
 
 Local writing needs no cloud key. For optional hosted services, add a key under **Settings → Connections**; the browser only receives key-presence flags. Keys are stored in plain text in `~/.config/living_storyworld/config.json` (or `$XDG_CONFIG_HOME/living_storyworld/config.json`). The app attempts to restrict file permissions, but this is not encrypted credential storage.
 
+If your local OpenAI-compatible server requires a key, save it under Connections or set `LOCAL_API_KEY`. Environment keys take precedence over saved keys for both connection checks and generation.
+
 Existing world and model settings are preserved. To have an older world follow current app defaults, open **Edit world → Additional details** and clear its model overrides. Saved model IDs must match the provider selected in Settings. Retired Gemini models produce an actionable error instead of silently changing the story's model.
 
 ### Security Notes
@@ -335,10 +328,10 @@ This runs on localhost only by default (`127.0.0.1`). Don't expose it to the int
 
 Some basic protections in place:
 - Slug validation prevents path traversal attacks (`../../../etc/passwd` won't work)
-- Image downloads have size limits (10MB) and timeouts (30s)
+- The shared URL image downloader limits downloads to 50 MB with a 30-second request timeout; other image paths have provider-specific limits
 - HTML output is escaped to prevent XSS
 - CORS is locked to localhost origins
-- API keys stored with restricted file permissions (600)
+- Settings saves attempt owner-only file permissions (`600`); protection depends on the operating system and filesystem
 
 Good enough for a local tool, not production-ready.
 
@@ -350,7 +343,7 @@ Good enough for a local tool, not production-ready.
 
 - The local API runs one mutation per world at a time. Run a single server process; CLI writes and multiple server processes do not share this guard.
 - Entity extraction relies on LLM structured output—can be flaky with smaller models
-- Image generation is slow (30-60s per scene with Flux models)
+- Image generation time depends on the model, hardware, and service queue; AI Horde and ComfyUI jobs time out after five minutes.
 - No built-in story branching visualization (choice tree)
 - Reroll, deletion, and choice changes are limited to the latest chapter so later chapters retain their established history.
 - Rerolls save a new Markdown revision and retain the prior file. Newly generated chapters include an entity snapshot; legacy chapters retain existing entity facts because historical snapshots are unavailable. There is no revision restore UI yet.
